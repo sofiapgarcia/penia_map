@@ -93,12 +93,12 @@ def analyze_excel_file(
             f"Outliers detected in {len(outlier_columns)} columns:",
             outlier_columns,
         )
-        #plot_outlier_details(df, outlier_columns)
+        plot_outlier_details(df, outlier_columns)
 
         # ---- Outlier IDs ----
         outlier_ids = identify_outlier_ids(df, non_numeric_columns)
-        #print("\nIDs with more outliers:")
-        #print(outlier_ids.to_string(index=False))
+        print("\nIDs with more outliers:")
+        print(outlier_ids.to_string(index=False))
 
     else:
         print("No outliers detected")
@@ -167,7 +167,7 @@ def plot_outlier_details(df: pd.DataFrame, columns: list):
 
     plt.show()
 
-def identify_outlier_ids(df: pd.DataFrame, non_numeric_columns: list, id_column: str = "ID") -> pd.DataFrame:
+def identify_outlier_ids(df: pd.DataFrame, non_numeric_columns: list = EXCLUDE_FROM_OUTLIER_ANALYSIS, id_column: str = "ID") -> pd.DataFrame:
     """
     Identify which IDs have the most columns with outlier values.
 

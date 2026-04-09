@@ -18,21 +18,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import OneHotEncoder
-
+from constants import CATEGORICAL_FEATURES
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants
 # ------------------------------------------------------------------------------------------------------------------- #
 
-EXCLUDE_FROM_OUTLIER_ANALYSIS = [
-    "Gender",
-    "IPAQ",
-    "HHIE-S (Classification)",
-    "Dominat Hand",
-    "Marital Status",
-    "Education Level",
-    "Stimulus",
-]
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -42,7 +33,7 @@ EXCLUDE_FROM_OUTLIER_ANALYSIS = [
 
 def analyze_excel_file(
     file_path: str,
-    non_numeric_columns: list = EXCLUDE_FROM_OUTLIER_ANALYSIS,
+    non_numeric_columns: list = CATEGORICAL_FEATURES,
 ) -> pd.DataFrame:
     """
     Load an Excel file and perform basic data checks.
@@ -167,7 +158,7 @@ def plot_outlier_details(df: pd.DataFrame, columns: list):
 
     plt.show()
 
-def identify_outlier_ids(df: pd.DataFrame, non_numeric_columns: list = EXCLUDE_FROM_OUTLIER_ANALYSIS, id_column: str = "ID") -> pd.DataFrame:
+def identify_outlier_ids(df: pd.DataFrame, non_numeric_columns: list = CATEGORICAL_FEATURES, id_column: str = "ID") -> pd.DataFrame:
     """
     Identify which IDs have the most columns with outlier values.
 
@@ -204,7 +195,7 @@ def identify_outlier_ids(df: pd.DataFrame, non_numeric_columns: list = EXCLUDE_F
 
 def encode_categorical_columns(
     df: pd.DataFrame,
-    columns: list = EXCLUDE_FROM_OUTLIER_ANALYSIS,
+    columns: list = CATEGORICAL_FEATURES,
 ) -> pd.DataFrame:
     """
     One-hot encode specified categorical columns using sklearn's OneHotEncoder,

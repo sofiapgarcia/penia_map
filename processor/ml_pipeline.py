@@ -118,11 +118,11 @@ def build_pipeline(scaler, selector, model):
 
     return pipeline
 
-def apply_smogn(train_df, target_column, target_size, random_state):
+def apply_smogn(df, target_column, target_size, random_state):
     """
     Apply SMOGN augmentation to the training data.
 
-    :param train_df: Training dataset
+    :param df: Training dataset
     :param target_column: Target column name
     :param target_size: Maximum size after augmentation
     :param random_state: Random seed
@@ -130,12 +130,12 @@ def apply_smogn(train_df, target_column, target_size, random_state):
     """
 
     augmented = smogn.smoter(
-        data=train_df,
+        data=df,
         y=target_column,
         samp_method="balance",
     )
 
-    if len(augmented) > target_size: #TODO: ver se faz sentido e fazer print do numero final depois de aplicar esta técnica
+    if len(augmented) > target_size:
         augmented = augmented.sample(target_size, random_state=random_state)
 
     return augmented
@@ -156,12 +156,7 @@ def evaluate_fold(
     :rtype: float
     """
 
-    train_aug = apply_smogn(
-        train_df,
-        target_column,
-        target_size,
-        random_state,
-    )
+    train_aug = apply_smogn(train_df, target_column, target_size, random_state)
 
     X_train = train_aug.drop(columns=target_column).values
     y_train = train_aug[target_column].values

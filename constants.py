@@ -131,7 +131,7 @@ PENIA_MAP_GROUPS = {
         "BMC_dif_bracos",
         "BMC_androide",
         "BMC_ginoide",
-        "BMC_total"
+        "BMC_total",
         "BMD",
         "BMD_cabeca",
         "BMD_bracos",

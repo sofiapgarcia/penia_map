@@ -19,31 +19,20 @@ df_encoded = encode_categorical_columns(df)
 df_features = df_encoded.drop(columns=["ID"], errors="ignore")
 
 # get correlation by each dimension of the penia map
-#corr_penia = correlation_by_groups(df_features)
+corr_penia = correlation_by_groups(df_features)
 
 # reduce the number of features based on correlation by group
-df_reduced = select_top_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],target_col="Estimated metabolic age",verbose=True)
+df_reduced = select_top_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],verbose=True)
 
 # plot distribution of one variable
 #plot_distribution(df_features, "Estimated metabolic age")
 
-# correlation with "Estimated metabolic age" column
-corr = correlation_with_target(df_features, verbose=False)
-
-# test normality of metabolic age column
-test_normality(df_features, column="Estimated metabolic age")
-
-# correlation summary by groups of variables
-group_summary = group_correlation_summary(corr)
-
-df_normalized = normalize_dataset(df_features, scaler_type="standard")
-
 # Principal Component Analysis
 # decide the suitable number of principal components
-pca_full, cumulative = inspect_pca_variance(df_normalized)
+pca_full, cumulative = inspect_pca_variance(df_reduced)
 n_components = 7
 # apply pca
-pca, X_pca_df, loadings = apply_pca(df_normalized, n_components)
+pca, X_pca_df, loadings = apply_pca(df_reduced, n_components)
 
 
 print("oi")

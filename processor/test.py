@@ -8,8 +8,6 @@ filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dataset.xlsx"
 # read the data
 
 df = pd.read_excel(filepath)
-duplicates = df.columns[df.columns.duplicated()]
-print("Duplicated columns:", duplicates)
 
 # identify missing values, duplicates and outliers
 #df = analyze_excel_file(filepath)
@@ -19,11 +17,12 @@ df_encoded = encode_categorical_columns(df)
 
 # remove participant column ID
 df_features = df_encoded.drop(columns=["ID"], errors="ignore")
-duplicates = df_features.columns[df_features.columns.duplicated()]
-print("Duplicated columns:", duplicates)
-print("Columns in the DataFrame:")
-for col in df_features.columns:
-    print(col)
+
+# get correlation by each dimension of the penia map
+#corr_penia = correlation_by_groups(df_features)
+
+# reduce the number of features based on correlation by group
+df_reduced = select_top_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],target_col="Estimated metabolic age",verbose=True)
 
 # plot distribution of one variable
 #plot_distribution(df_features, "Estimated metabolic age")

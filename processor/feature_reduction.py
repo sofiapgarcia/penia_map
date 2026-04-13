@@ -19,7 +19,7 @@ from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, MaxAbsScaler
-from constants import CATEGORICAL_FEATURES
+from constants import CATEGORICAL_FEATURES , PENIA_MAP_GROUPS
 from scipy import stats
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -120,8 +120,7 @@ def correlation_with_target(df, target_col="Estimated metabolic age", alpha=0.05
 
         results.append({
             "feature": col,
-            "correlation": corr_value,
-            "method": method
+            "correlation": corr_value
         })
 
     results_df = pd.DataFrame(results)
@@ -134,6 +133,162 @@ def correlation_with_target(df, target_col="Estimated metabolic age", alpha=0.05
         results_df = results_df.head(top_n)
 
     return results_df
+
+
+def correlation_by_groups(
+    df,
+    groups_dict=PENIA_MAP_GROUPS,
+    target_col="Estimated metabolic age",
+    alpha=0.05,
+    ascending=False,
+    verbose=True
+):
+    """
+    Compute correlation between grouped features and a target column.
+
+    :param df: Input DataFrame
+    :param groups_dict: Dictionary with groups of features
+    :param target_col: Target variable (default: Estimated metabolic age)
+    :param alpha: Significance level for normality test
+    :param ascending: Sort correlations
+    :param verbose: Print results
+    :return: dict -> {group_name: DataFrame with correlations}
+    """
+
+    # Check if target exists
+    if target_col not in df.columns:
+        raise ValueError(f"Column '{target_col}' not found in DataFrame.")
+
+    # Keep only numeric columns
+    numeric_df = df.select_dtypes(include='number')
+
+    # Test normality of target once
+    target_result = test_normality(numeric_df, target_col, alpha, return_result=True, verbose=verbose)
+    target_is_normal = target_result["is_normal"]
+
+    # Dictionary to store results by group
+    group_results = {}
+
+    # Iterate over groups
+    for group_name, features in groups_dict.items():
+
+        if verbose:
+            print(f"GROUP: {group_name}")
+
+        results = []
+
+        # Iterate over features in group
+        for col in features:
+
+            # Skip if column does not exist or is not numeric
+            if col not in numeric_df.columns:
+                continue
+
+            # Test normality of feature
+            feature_result = test_normality(numeric_df, col, alpha, return_result=True, verbose=verbose)
+            feature_is_normal = feature_result["is_normal"]
+
+            # Choose correlation method
+            if target_is_normal and feature_is_normal:
+                method = "pearson"
+            else:
+                method = "spearman"
+
+            # Compute correlation
+            corr_value = numeric_df[[col, target_col]].corr(method=method).iloc[0, 1]
+
+            if verbose:
+                print(f"\nFeature: {col}")
+                print(f"Method: {method.upper()}")
+                print(f"Correlation: {corr_value:.4f}")
+
+            results.append({
+                "feature": col,
+                "correlation": corr_value
+            })
+
+        # Convert results to DataFrame
+        group_df = pd.DataFrame(results)
+
+        # Sort if not empty
+        if not group_df.empty:
+            group_df = group_df.sort_values(by="correlation", ascending=ascending)
+
+        # Store result
+        group_results[group_name] = group_df
+
+    return group_results
+
+def select_top_features_by_group(
+    df,
+    groups_dict=PENIA_MAP_GROUPS,
+    n_features_per_group=2,
+    selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],
+    target_col="Estimated metabolic age",
+    alpha=0.05,
+    verbose=True
+):
+    """
+    Select top N features per group based on absolute correlation with target.
+
+    :param df: Input DataFrame
+    :param groups_dict: Dictionary with feature groups
+    :param n_features_per_group: Number of features to keep per group
+    :param selected_groups: List of groups to consider
+    :param target_col: Target variable
+    :param alpha: Significance level for normality test
+    :param verbose: Print progress
+    :return: Filtered DataFrame with selected features + target
+    """
+
+    # Compute correlations by group
+    group_corrs = correlation_by_groups(
+        df,
+        groups_dict,
+        target_col=target_col,
+        alpha=alpha,
+        ascending=False,
+        verbose=False  # avoid too much logging here
+    )
+
+    selected_features = []
+
+    # Iterate over selected groups
+    for group in selected_groups:
+
+        if group not in group_corrs:
+            continue
+
+        group_df = group_corrs[group]
+
+        if group_df.empty:
+            continue
+
+        # Create absolute correlation column
+        group_df["abs_corr"] = group_df["correlation"].abs()
+
+        # Sort by absolute correlation (descending)
+        group_df = group_df.sort_values(by="abs_corr", ascending=False)
+
+        # Select top N features
+        top_features = group_df.head(n_features_per_group)["feature"].tolist()
+
+        if verbose:
+            print(f"\nGroup: {group}")
+            print(f"Selected features: {top_features}")
+
+        selected_features.extend(top_features)
+
+    # Remove duplicates (just in case)
+    selected_features = list(set(selected_features))
+
+    # Always include target column
+    final_columns = selected_features + [target_col]
+
+    # Filter DataFrame
+    filtered_df = df[final_columns]
+
+    return filtered_df
 
 
 def group_correlation_summary(correlations_df):

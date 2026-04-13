@@ -112,7 +112,7 @@ groups = {
     ]
 }
 
-penia_map_groups = {
+PENIA_MAP_GROUPS = {
     "Dynapenia": [
         "Hand Grip_F",
         "1RM_BP_F",
@@ -131,6 +131,7 @@ penia_map_groups = {
         "BMC_dif_bracos",
         "BMC_androide",
         "BMC_ginoide",
+        "BMC_total"
         "BMD",
         "BMD_cabeca",
         "BMD_bracos",
@@ -139,12 +140,21 @@ penia_map_groups = {
         "BMD_costelas",
         "BMD_coluna",
         "BMD_pelve",
+        "T_score",
+        "Z_score",
+        "Centil"
 
     ],
 
     "Powerpenia": [
         "Peak_Power_BP_F",
-        "Peak_Power_SQ_F",
+        "Peak_Power_SQ_F"
+    ],
+
+    "Sarcopenia": [
+        "Magro_total",
+        "Magro_pernas",
+        "Magro_tronco"
         "Massa_magra_bracos",
         "Massa_magra_braco_direito",
         "Massa_magra_braco_esquerdo",
@@ -159,25 +169,9 @@ penia_map_groups = {
         "Massa_magra_tronco_dif",
         "Massa_magra_direita",
         "Massa_magra_esquerda",
-        "Massa_magra_dif"
-    ],
-
-    "Sarcopenia": [
-        "Massa_total",
-        "Massa_pernas",
-        "Massa_tronco",
-        "Massa_braco_direito",
-        "Massa_braco_esquerdo",
-        "Massa_dif_bracos",
-        "Massa_perna_direita",
-        "Massa_perna_esquerda",
-        "Massa_dif_pernas",
-        "Massa_androide",
-        "Massa_ginoide",
-        "Massa_livre_gordura",
-        "Magro_total",
-        "Magro_pernas",
-        "Magro_tronco"
+        "Massa_magra_dif",
+        "Perc_tecido_magro",
+        "RSMI"
     ],
 
     "Body Fat": [
@@ -193,6 +187,13 @@ penia_map_groups = {
         "Perc_gordura_perna_direita",
         "Perc_gordura_perna_esquerda",
         "Perc_gordura_dif_pernas",
+        "Dist_gordura_bracos",
+        "Dist_gordura_pernas",
+        "Dist_gordura_tronco",
+        "Dist_gordura_androide",
+        "Dist_gordura_ginoide",
+        "Perc_gordura_regiao_total",
+        "Gordo_total",
         "Massa_gordura_bracos",
         "Massa_gordura_braco_direito",
         "Massa_gordura_braco_esquerdo",
@@ -210,19 +211,18 @@ penia_map_groups = {
         "TAS_volume",
         "TAS_massa_gordura",
         "TAS_area",
-        "Perc_tecido_magro",
-        "Dist_gordura_bracos",
-        "Dist_gordura_pernas",
-        "Dist_gordura_tronco",
-        "Dist_gordura_androide",
-        "Dist_gordura_ginoide"
+        "Taxa_A_G"
     ],
 
     "Metabolic": [
         "RMR",
-        "Daily calorie intake (DCI)",
+        "Daily calorie intake (DCI)"
+    ],
+
+    "Anthropometric": [
         "BMI_DXA",
-        "Taxa_A_G"
+        "Altura",
+        "Massa Corporal"
     ],
 
     "Demographics": [
@@ -238,12 +238,10 @@ penia_map_groups = {
         "Education Level_Ensino Superior",
         "Education Level_Pós-Graduação",
         "Education Level_Secundário",
-        "Stimulus_GM",
-        "Estimated metabolic age",
         "MET/Week",
-        "T_score",
-        "Z_score",
-        "Centil",
+    ],
+
+    "Others": [
         "Tecido"
     ]
 }
@@ -265,7 +263,7 @@ _function2(...):
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
 
-
+# internal imports
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants
 # ------------------------------------------------------------------------------------------------------------------- #

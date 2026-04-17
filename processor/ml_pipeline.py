@@ -1,6 +1,5 @@
 import numpy as np
-import pandas as pd
-import smogn
+
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, QuantileTransformer
@@ -119,35 +118,6 @@ def build_pipeline(scaler, selector, model):
     return pipeline
 
 
-def apply_smogn(df, target_column="Estimated metabolic age"):
-    """
-    Apply SMOGN augmentation to the training data.
-
-    :param df: dataset (pandas DataFrame)
-    :param target_column: Target column name
-    :return: Augmented dataset
-    """
-    data = df.copy()
-
-    print("Sample size before data augmentation:", len(data))
-
-    augmented = smogn.smoter(
-        data=data,
-        y=target_column,
-        k=3,
-        samp_method="balance",
-        rel_method="manual",
-        rel_ctrl_pts_rg=[
-            [49, 1, 0],
-            [57, 0, 0],
-            [71, 0, 0],
-            [87, 1, 0],
-        ]
-    )
-
-    print("Sample size after data augmentation:", len(augmented))
-
-    return augmented
 
 def evaluate_fold(
     train_df,

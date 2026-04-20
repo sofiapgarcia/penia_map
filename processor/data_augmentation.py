@@ -1,13 +1,20 @@
 """
-Functions to...
+Functions to perform data augmentation on tabular datasets using a combination
+of SMOGN (Synthetic Minority Over-sampling Technique for Regression with Gaussian Noise)
+and Gaussian Copula-based synthetic data generation.
+
+This module provides utilities to handle imbalanced regression problems by:
+- Oversampling rare target regions using SMOGN
+- Generating additional synthetic samples using a probabilistic model (Gaussian Copula)
 
 Available Functions
 -------------------
 [Public]
-function1(...):
+apply_data_augmentation(...): Apply a full data augmentation pipeline combining SMOGN and Gaussian Copula.
 
 [Private]
-_function2(...):
+_apply_smogn(...): Perform SMOGN-based resampling to balance the target distribution.
+_augment_dataframe_gaussian_copula(...): Generate synthetic tabular data using a Gaussian Copula model.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -24,15 +31,66 @@ from sdv.single_table import GaussianCopulaSynthesizer
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def apply_smogn(
+def apply_data_augmentation(
     df,
-    k=4,
+    k=2,
     target_column="Estimated metabolic age",
     rel_ctrl_pts_rg=None,
-    samp_method="balance",
+    samp_method="extreme",
     rel_method="manual",
     preserve_original=True,
+    n_samples: int = 20,
     verbose=True
+):
+    """
+    Apply SMOGN followed by Gaussian Copula augmentation to the dataset.
+
+    :param df: dataset (pandas DataFrame)
+    :param k: Number of neighbours to use in SMOGN
+    :param target_column: Target column name
+    :param rel_ctrl_pts_rg: Relevance control points for SMOGN
+    :param samp_method: Sampling method ("extreme", "balance", etc.)
+    :param rel_method: Relevance method ("manual" or "auto")
+    :param preserve_original: If True, re-add original data after SMOGN
+    :param n_samples: Number of synthetic rows to generate with Gaussian Copula.
+                      If None, uses the size of the SMOGN-augmented dataset
+    :param verbose: If True, print dataset sizes
+    :return: Fully augmented dataset (SMOGN + Gaussian Copula)
+    """
+
+    # Step 1: Apply SMOGN
+    smogn_df = _apply_smogn(df=df, k=k, target_column=target_column, rel_ctrl_pts_rg=rel_ctrl_pts_rg,
+                            samp_method=samp_method, rel_method=rel_method, preserve_original=preserve_original,
+                            verbose=False)
+
+    # Print intermediate dataset size
+    if verbose:
+        print("Sample size after SMOGN step:", len(smogn_df))
+
+    # Step 2: Apply Gaussian Copula
+    final_df = _augment_dataframe_gaussian_copula(df=smogn_df, n_samples=n_samples)
+
+    # Print final dataset size
+    if verbose:
+        print("Sample size after full augmentation (SMOGN + Gaussian Copula):", len(final_df))
+
+    return final_df
+
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
+
+def _apply_smogn(
+    df,
+    k=2,
+    target_column="Estimated metabolic age",
+    rel_ctrl_pts_rg=None,
+    samp_method="extreme",
+    rel_method="manual",
+    preserve_original=True,
+    verbose=False
 ):
     """
     Apply SMOGN augmentation to the training data.
@@ -94,7 +152,7 @@ def apply_smogn(
     return final_df
 
 
-def augment_dataframe_gaussian_copula(df, n_samples: int = None):
+def _augment_dataframe_gaussian_copula(df, n_samples: int = 20):
     """
     Augment a dataset using a Gaussian Copula synthetic data generator.
 
@@ -120,7 +178,3 @@ def augment_dataframe_gaussian_copula(df, n_samples: int = None):
     augmented_df = pd.concat([df, synthetic_df], ignore_index=True)
 
     return augmented_df
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# private functions
-# ------------------------------------------------------------------------------------------------------------------- #

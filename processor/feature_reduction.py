@@ -1,37 +1,248 @@
 """
-Functions to...
+Feature selection based on correlation analysis.
+
+This module provides tools for:
+- Group-wise feature selection based on adaptive correlation with a target variable
+- Removal of multicollinearity within and across feature groups
+- Grouped correlation analysis for exploratory data analysis
+
+The feature selection pipeline:
+- Uses Shapiro-Wilk test to decide between Pearson and Spearman correlation
+- Selects top features per predefined groups
+- Removes redundant features within groups and globally
+- Returns a final reduced feature set ready for modeling
 
 Available Functions
 -------------------
+
 [Public]
-function1(...):
+select_features_by_group(...): Selects top N features per group based on correlation with the target and applies intra- and inter-group collinearity removal.
+correlation_by_groups(...): Computes correlation between features and target grouped by predefined feature sets.
 
 [Private]
-_function2(...):
+_compute_normality_map(...): Computes normality status of numeric variables using the Shapiro-Wilk test.
+_compute_correlation(...): Computes adaptive correlation (Pearson or Spearman) based on normality assumptions.
+_remove_collinear_features(...): Removes highly correlated features while keeping the most relevant ones based on correlation with the target variable.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
-from constants import groups
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from constants import PENIA_MAP_GROUPS
 from scipy import stats
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# file specific constants
-# ------------------------------------------------------------------------------------------------------------------- #
+# internal imports
+from constants import PENIA_MAP_GROUPS
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def compute_normality_map(df, alpha=0.05):
+def select_features_by_group(
+    df,
+    groups_dict=PENIA_MAP_GROUPS,
+    selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],
+    target_col="Estimated metabolic age",
+    n_features_per_group=2,
+    corr_threshold=0.85,
+    alpha=0.05,
+    global_corr_threshold=0.85,
+    verbose=True
+):
+    """
+    Select top N features per group based on adaptive correlation with the target variable.
+
+    This function:
+    - Removes highly correlated features within each group
+    - Uses Shapiro-Wilk test to choose Pearson or Spearman correlation
+    - Selects the most relevant features per group
+    - Applies a final global collinearity filtering step across all selected features
+    - Returns a filtered DataFrame with selected features and target column
+
+    :param df: Input DataFrame
+    :param groups_dict: Dictionary mapping group names to feature lists
+    :param selected_groups: List of groups to include in selection
+    :param target_col: Target variable name
+    :param n_features_per_group: Number of features to select per group
+    :param corr_threshold: Threshold for removing collinear features within groups
+    :param global_corr_threshold: Threshold for removing collinear features globally
+    :param alpha: Significance level for normality test
+    :param verbose: If True, prints selection process details
+    :return: Filtered DataFrame with selected features and target column
+    """
+
+    if verbose:
+        print("\nFEATURE SELECTION PIPELINE\n")
+
+    # Step 1: Compute normality map once
+    normality_map = _compute_normality_map(df, alpha=alpha)
+
+    selected_features = []
+
+    # Step 2: Iterate through selected groups
+    for group in selected_groups:
+
+        if group not in groups_dict:
+            continue
+
+        raw_features = [f for f in groups_dict[group] if f in df.columns]
+
+        if len(raw_features) == 0:
+            continue
+
+        if verbose:
+            print(f"\nGROUP: {group}")
+            print(f"Initial features ({len(raw_features)}): {raw_features}")
+
+        # Step 3: Remove multicollinearity within group
+        filtered_features, dropped = _remove_collinear_features(raw_features, df, normality_map=normality_map,
+                                                                threshold=corr_threshold, verbose=False)
+
+        if verbose:
+            print(f"Dropped (collinearity): {dropped}")
+            print(f"Remaining features: {filtered_features}")
+
+        # Step 4: Compute correlation with target
+        scored_features = []
+
+        for feature in filtered_features:
+
+            corr_value, method = _compute_correlation(df, feature, target_col, normality_map)
+
+            scored_features.append((feature, corr_value))
+
+            if verbose:
+                print(f"{feature} -> {corr_value:.4f} ({method})")
+
+        # Step 5: Rank features and select top N per group
+        scored_features.sort(key=lambda x: abs(x[1]), reverse=True)
+        top_features = [f for f, _ in scored_features[:n_features_per_group]]
+
+        selected_features.extend(top_features)
+
+        if verbose:
+            print(f"\nSelected for {group}: {top_features}")
+
+    # Step 6: Global collinearity filtering (final cleanup step)
+    if verbose:
+        print("\n--- GLOBAL COLLINEARITY FILTER ---")
+
+    final_features, removed_global = _remove_collinear_features(selected_features, df, normality_map=normality_map,
+                                                                threshold=global_corr_threshold, verbose=verbose)
+
+    final_columns = final_features + [target_col]
+
+    if verbose:
+        print(f"Removed globally: {removed_global}")
+
+        print("\n================ FINAL SELECTION ================")
+        print(f"Total features before global filter: {len(selected_features)}")
+        print(f"Total features after global filter: {len(final_features)}")
+        print(f"Features: {final_features}")
+        print("================================================\n")
+
+    return df[final_columns]
+
+
+
+def correlation_by_groups(
+    df,
+    groups_dict=PENIA_MAP_GROUPS,
+    target_col="Estimated metabolic age",
+    alpha=0.05,
+    verbose=False
+):
+    """
+    Compute grouped correlations and return a dictionary of DataFrames per group.
+
+    This function reuses:
+    - compute_normality_map (for normality estimation)
+    - compute_correlation (for adaptive Pearson/Spearman correlation)
+
+    The output structure is identical to correlation_by_groups, but enriched
+    with additional metadata for inspection and debugging.
+
+    :param df: Input DataFrame
+    :param groups_dict: Dictionary mapping group names to feature lists
+    :param target_col: Target variable name
+    :param alpha: Significance level for normality test
+    :param verbose: If True, prints progress
+    :return: Dictionary {group_name: DataFrame with correlation analysis}
+    """
+
+    # Check if target column exists in the dataset
+    if target_col not in df.columns:
+        raise ValueError(f"Column '{target_col}' not found in DataFrame.")
+
+    # Compute normality for all numeric variables (done once for efficiency)
+    normality_map = _compute_normality_map(df, alpha=alpha)
+
+    # Dictionary to store results per group
+    group_results = {}
+
+    # Iterate over each feature group
+    for group_name, features in groups_dict.items():
+
+        if verbose:
+            print(f"\nGROUP: {group_name}")
+
+        results = []
+
+        # Iterate over features within the current group
+        for feature in features:
+
+            # Skip feature if it is not present in the DataFrame
+            if feature not in df.columns:
+                continue
+
+            # Compute adaptive correlation using existing pipeline logic
+            corr_value, method = _compute_correlation(df, feature, target_col, normality_map)
+
+            # Store detailed results for inspection
+            results.append({
+                "feature": feature,
+                "correlation": corr_value
+            })
+
+            # Optional verbose logging for debugging
+            if verbose:
+                print(f"{feature} -> {corr_value:.4f} ({method})")
+
+        # Convert results list into a DataFrame
+        group_df = pd.DataFrame(results)
+
+        # Sort features by absolute correlation
+        if not group_df.empty:
+            # Create temporary absolute correlation for sorting
+            group_df["abs_corr"] = group_df["correlation"].abs()
+
+            # Sort by absolute correlation (ranking strength)
+            group_df = group_df.sort_values(
+                by="abs_corr",
+                ascending=False
+            )
+
+            # Remove helper column before returning output
+            group_df = group_df.drop(columns=["abs_corr"])
+
+        # Store DataFrame under group name
+        group_results[group_name] = group_df
+
+    return group_results
+
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+def _compute_normality_map(df, alpha=0.05):
     """
     Compute a mapping of numeric columns to normality status using the Shapiro-Wilk test.
 
@@ -58,7 +269,7 @@ def compute_normality_map(df, alpha=0.05):
 
     return normality_map
 
-def compute_correlation(df, feature_col, target_col, normality_map):
+def _compute_correlation(df, feature_col, target_col, normality_map):
     """
     Compute correlation between a feature and the target variable using an adaptive method.
 
@@ -83,7 +294,7 @@ def compute_correlation(df, feature_col, target_col, normality_map):
 
     return corr_value, method
 
-def remove_collinear_features(features, df, normality_map, target_col="Estimated metabolic age", threshold=0.85, verbose=False):
+def _remove_collinear_features(features, df, normality_map, target_col="Estimated metabolic age", threshold=0.85, verbose=False):
     """
     Remove highly correlated features while keeping the one most correlated with the target.
 
@@ -101,7 +312,7 @@ def remove_collinear_features(features, df, normality_map, target_col="Estimated
 
     # Compute correlation with target for all features
     target_corr = {
-        f: abs(compute_correlation(df, f, target_col, normality_map)[0])
+        f: abs(_compute_correlation(df, f, target_col, normality_map)[0])
         for f in features
     }
 
@@ -138,196 +349,8 @@ def remove_collinear_features(features, df, normality_map, target_col="Estimated
 
     return kept_features, list(to_remove)
 
-def select_top_features_by_group(
-    df,
-    groups_dict=PENIA_MAP_GROUPS,
-    selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],
-    target_col="Estimated metabolic age",
-    n_features_per_group=2,
-    corr_threshold=0.85,
-    alpha=0.05,
-    verbose=True
-):
-    """
-    Select top N features per group based on adaptive correlation with the target variable.
 
-    This function:
-    - Removes highly correlated features within each group
-    - Uses Shapiro-Wilk test to choose Pearson or Spearman correlation
-    - Selects the most relevant features per group
-    - Returns a filtered DataFrame with selected features and target column
-
-    :param df: Input DataFrame
-    :param groups_dict: Dictionary mapping group names to feature lists
-    :param selected_groups: List of groups to include in selection
-    :param target_col: Target variable name
-    :param n_features_per_group: Number of features to select per group
-    :param corr_threshold: Threshold for removing collinear features
-    :param alpha: Significance level for normality test
-    :param verbose: If True, prints selection process details
-    :return: Filtered DataFrame with selected features and target column
-    """
-
-    if verbose:
-        print("\nFEATURE SELECTION PIPELINE\n")
-
-    # Step 1: Compute normality map once
-    normality_map = compute_normality_map(df, alpha=alpha)
-
-    selected_features = []
-
-    # Step 2: Iterate through selected groups
-    for group in selected_groups:
-
-        if group not in groups_dict:
-            continue
-
-        raw_features = groups_dict[group]
-        raw_features = [f for f in raw_features if f in df.columns]
-
-        if len(raw_features) == 0:
-            continue
-
-        if verbose:
-            print(f"\nGROUP: {group}")
-            print(f"Initial features ({len(raw_features)}): {raw_features}")
-
-        # Step 3: Remove multicollinearity within group
-        filtered_features, dropped = remove_collinear_features(raw_features, df, normality_map=normality_map,
-                                                               threshold=corr_threshold, verbose=False)
-
-        if verbose:
-            print(f"Dropped (collinearity): {dropped}")
-            print(f"Remaining features: {filtered_features}")
-
-        # Step 4: Compute correlation with target
-        scored_features = []
-
-        for feature in filtered_features:
-
-            corr_value, method = compute_correlation(
-                df,
-                feature,
-                target_col,
-                normality_map
-            )
-
-            scored_features.append((feature, corr_value))
-
-            if verbose:
-                print(f"{feature} -> {corr_value:.4f} ({method})")
-
-        # Step 5: Rank features
-        scored_features.sort(key=lambda x: abs(x[1]), reverse=True)
-
-        top_features = [f for f, _ in scored_features[:n_features_per_group]]
-
-        selected_features.extend(top_features)
-
-        if verbose:
-            print(f"\nSelected for {group}: {top_features}")
-
-    # Step 6: Final dataset
-    final_columns = selected_features + [target_col]
-
-    if verbose:
-        print("\n================ FINAL SELECTION ================")
-        print(f"Total selected features: {len(selected_features)}")
-        print(f"Features: {selected_features}")
-        print("================================================\n")
-
-    return df[final_columns]
-
-def correlation_by_groups(
-    df,
-    groups_dict=PENIA_MAP_GROUPS,
-    target_col="Estimated metabolic age",
-    alpha=0.05,
-    verbose=False
-):
-    """
-    Compute grouped correlations and return a dictionary of DataFrames per group.
-
-    This function reuses:
-    - compute_normality_map (for normality estimation)
-    - compute_correlation (for adaptive Pearson/Spearman correlation)
-
-    The output structure is identical to correlation_by_groups, but enriched
-    with additional metadata for inspection and debugging.
-
-    :param df: Input DataFrame
-    :param groups_dict: Dictionary mapping group names to feature lists
-    :param target_col: Target variable name
-    :param alpha: Significance level for normality test
-    :param verbose: If True, prints progress
-    :return: Dictionary {group_name: DataFrame with correlation analysis}
-    """
-
-    # Check if target column exists in the dataset
-    if target_col not in df.columns:
-        raise ValueError(f"Column '{target_col}' not found in DataFrame.")
-
-    # Compute normality for all numeric variables (done once for efficiency)
-    normality_map = compute_normality_map(df, alpha=alpha)
-
-    # Dictionary to store results per group
-    group_results = {}
-
-    # Iterate over each feature group
-    for group_name, features in groups_dict.items():
-
-        if verbose:
-            print(f"\nGROUP: {group_name}")
-
-        results = []
-
-        # Iterate over features within the current group
-        for feature in features:
-
-            # Skip feature if it is not present in the DataFrame
-            if feature not in df.columns:
-                continue
-
-            # Compute adaptive correlation using existing pipeline logic
-            corr_value, method = compute_correlation(
-                df,
-                feature,
-                target_col,
-                normality_map
-            )
-
-            # Store detailed results for inspection
-            results.append({
-                "feature": feature,
-                "correlation": corr_value
-            })
-
-            # Optional verbose logging for debugging
-            if verbose:
-                print(f"{feature} -> {corr_value:.4f} ({method})")
-
-        # Convert results list into a DataFrame
-        group_df = pd.DataFrame(results)
-
-        # Sort features by absolute correlation
-        if not group_df.empty:
-            # Create temporary absolute correlation for sorting
-            group_df["abs_corr"] = group_df["correlation"].abs()
-
-            # Sort by absolute correlation (ranking strength)
-            group_df = group_df.sort_values(
-                by="abs_corr",
-                ascending=False
-            )
-
-            # Remove helper column before returning output
-            group_df = group_df.drop(columns=["abs_corr"])
-
-        # Store DataFrame under group name
-        group_results[group_name] = group_df
-
-    return group_results
-
+# PCA
 def inspect_pca_variance(df, target_col="Estimated metabolic age"):
     """
     Fit PCA on numeric features (excluding target) and plot explained variance
@@ -407,6 +430,7 @@ def apply_pca(df, n_components, target_col="Estimated metabolic age"):
     )
 
     return pca, X_pca_df, loadings
+
 
 
 

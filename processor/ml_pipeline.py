@@ -1,3 +1,19 @@
+"""
+Functions to...
+
+Available Functions
+-------------------
+[Public]
+function1(...):
+
+[Private]
+_function2(...):
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
+
 import numpy as np
 
 
@@ -11,7 +27,16 @@ from sklearn.svm import SVR
 from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.metrics import r2_score
 
+# internal imports
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def get_scaler(scaler_type):
     """
@@ -125,7 +150,6 @@ def evaluate_fold(
     target_column,
     pipeline,
     param_grid,
-    target_size,
     random_state,
 ):
     """
@@ -135,10 +159,8 @@ def evaluate_fold(
     :rtype: float
     """
 
-    train_aug = apply_smogn(train_df, target_column, target_size, random_state)
-
-    X_train = train_aug.drop(columns=target_column).values
-    y_train = train_aug[target_column].values
+    X_train = train_df.drop(columns=target_column).values
+    y_train = train_df[target_column].values
 
     X_test = test_df.drop(columns=target_column).values
     y_test = test_df[target_column].values
@@ -161,7 +183,7 @@ def evaluate_fold(
 
     return score
 
-def nested_cv_regression_pipeline_smogn(
+def nested_cv_regression_pipeline(
     df,
     target_column="Estimated metabolic age",
     model_type="rf",
@@ -199,8 +221,7 @@ def nested_cv_regression_pipeline_smogn(
             target_column,
             pipeline,
             param_grid,
-            target_size,
-            random_state,
+            random_state
         )
 
         scores.append(score)
@@ -208,3 +229,7 @@ def nested_cv_regression_pipeline_smogn(
     mean_score = np.mean(scores)
 
     return mean_score
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #

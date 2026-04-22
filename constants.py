@@ -246,6 +246,7 @@ PENIA_MAP_GROUPS = {
     ]
 }
 
+RANDOM_SEED = 42
 
 """
 Functions to...

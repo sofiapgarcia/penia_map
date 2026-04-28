@@ -120,10 +120,13 @@ def _apply_smogn(
     if rel_ctrl_pts_rg is None:
         rel_ctrl_pts_rg = [
             [49, 1, 0],
+            [50, 1, 0],
+            [52, 0, 0],
             [55, 0, 0],
             [60, 0, 0],
-            [64, 1, 0],
-            [71, 0, 0]
+            [61, 1, 0],
+            [63, 1, 0],
+            [70, 0, 0]
         ]
 
     # Apply SMOGN

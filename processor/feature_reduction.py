@@ -18,10 +18,11 @@ Available Functions
 [Public]
 select_features_by_group(...): Selects top N features per group based on correlation with the target and applies intra- and inter-group collinearity removal.
 correlation_by_groups(...): Computes correlation between features and target grouped by predefined feature sets.
+adaptive_correlation_matrix(...): Computes a full pairwise adaptive correlation matrix across numeric variables.
 
 [Private]
 _compute_normality_map(...): Computes normality status of numeric variables using the Shapiro-Wilk test.
-_compute_correlation(...): Computes adaptive correlation (Pearson or Spearman) based on normality assumptions.
+_compute_correlation(...): Computes adaptive correlation between two variables
 _remove_collinear_features(...): Removes highly correlated features while keeping the most relevant ones based on correlation with the target variable.
 """
 
@@ -237,6 +238,62 @@ def correlation_by_groups(
 
 
 
+def adaptive_correlation_matrix(df, alpha=0.05):
+    """
+    Compute an adaptive correlation matrix for all numeric variables.
+
+    This function:
+    - Computes normality of each numeric variable using the Shapiro-Wilk test
+    - Applies an adaptive correlation strategy (Pearson or Spearman)
+      depending on the distribution of each variable pair
+    - Returns both the correlation matrix and the method used per pair
+
+    The resulting matrices allow full inspection of:
+    - Correlation strength between variables
+    - Which statistical method was applied for each pair
+
+    :param df: Input DataFrame
+    :param alpha: Significance level for normality test
+    :return:
+        - corr_matrix: DataFrame with correlation values
+        - method_matrix: DataFrame with correlation methods used (pearson/spearman)
+    """
+
+    # Select only numeric variables (correlation requires numeric data)
+    numeric_df = df.select_dtypes(include="number")
+
+    # Compute normality map once for efficiency
+    normality_map = _compute_normality_map(numeric_df, alpha=alpha)
+
+    # Initialize matrices to store results
+    cols = numeric_df.columns
+    corr_matrix = pd.DataFrame(index=cols, columns=cols, dtype=float)
+    method_matrix = pd.DataFrame(index=cols, columns=cols, dtype=object)
+
+    # Iterate over all variable pairs
+    for i, col1 in enumerate(cols):
+        for j, col2 in enumerate(cols):
+
+            # Compute only upper triangle (including diagonal)
+            # and mirror results to avoid redundant computation
+            if i <= j:
+
+                corr_value, method = _compute_correlation(
+                    numeric_df, col1, col2, normality_map
+                )
+
+                # Store correlation values symmetrically
+                corr_matrix.loc[col1, col2] = corr_value
+                corr_matrix.loc[col2, col1] = corr_value
+
+                # Store method used symmetrically
+                method_matrix.loc[col1, col2] = method
+                method_matrix.loc[col2, col1] = method
+
+    return corr_matrix, method_matrix
+
+
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -269,7 +326,7 @@ def _compute_normality_map(df, alpha=0.05):
 
     return normality_map
 
-def _compute_correlation(df, feature_col, target_col, normality_map):
+def _compute_correlation(df, col1, col2, normality_map):
     """
     Compute correlation between a feature and the target variable using an adaptive method.
 
@@ -277,20 +334,20 @@ def _compute_correlation(df, feature_col, target_col, normality_map):
     otherwise, Spearman correlation is applied.
 
     :param df: Input DataFrame
-    :param feature_col: Name of the feature column
-    :param target_col: Name of the target column
+    :param col1: Name of the first column to compute correlation
+    :param col2: Name of the second column to compute correlation
     :param normality_map: Dictionary indicating normality of each variable
     :return: Tuple (correlation value, correlation method used)
     """
 
     # Select correlation method based on normality assumptions
-    if normality_map.get(feature_col, False) and normality_map.get(target_col, False):
+    if normality_map.get(col1, False) and normality_map.get(col2, False):
         method = "pearson"
     else:
         method = "spearman"
 
     # Compute correlation
-    corr_value = df[[feature_col, target_col]].corr(method=method).iloc[0, 1]
+    corr_value = df[[col1, col2]].corr(method=method).iloc[0, 1]
 
     return corr_value, method
 
@@ -316,8 +373,10 @@ def _remove_collinear_features(features, df, normality_map, target_col="Estimate
         for f in features
     }
 
-    # Compute feature-feature correlation matrix
-    corr_matrix = df[features].corr().abs()
+    # Compute adaptive correlation matrix
+    # Then restrict it only to the selected features
+    corr_matrix_full, _ = adaptive_correlation_matrix(df[features])
+    corr_matrix = corr_matrix_full.abs()
 
     # Upper triangle (avoid duplicate comparisons)
     upper = corr_matrix.where(

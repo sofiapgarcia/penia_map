@@ -25,6 +25,7 @@ _save_results(...): Saves evaluation results to disk.
 # ------------------------------------------------------------------------------------------------------------------- #
 
 import pandas as pd
+from sklearn import linear_model
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
@@ -45,6 +46,7 @@ from nested_cross_validation import nested_cross_val , tune_production_model
 RF = "Random Forest"
 SVM = "SVM"
 KNN = "KNN"
+LR="LR"
 
 SCALER = 'scaler'
 PARAM_GRID = 'param_grid'
@@ -58,7 +60,10 @@ def run_training_pipeline(df: pd.DataFrame,
                           target_column: str = "Estimated metabolic age",
                           test_size: float = 0.2,
                           random_state: int = 42,
-                          normalization_methods: List[str] = None):
+                          normalization_methods: List[str] = None,
+                          splits_outer: int = 5,
+                          splits_inner: int = 2,
+                          models_to_run: List[str] = None):
     """
     Runs the full training pipeline: splits the dataset and performs model selection.
 
@@ -67,12 +72,20 @@ def run_training_pipeline(df: pd.DataFrame,
     :param test_size: proportion of the dataset to include in the test split
     :param random_state: random seed for reproducibility
     :param normalization_methods: list of normalization methods to evaluate
+    :param splits_outer: number of outer cross-validation splits. Default: 5
+    :param splits_inner: number of inner cross-validation splits. Default: 2
+    :param models_to_run: list of models to evaluate. Options: ['KNN', 'SVM', 'RF', 'LR'].
+                          Default: None (runs all models)
     :return: X_train, X_test, y_train, y_test
     """
 
     # split dataset into train and test sets
-    X_train, X_test, y_train, y_test = _train_test_split(df=df, target_column=target_column, test_size=test_size,
-                                                         random_state=random_state)
+    X_train, X_test, y_train, y_test = _split_data(
+        df=df,
+        target_column=target_column,
+        test_size=test_size,
+        random_state=random_state
+    )
 
     print("\nDataset successfully split.")
     print(f"Train shape: {X_train.shape}")
@@ -83,7 +96,10 @@ def run_training_pipeline(df: pd.DataFrame,
     _perform_model_selection(
         X_train=X_train,
         y_train=y_train,
-        normalization_methods=normalization_methods
+        splits_outer=splits_outer,
+        splits_inner=splits_inner,
+        normalization_methods=normalization_methods,
+        models_to_run=models_to_run
     )
 
     # return split data for later use (e.g., final evaluation)
@@ -154,7 +170,7 @@ def evaluate_production_model(X_train: pd.DataFrame, y_train: pd.Series,
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
 # ------------------------------------------------------------------------------------------------------------------- #
-def _train_test_split(df, target_column="Estimated metabolic age", test_size=0.2, random_state=42):
+def _split_data(df, target_column="Estimated metabolic age", test_size=0.2, random_state=42):
     """
     Split a DataFrame into features and target, and then into train and test sets.
 
@@ -170,14 +186,14 @@ def _train_test_split(df, target_column="Estimated metabolic age", test_size=0.2
     y = df[target_column]
 
     # Split the dataset into training and testing sets
-    X_train, X_test, y_train, y_test = _train_test_split(X, y, test_size=test_size, random_state=random_state)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
     return X_train, X_test, y_train, y_test
 
-def _perform_model_selection(X_train: pd.DataFrame, y_train: pd.Series,
-                            normalization_methods: List[str] = None) -> None:
+def _perform_model_selection(X_train: pd.DataFrame, y_train: pd.Series, splits_outer: int, splits_inner: int,
+                            normalization_methods: List[str] = None, models_to_run: List[str] = None) -> None:
     """
-    Evaluates multiple regression models (Random Forest, KNN, and SVM) using nested cross-validation
+    Evaluates multiple regression models (Random Forest, KNN, SVM, and Linear Regression) using nested cross-validation
     to select which model is best for production. The training data should already be divided from test data.
 
     :param X_train: pandas.DataFrame containing the training features
@@ -185,6 +201,10 @@ def _perform_model_selection(X_train: pd.DataFrame, y_train: pd.Series,
     :param normalization_methods: list of normalization methods to evaluate.
                                   Options: 'standard', 'minmax', 'robust', 'none'.
                                   Default: ['standard', 'minmax', 'robust', 'none']
+    :param models_to_run: list of models to evaluate. Options: ['KNN', 'SVM', 'RF', 'LR'].
+                          Default: None (runs all models)
+    :param splits_outer: number of outer cross-validation splits.
+    :param splits_inner: number of inner cross-validation splits.
     :return: None
     """
 
@@ -201,16 +221,22 @@ def _perform_model_selection(X_train: pd.DataFrame, y_train: pd.Series,
         print("=" * 60 + "\n")
 
         # evaluate the models
-        _evaluate_models(X_train, y_train, normalization_method=norm_method)
+        _evaluate_models(
+            X_train,
+            y_train,
+            normalization_method=norm_method,
+            splits_inner=splits_inner,
+            splits_outer=splits_outer,
+            models_to_run=models_to_run
+        )
 
 
-def _evaluate_models(X_train: pd.DataFrame, y_train: pd.Series,
-                     normalization_method: str = 'standard',
-                     splits_outer: int = 5, splits_inner: int = 2) -> None:
+def _evaluate_models(X_train: pd.DataFrame, y_train: pd.Series, splits_outer: int, splits_inner: int,
+                     normalization_method: str = 'standard', models_to_run: List[str] = None) -> None:
     """
     Evaluates multiple machine learning models using nested cross-validation with a specified normalization method.
 
-    This function initializes and evaluates different regression models (SVR, KNN, and Random Forest)
+    This function initializes and evaluates different regression models (SVR, KNN, Random Forest, and Linear Regression)
     with the specified normalization technique applied within the pipeline. It applies nested
     cross-validation to assess model performance and saves the results.
 
@@ -218,10 +244,16 @@ def _evaluate_models(X_train: pd.DataFrame, y_train: pd.Series,
     :param y_train: pandas.Series containing the target values
     :param normalization_method: normalization method to apply in the pipeline. Options: 'standard', 'minmax', 'robust', 'none'.
                                  Default: 'standard'
-    :param splits_outer: number of outer cross-validation splits. Default: 5
-    :param splits_inner: number of inner cross-validation splits. Default: 2
+    :param splits_outer: number of outer cross-validation splits.
+    :param splits_inner: number of inner cross-validation splits.
+    :param models_to_run: list of models to evaluate. Options: ['KNN', 'SVM', 'RF', 'LR'].
+                          Default: None (runs all models)
     :return: None
     """
+
+    # Default models
+    if models_to_run is None:
+        models_to_run = [KNN, SVM, RF, LR]
 
     # Dictionary mapping normalization method names to scaler objects
     scaler_dict = {
@@ -234,21 +266,22 @@ def _evaluate_models(X_train: pd.DataFrame, y_train: pd.Series,
     if normalization_method not in scaler_dict:
         raise ValueError(f"Invalid normalization method. Choose from: {list(scaler_dict.keys())}")
 
-    # Get the appropriate scaler
     scaler = scaler_dict[normalization_method]
 
     # Build pipelines with the appropriate normalization
     if normalization_method == 'none':
         knn_pipeline = Pipeline([(KNN, KNeighborsRegressor(algorithm='ball_tree'))])
         svm_pipeline = Pipeline([(SVM, SVR())])
+        lr_pipeline = Pipeline([(LR, linear_model.LinearRegression())])
     else:
         knn_pipeline = Pipeline([(SCALER, scaler), (KNN, KNeighborsRegressor(algorithm='ball_tree'))])
         svm_pipeline = Pipeline([(SCALER, scaler), (SVM, SVR())])
+        lr_pipeline = Pipeline([(SCALER, scaler), (LR, linear_model.LinearRegression())])
 
     model_dict = {
 
          KNN: {ESTIMATOR: knn_pipeline,
-               PARAM_GRID: [{f'{KNN}__n_neighbors': list(range(1, 15)), f'{KNN}__p': [1, 2]}]},
+                 PARAM_GRID: [{f'{KNN}__n_neighbors': list(range(1, 15)), f'{KNN}__p': [1, 2]}]},
 
          SVM: {ESTIMATOR: svm_pipeline, PARAM_GRID: [
              {f'{SVM}__kernel': ['rbf'], f'{SVM}__C': np.power(10., np.arange(-4, 4)),
@@ -256,28 +289,27 @@ def _evaluate_models(X_train: pd.DataFrame, y_train: pd.Series,
              {f'{SVM}__kernel': ['linear'], f'{SVM}__C': np.power(10., np.arange(-4, 4))}]},
 
          RF: {ESTIMATOR: RandomForestRegressor(random_state=RANDOM_SEED), PARAM_GRID: [
-             {"criterion": ['squared_error', 'absolute_error'], "n_estimators": [50, 100, 500, 1000], "max_depth": [2, 5, 10, 20, 30]}]}
+             {"criterion": ['squared_error', 'absolute_error'], "n_estimators": [50, 100, 500, 1000],
+              "max_depth": [2, 5, 10, 20, 30]}]},
+
+         LR: {ESTIMATOR: lr_pipeline, PARAM_GRID: [{}]}  # no hyperparameters
     }
 
-    print('=' * 50)
-    print(f'NORMALIZATION METHOD: {normalization_method.upper()}')
-    print('=' * 50)
+    # Filter models
+    selected_models = {k: v for k, v in model_dict.items() if k in models_to_run}
 
-    # Evaluate each model with the specified normalization method
-    for model_name, param_dict in model_dict.items():
+    # Evaluate each model
+    for model_name, param_dict in selected_models.items():
         print('\n### ----------------------------------------- ###')
         print(f'Algorithm: {model_name}')
 
-        # get the estimator and the param grid
         est = param_dict[ESTIMATOR]
         param_grid_est = param_dict[PARAM_GRID]
 
         info_df = nested_cross_val(X_train, y_train, estimator=est, param_grid=param_grid_est,
                                    splits_outer=splits_outer, splits_inner=splits_inner)
 
-        # save the results
-        _save_results(info_df, estimator_name=model_name, normalization_method=normalization_method,
-                      num_samples=len(X_train), num_features=len(X_train.columns))
+        _save_results(info_df, estimator_name=model_name, normalization_method=normalization_method)
 
 def _save_results(info_df: pd.DataFrame, estimator_name: str, normalization_method: str) -> None:
     """
@@ -302,19 +334,3 @@ def _save_results(info_df: pd.DataFrame, estimator_name: str, normalization_meth
 
     info_df.to_csv(file_path, sep=';', index=False)
     print(f'Results saved to: {file_path}')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

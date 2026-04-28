@@ -1,23 +1,27 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+from feature_reduction import adaptive_correlation_matrix
+from conversor_tanita_dxa import build_dxa_predictor , predict_dxa , plot_r2_distribution_kde
 
-filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dataset.xlsx"
+filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"
 
 # read the data
-target_column = "Estimated metabolic age"
 df = pd.read_excel(filepath)
 
+corr_matrix = adaptive_correlation_matrix(df)
 
 
-data = df[target_column].dropna()
+models = build_dxa_predictor(df)
 
-bins = np.arange(data.min(), data.max() + 1, 1)
+filepath_without_dxa = r"C:\Users\Sofia\Desktop\Tese\dados\tanita_sem_dxa.xlsx"
+tanita_sample = pd.read_excel(filepath)
 
-plt.hist(data, bins=bins, edgecolor="black")
+# remove participant column ID
+tanita_sample = tanita_sample.drop(columns=["ID"], errors="ignore")
+df_with_dxa = predict_dxa(models, tanita_sample)
 
-plt.xlabel("Metabolic age")
-plt.ylabel("Frequency")
-plt.title("Histogram with bin size = 1")
+df_with_dxa.to_excel(r"C:\Users\Sofia\Desktop\Tese\dxa_predicted.xlsx")
 
-plt.show()
+plot_r2_distribution_kde(models)
+
+print("oi")
+

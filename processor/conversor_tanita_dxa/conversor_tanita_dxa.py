@@ -1,8 +1,36 @@
+"""
+Functions to build, evaluate, and apply DXA prediction models
+using TANITA body composition measurements.
+
+The module implements:
+- Adaptive correlation analysis
+- Feature selection
+- Ordinary Least Squares (OLS) regression
+- DXA variable prediction
+- R² performance visualization
+
+Available Functions
+-------------------
+[Public]
+build_dxa_predictor(...): Build statistical regression models to estimate DXA variables from TANITA measurements.
+predict_dxa(...): Predict DXA variables for new TANITA samples using previously trained regression models.
+plot_r2_distribution_histogram(...): Plot the distribution of R² values across all generated models.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import itertools
 import pandas as pd
 import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+# internal imports
 from feature_reduction import adaptive_correlation_matrix
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 
 DEFAULT_TANITA_COLUMNS = [
     "Body mass(kg)",
@@ -24,9 +52,12 @@ DEFAULT_TANITA_COLUMNS = [
     "Daily calorie intake (DCI)",
     "Estimated metabolic age",
     "Global body water %",
-    "Altura_testes",
+    "Altura_testes"
 ]
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def build_dxa_predictor(
     df,
@@ -67,11 +98,13 @@ def build_dxa_predictor(
         raise ValueError(
             f"Missing TANITA columns: {missing_cols}"
         )
+    ignore_cols = ["ID", "Idade", "Altura"]
 
     # Automatically identify DXA variables
     dxa_cols = [
         col for col in df.select_dtypes(include="number").columns
         if col not in tanita_cols
+           and col not in ignore_cols
     ]
 
     results = {}
@@ -110,7 +143,7 @@ def build_dxa_predictor(
             X = df[[best_feature]]
             y = df[target]
 
-            X_const = sm.add_constant(X)
+            X_const = sm.add_constant(X, has_constant='add')
 
             model = sm.OLS(y, X_const).fit()
 
@@ -119,8 +152,6 @@ def build_dxa_predictor(
                 "features": [best_feature],
                 "r2": float(model.rsquared),
                 "adjusted_r2": float(model.rsquared_adj),
-                "aic": float(model.aic),
-                "bic": float(model.bic),
                 "n_features": 1,
                 "correlation_value": float(best_corr),
                 "correlation_method": method_matrix.loc[
@@ -152,8 +183,6 @@ def build_dxa_predictor(
         best_features = None
         best_adj_r2 = -999
         best_r2 = -999
-        best_aic = None
-        best_bic = None
 
         # -----------------------------------
         # Test all feature combinations
@@ -173,7 +202,7 @@ def build_dxa_predictor(
                 y = df[target]
 
                 # Add intercept
-                X_const = sm.add_constant(X)
+                X_const = sm.add_constant(X, has_constant='add')
 
                 # Fit OLS regression
                 model = sm.OLS(y, X_const).fit()
@@ -187,8 +216,6 @@ def build_dxa_predictor(
                     best_features = feature_subset
                     best_adj_r2 = adj_r2
                     best_r2 = model.rsquared
-                    best_aic = model.aic
-                    best_bic = model.bic
 
         # -----------------------------------
         # Store best model
@@ -198,8 +225,6 @@ def build_dxa_predictor(
             "features": best_features,
             "r2": float(best_r2),
             "adjusted_r2": float(best_adj_r2),
-            "aic": float(best_aic),
-            "bic": float(best_bic),
             "n_features": len(best_features),
             "correlation_value": float(best_corr),
             "correlation_method": method_matrix.loc[
@@ -220,7 +245,7 @@ def predict_dxa(models, tanita_df):
 
     :param models: Output from build_dxa_predictor
     :param tanita_df: DataFrame containing TANITA variables
-    :return: DataFrame with predicted DXA values
+    :return: DataFrame with original TANITA columns and predicted DXA values
     """
 
     predictions = {}
@@ -230,21 +255,25 @@ def predict_dxa(models, tanita_df):
         model = info["model"]
         features = info["features"]
 
-        X = tanita_df[features]
-        X_const = sm.add_constant(X)
+        # Check if all required features exist in the input data
+        missing = [f for f in features if f not in tanita_df.columns]
 
+        X = tanita_df[features]
+        X_const = sm.add_constant(X, has_constant='add')
         predictions[target] = model.predict(X_const)
 
-    return pd.DataFrame(predictions)
+    # Create output DataFrame with original TANITA columns and predictions
+    result_df = tanita_df.copy()
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+    if predictions:
+        predictions_df = pd.DataFrame(predictions)
+        result_df = pd.concat([result_df, predictions_df], axis=1)
 
+    return result_df
 
-def plot_r2_distribution_kde(models):
+def plot_r2_distribution_histogram(models):
     """
-    Plot R² distribution with KDE and individual model points.
+    Plot R² distribution as histogram with 30 bins and statistics.
 
     :param models: Dictionary returned by build_dxa_predictor
     """
@@ -258,29 +287,51 @@ def plot_r2_distribution_kde(models):
 
     r2_series = pd.Series(r2_values)
 
-    print("R² summary:")
-    print(r2_series.describe())
+    # Calculate statistics
+    mean_r2 = r2_series.mean()
+    median_r2 = r2_series.median()
+    std_r2 = r2_series.std()
+    min_r2 = r2_series.min()
+    max_r2 = r2_series.max()
+    n_models = len(r2_series)
 
-    plt.figure()
+    # Print summary statistics
+    print("R² Summary Statistics:")
+    print("=" * 50)
+    print(f"Count:        {n_models}")
+    print(f"Mean:         {mean_r2:.4f}")
+    print(f"Median:       {median_r2:.4f}")
+    print(f"Std Dev:      {std_r2:.4f}")
+    print(f"Min:          {min_r2:.4f}")
+    print(f"Max:          {max_r2:.4f}")
+    print("=" * 50)
+    print()
 
-    # KDE + histogram (soft distribution curve)
-    sns.histplot(
+    # Create figure with larger size for better readability
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Histogram with 30 bins
+    ax.hist(
         r2_series,
-        kde=True,
-        bins=15,
-        stat="density"
+        bins=30,
+        color='steelblue',
+        edgecolor='darkblue',
+        alpha=0.7
     )
 
-    # Individual points (strip plot over distribution)
-    sns.stripplot(
-        x=r2_series,
-        color="black",
-        alpha=0.6,
-        jitter=True
-    )
+    # Add vertical lines for mean and median
+    ax.axvline(mean_r2, color='red', linestyle='--', linewidth=2, label=f'Mean: {mean_r2:.3f}')
+    ax.axvline(median_r2, color='green', linestyle='--', linewidth=2, label=f'Median: {median_r2:.3f}')
 
-    plt.title("R² Distribution across DXA models")
-    plt.xlabel("R²")
-    plt.yticks([])
+    # Labels and title
+    ax.set_xlabel('R²', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Number of Models', fontsize=12, fontweight='bold')
+    ax.set_title('R² Distribution across DXA models', fontsize=14, fontweight='bold')
+    ax.legend(fontsize=11)
+    ax.grid(axis='y', alpha=0.3)
 
+    # Set x-axis limits
+    ax.set_xlim(-0.05, 1.05)
+
+    plt.tight_layout()
     plt.show()

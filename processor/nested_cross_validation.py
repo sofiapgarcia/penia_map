@@ -17,25 +17,16 @@ None
 # ------------------------------------------------------------------------------------------------------------------- #
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.metrics import r2_score, mean_absolute_error
+from typing import Union, List, Dict, Any
 from sklearn.base import RegressorMixin
-from sklearn.model_selection import GridSearchCV, KFold
-from sklearn.metrics import r2_score
-from typing import Dict, Any, List, Union
-
 from constants import RANDOM_SEED
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import KFold, GridSearchCV
-from sklearn.metrics import r2_score, mean_absolute_error
-from typing import Union, List, Dict, Any
-from sklearn.base import RegressorMixin
-
-# Assuming RANDOM_SEED is defined elsewhere
 RANDOM_SEED = 42
 
 

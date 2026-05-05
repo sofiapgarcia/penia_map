@@ -1,5 +1,4 @@
 import pandas as pd
-from feature_reduction import adaptive_correlation_matrix
 from conversor_tanita_dxa import build_dxa_predictor , predict_dxa , plot_r2_distribution_histogram
 
 filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"

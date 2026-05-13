@@ -1,337 +1,311 @@
 """
 Functions to build, evaluate, and apply DXA prediction models
-using TANITA body composition measurements.
+using TANITA body composition measurements with direct variable mapping.
 
 The module implements:
-- Adaptive correlation analysis
-- Feature selection
-- Ordinary Least Squares (OLS) regression
-- DXA variable prediction
-- R² performance visualization
+- Direct variable mapping between TANITA and DXA
+- Correlation-based feature validation (threshold: 0.6)
+- Simple linear regression for mapped variables
+- Best feature selection when multiple DXA variables map to same TANITA variable
+- Model application and reporting
 
 Available Functions
 -------------------
 [Public]
-build_dxa_predictor(...): Build statistical regression models to estimate DXA variables from TANITA measurements.
-predict_dxa(...): Predict DXA variables for new TANITA samples using previously trained regression models.
-plot_r2_distribution_histogram(...): Plot the distribution of R² values across all generated models.
+build_dxa_predictor(...): Build simple linear regression models based on mapped TANITA-DXA variable pairs.
+predict_dxa(...): Predict DXA variables for new TANITA samples using previously trained models.
+get_model_report(...): Generate a report of which variables were used and which were excluded.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
-import itertools
 import pandas as pd
 import statsmodels.api as sm
+import numpy as np
 import matplotlib.pyplot as plt
 
 # internal imports
-from feature_reduction import adaptive_correlation_matrix
+from processor.feature_reduction import adaptive_correlation_matrix
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants
 # ------------------------------------------------------------------------------------------------------------------- #
 
-DEFAULT_TANITA_COLUMNS = [
-    "Body mass(kg)",
-    "Body mass index (BMI)",
-    "Global fat %",
-    "Arm fat (right) %",
-    "Arm fat (left) %",
-    "Leg fat (right) %",
-    "Leg fat (left) %",
-    "Torso fat %",
-    "Global muscle kg",
-    "Arm muscle (right) kg",
-    "Arm muscle (left) kg",
-    "Leg muscle (right) kg",
-    "Leg muscle (left) kg",
-    "Torso muscle kg",
-    "Estimated bone mass kg",
-    "Visceral fat rating",
-    "Daily calorie intake (DCI)",
-    "Estimated metabolic age",
-    "Global body water %",
-    "Altura_testes"
-]
+VARIABLE_MAPPING = {
+    # DXA variable -> TANITA variable
+    "Massa_total": "Body mass(kg)",
+    "Massa Corporal": "Body mass(kg)",
+    "BMI_DXA": "Body mass index (BMI)",
+    "Perc_gordura_total": "Global fat %",
+    "Perc_gordura_braco_direito": "Arm fat (right) %",
+    "Perc_gordura_braco_esquerdo": "Arm fat (left) %",
+    "Perc_gordura_perna_direita": "Leg fat (right) %",
+    "Perc_gordura_perna_esquerda": "Leg fat (left) %",
+    "Perc_gordura_tronco": "Torso fat %",
+    "Magro_total": "Global muscle kg",
+    "Massa_magra_braco_direito": "Arm muscle (right) kg",
+    "Massa_magra_braco_esquerdo": "Arm muscle (left) kg",
+    "Massa_magra_perna_direita": "Leg muscle (right) kg",
+    "Massa_magra_perna_esquerda": "Leg muscle (left) kg",
+    "Magro_tronco": "Torso muscle kg",
+    "BMC_total": "Estimated bone mass kg",
+    "VAT_area": "Visceral fat rating",
+    "VAT_volume": "Visceral fat rating",
+    "VAT_massa_gordura": "Visceral fat rating",
+    "RMR": "Daily calorie intake (DCI)",
+    "Altura": "Altura_testes"
+}
+
+CORRELATION_THRESHOLD = 0.6
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def build_dxa_predictor(
-    df,
-    tanita_cols=DEFAULT_TANITA_COLUMNS,
-    corr_threshold=0.30,
-    strong_corr_threshold=0.85,
-    max_features=5,
-    alpha=0.05
+        df,
+        variable_mapping=VARIABLE_MAPPING,
+        corr_threshold=CORRELATION_THRESHOLD,
+        alpha=0.05
 ):
     """
-    Build statistical regression models to predict DXA variables
-    using TANITA measurements.
+    Build simple linear regression models for DXA variables based on
+    mapped TANITA variables with correlation validation.
 
     The function:
-    - Automatically identifies DXA variables
-    - Computes adaptive correlations
-    - Uses a single-feature regression when correlation is very strong
-    - Otherwise tests all feature combinations
-    - Fits OLS regression models
-    - Selects the best model using adjusted R²
+    - Uses direct DXA → TANITA mapping
+    - Computes adaptive correlations (Pearson/Spearman) based on normality
+    - Checks correlation between mapped pairs (must be >= corr_threshold)
+    - Fits simple OLS regression models (1 feature + intercept)
+    - Excludes DXA variables with low correlation
 
-    :param df: Input DataFrame
-    :param tanita_cols: TANITA predictor columns
-    :param corr_threshold: Minimum absolute correlation required
-    :param strong_corr_threshold: Correlation threshold for single-feature models
-    :param max_features: Maximum number of features per model
-    :param alpha: Significance level for adaptive correlation
-    :return: Dictionary containing best model per DXA variable
+    :param df: Input DataFrame containing both TANITA and DXA variables
+    :param variable_mapping: Dictionary mapping DXA variables to TANITA variables
+    :param corr_threshold: Minimum correlation required for model inclusion (default: 0.6)
+    :param alpha: Significance level for normality test in adaptive correlation
+    :return: Dictionary containing:
+        - "models": Dict with best model per DXA variable
+        - "report": Dict with metadata on included/excluded variables
     """
 
-    # Validate TANITA columns
-    missing_cols = [
-        col for col in tanita_cols
-        if col not in df.columns
-    ]
+    results = {
+        "models": {},
+        "report": {
+            "included_tanita_vars": [],
+            "excluded_dxa_vars": [],
+            "models_created": [],
+            "low_correlation_pairs": []
+        }
+    }
 
-    if missing_cols:
-        raise ValueError(
-            f"Missing TANITA columns: {missing_cols}"
-        )
-    ignore_cols = ["ID", "Idade", "Altura"]
+    # -----------------------------------
+    # Compute adaptive correlation matrix
+    # -----------------------------------
+    corr_matrix, method_matrix = adaptive_correlation_matrix(df, alpha=alpha)
 
-    # Automatically identify DXA variables
-    dxa_cols = [
-        col for col in df.select_dtypes(include="number").columns
-        if col not in tanita_cols
-           and col not in ignore_cols
-    ]
+    # -----------------------------------
+    # Process each DXA → TANITA mapping
+    # -----------------------------------
+    for dxa_var, tanita_var in variable_mapping.items():
 
-    results = {}
+        print(f"\n{'=' * 60}")
+        print(f"Processing DXA variable: {dxa_var}")
+        print(f"Mapped TANITA variable: {tanita_var}")
+        print(f"{'=' * 60}")
 
-    for target in dxa_cols:
+        try:
+            # Get correlation and method used
+            corr = corr_matrix.loc[tanita_var, dxa_var]
+            method = method_matrix.loc[tanita_var, dxa_var]
 
-        print(f"Processing target: {target}")
+        except KeyError:
+            # Variables not in correlation matrix
+            print(f"EXCLUDED: Variables not available in data")
+            results["report"]["excluded_dxa_vars"].append({
+                "dxa_variable": dxa_var,
+                "tanita_variable": tanita_var,
+                "reason": "Variables not found or not numeric"
+            })
+            continue
+
+        abs_corr = abs(corr)
+
+        print(f"  Correlation: r = {corr:.4f} (|r| = {abs_corr:.4f})")
+        print(f"  Method: {method}")
 
         # -----------------------------------
-        # Compute adaptive correlations
+        # Check if correlation meets threshold
         # -----------------------------------
-        subset_df = df[tanita_cols + [target]].copy()
-
-        corr_matrix, method_matrix = adaptive_correlation_matrix(
-            subset_df,
-            alpha=alpha
-        )
-
-        # Extract correlations with target
-        correlations = (
-            corr_matrix[target]
-            .drop(target)
-            .abs()
-            .sort_values(ascending=False)
-        )
-
-        best_feature = correlations.index[0]
-        best_corr = correlations.iloc[0]
-
-        # -----------------------------------
-        # Use single-feature model if
-        # correlation is very strong
-        # -----------------------------------
-        if best_corr >= strong_corr_threshold:
-
-            X = df[[best_feature]]
-            y = df[target]
-
-            X_const = sm.add_constant(X, has_constant='add')
-
-            model = sm.OLS(y, X_const).fit()
-
-            results[target] = {
-                "model": model,
-                "features": [best_feature],
-                "r2": float(model.rsquared),
-                "adjusted_r2": float(model.rsquared_adj),
-                "n_features": 1,
-                "correlation_value": float(best_corr),
-                "correlation_method": method_matrix.loc[
-                    best_feature,
-                    target
-                ],
-                "selection_method": "single_feature_correlation"
-            }
-            print("r2:",model.rsquared)
-            print("features:", best_feature)
-
+        if abs_corr < corr_threshold:
+            print(f"EXCLUDED: Correlation {abs_corr:.4f} < threshold {corr_threshold}")
+            results["report"]["excluded_dxa_vars"].append({
+                "dxa_variable": dxa_var,
+                "tanita_variable": tanita_var,
+                "correlation": float(corr),
+                "correlation_method": method,
+                "reason": f"Correlation below threshold ({corr_threshold})"
+            })
+            results["report"]["low_correlation_pairs"].append({
+                "tanita_var": tanita_var,
+                "dxa_var": dxa_var,
+                "correlation": float(corr),
+                "method": method
+            })
             continue
 
         # -----------------------------------
-        # Filter relevant features
+        # Prepare data and build regression
         # -----------------------------------
-        candidate_features = correlations[
-            correlations >= corr_threshold
-        ].index.tolist()
+        valid_idx = df[[tanita_var, dxa_var]].notna().all(axis=1)
+        X = df.loc[valid_idx, [tanita_var]].copy()
+        y = df.loc[valid_idx, dxa_var].copy()
 
-        # Fallback if no feature passes threshold
-        if len(candidate_features) == 0:
-            candidate_features = [best_feature]
+        # Add constant (intercept)
+        X_const = sm.add_constant(X, has_constant='add')
 
-        # Limit maximum feature count
-        max_k = min(max_features, len(candidate_features))
+        # Fit OLS regression
+        model = sm.OLS(y, X_const).fit()
 
-        best_model = None
-        best_features = None
-        best_adj_r2 = -999
-        best_r2 = -999
-
-        # -----------------------------------
-        # Test all feature combinations
-        # -----------------------------------
-        for k in range(1, max_k + 1):
-
-            combinations = itertools.combinations(
-                candidate_features,
-                k
-            )
-
-            for feature_subset in combinations:
-
-                feature_subset = list(feature_subset)
-
-                X = df[feature_subset]
-                y = df[target]
-
-                # Add intercept
-                X_const = sm.add_constant(X, has_constant='add')
-
-                # Fit OLS regression
-                model = sm.OLS(y, X_const).fit()
-
-                adj_r2 = model.rsquared_adj
-
-                # Keep best model
-                if adj_r2 > best_adj_r2:
-
-                    best_model = model
-                    best_features = feature_subset
-                    best_adj_r2 = adj_r2
-                    best_r2 = model.rsquared
-
-        # -----------------------------------
-        # Store best model
-        # -----------------------------------
-        results[target] = {
-            "model": best_model,
-            "features": best_features,
-            "r2": float(best_r2),
-            "adjusted_r2": float(best_adj_r2),
-            "n_features": len(best_features),
-            "correlation_value": float(best_corr),
-            "correlation_method": method_matrix.loc[
-                best_features[0],
-                target
-            ],
-            "selection_method": "best_subset_regression"
+        # Store model
+        results["models"][dxa_var] = {
+            "model": model,
+            "feature": tanita_var,
+            "r2": float(model.rsquared),
+            "adjusted_r2": float(model.rsquared_adj),
+            "correlation": float(corr),
+            "correlation_method": method,
+            "n_samples": len(X)
         }
-        print("r2:", best_r2)
-        print("features:", best_features)
+
+        # Track reporting
+        results["report"]["included_tanita_vars"].append(tanita_var)
+        results["report"]["models_created"].append({
+            "dxa_variable": dxa_var,
+            "tanita_variable": tanita_var,
+            "correlation": float(corr),
+            "correlation_method": method,
+            "r2": float(model.rsquared),
+            "n_samples": len(X)
+        })
+
+        print(f"INCLUDED: {tanita_var} → {dxa_var}")
+        print(f"   Correlation: {abs_corr:.4f} ({method})")
+        print(f"   R²: {model.rsquared:.4f}")
+        print(f"   Samples: {len(X)}")
+
+    # Remove duplicates from included_tanita_vars
+    results["report"]["included_tanita_vars"] = list(
+        set(results["report"]["included_tanita_vars"])
+    )
 
     return results
 
 
-def predict_dxa(models, tanita_df):
+def predict_dxa(results, tanita_df):
     """
     Predict DXA variables from TANITA samples.
 
-    :param models: Output from build_dxa_predictor
+    :param results: Output dictionary from build_dxa_predictor (contains "models" key)
     :param tanita_df: DataFrame containing TANITA variables
     :return: DataFrame with original TANITA columns and predicted DXA values
     """
 
+    models = results["models"]
     predictions = {}
 
-    for target, info in models.items():
-
+    for dxa_var, info in models.items():
         model = info["model"]
-        features = info["features"]
+        feature = info["feature"]
 
-        # Check if all required features exist in the input data
-        missing = [f for f in features if f not in tanita_df.columns]
+        # Check if feature exists in input data
+        if feature not in tanita_df.columns:
+            print(f"Warning: Feature '{feature}' not found in input data. Skipping {dxa_var}")
+            continue
 
-        X = tanita_df[features]
+        # Prepare data and make predictions
+        X = tanita_df[[feature]].copy()
         X_const = sm.add_constant(X, has_constant='add')
-        predictions[target] = model.predict(X_const)
+        predictions[dxa_var] = model.predict(X_const)
 
-    # Create output DataFrame with original TANITA columns and predictions
-    result_df = tanita_df.copy()
+    # Create DXA predictions DataFrame
+    predictions_df = pd.DataFrame(predictions)
 
-    if predictions:
-        predictions_df = pd.DataFrame(predictions)
-        result_df = pd.concat([result_df, predictions_df], axis=1)
+    # Keep only selected TANITA variables
+    tanita_keep = [
+        "Daily calorie intake (DCI)",
+        "Estimated metabolic age","ID"
+    ]
+
+    available_tanita = [col for col in tanita_keep if col in tanita_df.columns]
+    tanita_subset = tanita_df[available_tanita].copy()
+
+    # Combine DXA + selected TANITA variables
+    result_df = pd.concat([predictions_df, tanita_subset], axis=1)
 
     return result_df
 
-def plot_r2_distribution_histogram(models):
+
+def get_model_report(results):
     """
-    Plot R² distribution as histogram with 30 bins and statistics.
+    Generate a detailed report of model building results.
 
-    :param models: Dictionary returned by build_dxa_predictor
+    :param results: Output dictionary from build_dxa_predictor
+    :return: None (prints formatted report)
     """
 
-    # Extract R² values
-    r2_values = [
-        info["r2"]
-        for info in models.values()
-        if "r2" in info and info["r2"] is not None
-    ]
+    report = results["report"]
+    models = results["models"]
 
-    r2_series = pd.Series(r2_values)
+    print("\n" + "=" * 70)
+    print("DXA PREDICTOR MODEL REPORT")
+    print("=" * 70)
 
-    # Calculate statistics
-    mean_r2 = r2_series.mean()
-    median_r2 = r2_series.median()
-    std_r2 = r2_series.std()
-    min_r2 = r2_series.min()
-    max_r2 = r2_series.max()
-    n_models = len(r2_series)
+    # Summary statistics
+    print(f"\nSUMMARY")
+    print(f"  Total DXA variables processed: {len(models) + len(report['excluded_dxa_vars'])}")
+    print(f"  Models created: {len(models)}")
+    print(f"  Excluded: {len(report['excluded_dxa_vars'])}")
 
-    # Print summary statistics
-    print("R² Summary Statistics:")
-    print("=" * 50)
-    print(f"Count:        {n_models}")
-    print(f"Mean:         {mean_r2:.4f}")
-    print(f"Median:       {median_r2:.4f}")
-    print(f"Std Dev:      {std_r2:.4f}")
-    print(f"Min:          {min_r2:.4f}")
-    print(f"Max:          {max_r2:.4f}")
-    print("=" * 50)
-    print()
+    # Included TANITA variables
+    print(f"\nINCLUDED TANITA VARIABLES ({len(report['included_tanita_vars'])})")
+    for var in sorted(report["included_tanita_vars"]):
+        print(f"  • {var}")
 
-    # Create figure with larger size for better readability
-    fig, ax = plt.subplots(figsize=(14, 6))
+    # Models created
+    print(f"\nMODELS CREATED ({len(report['models_created'])})")
+    print(f"{'TANITA Variable':<35} {'DXA Variable':<25} {'r':<8} {'Method':<10} {'R²':<8} {'N':<6}")
+    print("-" * 102)
+    for model_info in sorted(report["models_created"], key=lambda x: x["tanita_variable"]):
+        print(
+            f"{model_info['tanita_variable']:<35} "
+            f"{model_info['dxa_variable']:<25} "
+            f"{model_info['correlation']:>7.4f} "
+            f"{model_info['correlation_method']:<10} "
+            f"{model_info['r2']:>7.4f} "
+            f"{model_info['n_samples']:>5}"
+        )
 
-    # Histogram with 30 bins
-    ax.hist(
-        r2_series,
-        bins=30,
-        color='steelblue',
-        edgecolor='darkblue',
-        alpha=0.7
-    )
+    # Excluded DXA variables
+    if report["excluded_dxa_vars"]:
+        print(f"\nEXCLUDED DXA VARIABLES ({len(report['excluded_dxa_vars'])})")
+        for exc_info in report["excluded_dxa_vars"]:
+            print(f"  • {exc_info['dxa_variable']}")
+            if "correlation" in exc_info:
+                method = exc_info.get("correlation_method", "N/A")
+                print(f"    → Mapped TANITA: {exc_info['tanita_variable']} (r={exc_info['correlation']:.4f}, {method})")
+            print(f"    → Reason: {exc_info['reason']}")
 
-    # Add vertical lines for mean and median
-    ax.axvline(mean_r2, color='red', linestyle='--', linewidth=2, label=f'Mean: {mean_r2:.3f}')
-    ax.axvline(median_r2, color='green', linestyle='--', linewidth=2, label=f'Median: {median_r2:.3f}')
+    # Low correlation pairs
+    if report["low_correlation_pairs"]:
+        print(f"\nLOW CORRELATION PAIRS (below threshold)")
+        for pair in report["low_correlation_pairs"]:
+            method = pair.get("method", "N/A")
+            print(
+                f"  • {pair['tanita_var']:<35} → {pair['dxa_var']:<25} "
+                f"r = {pair['correlation']:>7.4f} ({method})"
+            )
 
-    # Labels and title
-    ax.set_xlabel('R²', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Number of Models', fontsize=12, fontweight='bold')
-    ax.set_title('R² Distribution across DXA models', fontsize=14, fontweight='bold')
-    ax.legend(fontsize=11)
-    ax.grid(axis='y', alpha=0.3)
+    print("\n" + "=" * 70 + "\n")
 
-    # Set x-axis limits
-    ax.set_xlim(-0.05, 1.05)
-
-    plt.tight_layout()
-    plt.show()

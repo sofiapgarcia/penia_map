@@ -1,7 +1,6 @@
 from data_preparation import analyze_excel_file , encode_categorical_columns
 from data_visualization import plot_distribution
 from feature_reduction import *
-from ml_pipeline import *
 from data_augmentation import *
 from test_models import run_training_pipeline , evaluate_production_model , split_train_test_df
 import pandas as pd
@@ -24,9 +23,9 @@ df_features = df_encoded.drop(columns=["ID"], errors="ignore")
 #corr_penia = correlation_by_groups(df_features)
 
 # reduce the number of features based on correlation by group
-df_reduced = select_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],n_features_per_group=1 , verbose=True)
+df_reduced = select_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia"],n_features_per_group=2 , verbose=True)
 """
-filepath2 = r"C:\Users\Sofia\Desktop\Tese\dataset_reduced\df_reduced_tanita_corrected_1feature_without_outlier.xlsx"
+filepath2 = r"C:\Users\Sofia\Desktop\Tese\dataset_reduced\df_reduced.xlsx"
 
 #df_reduced.to_excel(filepath2)
 
@@ -43,7 +42,7 @@ df_augmented = apply_data_augmentation(df_train)
 #plot_distribution(df_augmented, "Estimated metabolic age", bin_width=1)
 
 # Model selection
-results_summary = run_training_pipeline(df_augmented, splits_inner=3, splits_outer=5)
+results_summary = run_training_pipeline(df_augmented, splits_inner=3, splits_outer=5, target_column="medv")
 
 filepath3 = r"C:\Users\Sofia\Desktop\Tese\results_summary.xlsx"
 

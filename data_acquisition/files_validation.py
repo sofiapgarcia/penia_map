@@ -109,6 +109,8 @@ def analyze_sequence(sequence):
         if expected_samples > 0 else 0
     )
 
+    invalid_file = loss_percentage > 10
+
     # Identify invalid jumps
     invalid_jumps = diff[
         (diff != 1) &
@@ -122,7 +124,8 @@ def analyze_sequence(sequence):
         "expected_samples": int(expected_samples),
         "acquired_samples": int(len(sequence)),
         "loss_percentage": round(loss_percentage, 2),
-        "invalid_jumps": invalid_jumps
+        "invalid_jumps": invalid_jumps,
+        "invalid_file": invalid_file
     }
 
 
@@ -233,7 +236,8 @@ if __name__ == '__main__':
                 "expected_samples": analysis["expected_samples"],
                 "acquired_samples": analysis["acquired_samples"],
                 "loss_percentage": analysis["loss_percentage"],
-                "invalid_jumps": len(analysis["invalid_jumps"])
+                "invalid_jumps": len(analysis["invalid_jumps"]),
+                "invalid_file": analysis["invalid_file"]
             })
 
             invalid_jumps = analysis["invalid_jumps"]

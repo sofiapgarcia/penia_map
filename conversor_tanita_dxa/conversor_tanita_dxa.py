@@ -22,11 +22,9 @@ get_model_report(...): Generate a report of which variables were used and which 
 # ------------------------------------------------------------------------------------------------------------------- #
 import pandas as pd
 import statsmodels.api as sm
-import numpy as np
-import matplotlib.pyplot as plt
 
 # internal imports
-from processor.feature_reduction import adaptive_correlation_matrix
+from ml_pipeline.preprocessing.feature_reduction import adaptive_correlation_matrix
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants

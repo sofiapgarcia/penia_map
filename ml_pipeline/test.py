@@ -1,8 +1,5 @@
-from data_preparation import analyze_excel_file , encode_categorical_columns
-from data_visualization import plot_distribution
-from feature_reduction import *
-from data_augmentation import *
-from test_models import run_training_pipeline , evaluate_production_model , split_train_test_df
+from ml_pipeline.preprocessing.data_augmentation import *
+from ml_pipeline.modeling.test_models import run_training_pipeline , split_train_test_df
 import pandas as pd
 
 filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dataset_tanita_corrected.xlsx"
@@ -42,7 +39,7 @@ df_augmented = apply_data_augmentation(df_train)
 #plot_distribution(df_augmented, "Estimated metabolic age", bin_width=1)
 
 # Model selection
-results_summary = run_training_pipeline(df_augmented, splits_inner=3, splits_outer=5, target_column="medv")
+results_summary = run_training_pipeline(df_augmented, splits_inner=3, splits_outer=5)
 
 filepath3 = r"C:\Users\Sofia\Desktop\Tese\results_summary.xlsx"
 

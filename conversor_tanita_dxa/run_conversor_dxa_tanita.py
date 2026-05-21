@@ -1,5 +1,5 @@
 import pandas as pd
-from conversor_tanita_dxa import build_dxa_predictor , predict_dxa , get_model_report
+from conversor_tanita_dxa.conversor_tanita_dxa import build_dxa_predictor , predict_dxa , get_model_report
 
 
 filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"

@@ -11,10 +11,12 @@ def extract_data_from_file(file_path):
     Extract metadata and signal data from an OpenSignals text file.
 
     :param file_path: Path to the OpenSignals .txt file
-    :return: Tuple containing:
-             - params (dict): sampling rate, date and time metadata
-             - df (DataFrame): signal data with columns such as nSeq and channels
+    :return:
+        - subject (str): subject ID
+        - params (dict): acquisition metadata
+        - df (DataFrame): signal data
     """
+
     metadata = None
     data_start = 0
 
@@ -22,13 +24,16 @@ def extract_data_from_file(file_path):
         lines = f.readlines()
 
     for i, line in enumerate(lines):
+
         if line.startswith("# {"):
             metadata = json.loads(line[2:])
+
         if "EndOfHeader" in line:
             data_start = i + 1
             break
 
     device_info = list(metadata.values())[0]
+
     df = pd.read_csv(
         file_path,
         sep="\t",
@@ -36,20 +41,55 @@ def extract_data_from_file(file_path):
         header=None,
         usecols=range(len(device_info["column"]))
     )
+
     df.columns = device_info["column"]
 
-    emg_indices = [i for i, col in enumerate(df.columns) if col.upper() == "EMG"]
-
-    if len(emg_indices) >= 2:
-        # 1º = extensor, 2º = flexor
-        df.columns.values[emg_indices[0]] = "EMG_Extensor"
-        df.columns.values[emg_indices[1]] = "EMG_Flexor"
-
     filename = os.path.basename(file_path)
-    _, condition = parse_filename(filename)
 
-    if condition != "HD":
-        df.columns.values[-3:] = ["x", "y", "z"]
+    # Extract subject and condition from filename
+    subject, condition = parse_filename(filename)
+
+    # Find EMG columns
+    emg_cols = [col for col in df.columns if col.upper() == "EMG"]
+
+    if condition == "HD_EMG":
+
+        # Rename first two EMG channels
+        if len(emg_cols) >= 2:
+
+            emg_indices = [
+                i for i, col in enumerate(df.columns)
+                if col.upper() == "EMG"
+            ]
+
+            df.columns.values[emg_indices[0]] = "EMG_Extensor"
+            df.columns.values[emg_indices[1]] = "EMG_Flexor"
+
+        # Rename accelerometer channels
+        if len(df.columns) >= 3:
+            df.columns.values[-3:] = ["x", "y", "z"]
+
+    elif condition in ["HI", "MVC"]:
+
+        # Find EMG columns
+        emg_indices = [
+
+            i for i, col in enumerate(df.columns)
+
+            if col.upper() == "EMG"
+
+        ]
+
+        # Keep everything up to the second EMG (inclusive)
+        if len(emg_indices) >= 2:
+            last_emg_idx = emg_indices[1]
+
+            df = df.iloc[:, :last_emg_idx + 1].copy()
+
+            # Rename EMG columns
+            df.columns.values[emg_indices[0]] = "EMG_Extensor"
+
+            df.columns.values[emg_indices[1]] = "EMG_Flexor"
 
     params = {
         "sampling rate": device_info["sampling rate"],
@@ -57,7 +97,7 @@ def extract_data_from_file(file_path):
         "time": device_info["time"]
     }
 
-    return params, df
+    return subject, params, df
 
 
 def parse_filename(file):
@@ -199,7 +239,7 @@ if __name__ == '__main__':
 
     base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
-    selected_subject = "S9"
+    selected_subject = "S46"
 
     subject_path = os.path.join(base_path, selected_subject)
 
@@ -219,7 +259,7 @@ if __name__ == '__main__':
         file_path = os.path.join(subject_path, file)
 
         try:
-            params, df = extract_data_from_file(file_path)
+            subject , params, df = extract_data_from_file(file_path)
 
             sequence = df["nSeq"]
 

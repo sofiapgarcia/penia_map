@@ -2,6 +2,7 @@ from scipy.signal import butter, filtfilt
 import numpy as np
 
 
+
 def process_acc(a, fs, axis):
     """
     Process raw accelerometer data by converting it to physical units,
@@ -14,7 +15,7 @@ def process_acc(a, fs, axis):
     """
     acc_ms = transfer_acc(a, axis)
     acc_no_gravity = acc_ms - gravitational_filter(acc_ms, fs)
-    return acc_filt
+    return acc_no_gravity
 
 def transfer_acc(data, axis):
     """
@@ -76,37 +77,5 @@ def gravitational_filter(signal, fs, cutoff=0.3, order=3):
     return gravity
 
 
-def fill_acc_nan_spline(df, acc_column):
-    """
-    Fill missing values (NaN) in an accelerometer signal using natural cubic spline interpolation.
-    Reference: https://doi.org/10.1145/3457609
 
-    This function ensures a smooth reconstruction of the signal by using cubic spline interpolation,
-    which is suitable for physiological signals such as accelerometer data.
-
-    :param df: Input DataFrame containing the accelerometer signal
-    :param acc_column: Name of the column containing accelerometer values
-    :return: DataFrame with NaN values filled using cubic spline interpolation
-    """
-
-    df_filled = df.copy()
-
-    # Create numeric index for interpolation stability
-    x = np.arange(len(df_filled))
-
-    # Extract signal
-    y = df_filled[acc_column].values
-
-    # Identify valid (non-NaN) values
-    valid = ~np.isnan(y)
-
-    # Perform cubic spline interpolation using only valid points
-    from scipy.interpolate import CubicSpline
-
-    cs = CubicSpline(x[valid], y[valid], bc_type='natural')
-
-    # Fill all positions
-    df_filled[acc_column] = cs(x)
-
-    return df_filled
 

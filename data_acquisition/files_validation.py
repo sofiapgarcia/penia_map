@@ -239,7 +239,7 @@ if __name__ == '__main__':
 
     base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
-    selected_subject = "S46"
+    selected_subject = "S108"
 
     subject_path = os.path.join(base_path, selected_subject)
 

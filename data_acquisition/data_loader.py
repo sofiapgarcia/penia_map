@@ -27,19 +27,29 @@ import json
 
 def load_subject_data(base_path, subject):
     """
-    Load all OpenSignals files for a subject into a structured dictionary.
+        Load all OpenSignals files for a subject into a structured dictionary.
+        Also loads auxiliary Excel data (potentiometer and handgrip data).
 
-    :param base_path: Path to the folder containing all subjects' folders
-    :param subject: Subject ID (e.g., "S83")
-    :return: Dictionary keyed by condition, e.g.:
-             {
-                 "HI": {"subject": ..., "params": {...}, "data": df},
-                 "HD_EMG": {"subject": ..., "params": {...}, "data": df},
-                 ...
-             }
-    """
+        :param base_path: Path to the folder containing all subjects' folders
+        :param subject: Subject ID (e.g., "S83")
+        :return: Dictionary keyed by condition, e.g.:
+                 {
+                     "HI": {
+                         "subject": ...,
+                         "params": {...},
+                         "data": df,
+                         "potentiometer_position": ...,
+                         "handgrip_isometric": {...}
+                     },
+                     ...
+                 }
+        """
 
     subject_path = os.path.join(base_path, subject)
+    subject_id = subject.replace("S", "")
+
+    pot_value = _load_potentiometer_position(base_path, subject_id)
+    hg_values = _load_handgrip_isometric(base_path, subject_id)
 
     subject_data = {}
 
@@ -50,14 +60,15 @@ def load_subject_data(base_path, subject):
 
         file_path = os.path.join(subject_path, filename)
 
-        subject_id, params, df = extract_data_from_file(file_path)
+        _ , params, df = extract_data_from_file(file_path)
 
         condition = filename.replace(".txt", "").split("_", 1)[1]
 
         subject_data[condition] = {
-            "subject": subject_id,
             "params": params,
-            "data": df
+            "data": df,
+            "potentiometer_position": pot_value,
+            "handgrip_isometric": hg_values
         }
 
     return subject_data
@@ -235,4 +246,59 @@ def _parse_filename(file):
     subject = subject_raw.replace("S", "")
 
     return subject, condition
+
+def _load_potentiometer_position(base_path, subject_id):
+    """
+    Load potentiometer position for a given subject.
+
+    ```
+    :param base_path: Path to dataset folder
+    :param subject_id: Subject ID without "S" prefix
+    :return: Potentiometer position value or None if not found
+    ```
+    """
+
+    file_path = os.path.join(base_path, "potentiometer_positions.xlsx")
+    df = pd.read_excel(file_path)
+
+    # Ensure consistent ID format
+    df.iloc[:, 0] = df.iloc[:, 0].astype(str)
+
+    # Find matching subject row
+    match = df[df.iloc[:, 0] == subject_id]
+
+    if match.empty:
+        return None
+
+    return match.iloc[0, 1]
+
+def _load_handgrip_isometric(base_path, subject_id):
+    """
+    Load handgrip isometric values (H1, H2, H3) for a given subject.
+
+    :param base_path: Path to dataset folder
+    :param subject_id: Subject ID without "S" prefix
+    :return: Dictionary with H1, H2, H3 values or None if not found
+    ```
+    """
+
+    file_path = os.path.join(base_path, "handgrip_isometric.xlsx")
+    df = pd.read_excel(file_path)
+
+    # Ensure consistent ID format
+    df.iloc[:, 0] = df.iloc[:, 0].astype(str)
+
+    # Find matching subject row
+    match = df[df.iloc[:, 0] == subject_id]
+
+    if match.empty:
+        return None
+
+    row = match.iloc[0]
+
+    return {
+        "H1": row.get("H1"),
+        "H2": row.get("H2"),
+        "H3": row.get("H3")
+    }
 

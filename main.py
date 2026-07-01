@@ -2,6 +2,7 @@
 from data_acquisition.data_loader import load_subject_data
 from processor.interpolator import interpolate_signal
 from data_acquisition.data_visualizer import plot_interpolated_signal
+from processor.transfer_function import apply_transfer_functions
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 subject = "S2"
@@ -13,7 +14,11 @@ for condition, content in subject_data.items():
 
     df = content["data"]
 
-    df_interpolated, info, mask = interpolate_signal(df)
+    pot_position = content["potentiometer_position"]
+
+    df_transferred = apply_transfer_functions(df,x0=pot_position)
+
+    df_interpolated, info, mask = interpolate_signal(df_transferred)
 
     print(f"\nCondition: {condition}")
     print(f"Inserted samples: {info['inserted_samples']}")

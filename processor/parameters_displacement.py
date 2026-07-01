@@ -14,10 +14,16 @@ For each pos_XX.txt file (one grip position), this script:
 Available Functions
 -------------------
 [Public]
-function1(...):
+analyze_handgrip_calibration(...): Runs the full pipeline over all position files and returns a summary table of calibration results.
 
 [Private]
-_function2(...):
+_extract_position(...): Extracts the numeric position identifier from a filename.
+_segment_two_states(...): Segments the signal into rest and squeeze states based on a threshold and removes transition samples.
+_compute_moment_means(...): Computes mean signal values for rest and squeeze periods.
+_plot_and_select_squeeze_exclusions(...): Displays an interactive plot allowing manual exclusion of parts of the squeeze region.
+_recompute_squeeze_mean(...): Recalculates squeeze mean after applying user-defined exclusion intervals.
+_handle_selection(...): Handles user drag selection events to define exclusion intervals.
+_handle_key(...): Handles keyboard input, including resetting exclusions with 'r'.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #

@@ -1,13 +1,14 @@
 """
-Functions to convert displacement signals
+Functions to convert displacement signals.
 
 Available Functions
 -------------------
 [Public]
-function1(...):
+convert_displacement(...): Convert displacement signal from bits to millimeters
 
 [Private]
-_function2(...):
+_convert_x0(...): Convert potentiometer measurement to handle measurement
+_calculate_N0(...): Calculate N0 using a linear relationship with x0
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -21,7 +22,7 @@ from constants import DISPLACEMENT_COLUMN
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def convert_displacement(df, x0, xmax=1, Nmax=13800):
+def convert_displacement(df, x0, xmax=1, Nmax=13867):
     """
     Convert displacement signal from bits to millimeters.
 
@@ -33,7 +34,7 @@ def convert_displacement(df, x0, xmax=1, Nmax=13800):
         b = x0 - a * N0
 
     :param df: Input DataFrame containing displacement column
-    :param x0: Initial displacement position used for calibration
+    :param x0: Initial displacement position used for calibration (potentiometer)
     :param xmax: Maximum physical displacement value (default = 1 mm)
     :param Nmax: Maximum bit value for calibration (default = 13800 bits)
     :return: DataFrame with converted displacement values
@@ -45,7 +46,7 @@ def convert_displacement(df, x0, xmax=1, Nmax=13800):
         return df_converted
 
     # Convert x0 to the correct physical reference
-    x0 = _convert_x0(x0)
+    handle_x0 = _convert_x0(x0)
 
     # Calculate N0 from x0 using regression
     N0 = _calculate_N0(x0)
@@ -54,8 +55,8 @@ def convert_displacement(df, x0, xmax=1, Nmax=13800):
     N = df_converted[DISPLACEMENT_COLUMN].astype(float)
 
     # Compute linear calibration coefficients
-    a = (xmax - x0) / (Nmax - N0)
-    b = x0 - a * N0
+    a = (xmax - handle_x0) / (Nmax - N0)
+    b = handle_x0 - a * N0
 
     # Apply linear transformation to full signal
     df_converted[DISPLACEMENT_COLUMN] = a * N + b
@@ -68,13 +69,22 @@ def convert_displacement(df, x0, xmax=1, Nmax=13800):
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def _convert_x0(x0):
-    # regressão/conversão do x0 medido
-    return ...
+    """
+    Convert x0 from potentiometer measurement to handle measurement.
 
+    :param x0: Input numeric value
+    :return: Transformed value computed as 0.2146 * x0 + 3.0154
+    """
+    return 0.2146 * x0 + 3.0154
 
 def _calculate_N0(x0):
-    # regressão que transforma posição em bits
-    return ...
+    """
+    Calculate N0 based on a linear relationship with x0.
+
+    :param x0: Input numeric value
+    :return: Computed N0 value using the formula 2570.1 * x0 + 11261
+    """
+    return 2570.1 * x0 + 11261
 
 
 

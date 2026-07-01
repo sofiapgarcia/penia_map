@@ -1,15 +1,16 @@
 """
-Functions to convert and process acc signal.
+Functions to convert and process accelerometer signals.
 
 Available Functions
 -----------------
 
 [Public]
-process_acc(...): Processes accelerometer signals and removes gravitational components.
+transfer_acc(...): Converts raw accelerometer signals into physical units.
+process_acc(...): Removes gravitational component from accelerometer signals.
 
 [Private]
-_process_acc_signal(...): Processes a single accelerometer signal.
-_transfer_acc(...): Converts raw accelerometer values into physical units.
+_transfer_acc_hub(...): Converts HUB raw accelerometer values into m/s^2.
+_transfer_acc_hd(...): Converts HD raw accelerometer values into g.
 _getAccCalibration(...): Retrieves accelerometer calibration values.
 _gravitational_filter(...): Estimates the gravitational component of the signal.
 """
@@ -27,21 +28,18 @@ from constants import ACC_COLUMNS_HUB , ACC_COLUMNS_HD
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def process_acc(df, fs):
+def transfer_acc(df):
     """
-    Process accelerometer signals depending on acquisition type.
+    Apply accelerometer transfer functions to convert raw signals into physical units.
 
-    HUB: converts x, y, z channels
-    HD: converts gACCx, gACCy, gACCz channels
+    HUB signals are converted to m/s^2.
+    HD signals are converted to g.
 
-    Removes gravitational component and applies processing pipeline.
-
-    :param df: Input DataFrame containing accelerometer signals
-    :param fs: Sampling frequency in Hz
-    :return: DataFrame with processed accelerometer signals
+    :param df: Input DataFrame containing raw accelerometer signals
+    :return: DataFrame with converted accelerometer signals
     """
 
-    df_processed = df.copy()
+    df_transferred = df.copy()
 
     # -------------------------
     # HUB ACCELEROMETER
@@ -52,9 +50,8 @@ def process_acc(df, fs):
     ]
 
     for column in hub_columns:
-        df_processed[column] = _process_acc_hub(
-            df_processed[column].values,
-            fs,
+        df_transferred[column] = _transfer_acc_hub(
+            df_transferred[column].values,
             axis=column[-1]
         )
 
@@ -67,7 +64,32 @@ def process_acc(df, fs):
     ]
 
     for column in hd_columns:
-        df_processed[column] = _process_acc_hd(
+        df_transferred[column] = _transfer_acc_hd(
+            df_transferred[column].values
+        )
+
+    return df_transferred
+
+def process_acc(df, fs):
+    """
+    Remove gravitational component from accelerometer signals.
+
+    Assumes signals are already in physical units.
+
+    :param df: Input DataFrame containing accelerometer signals
+    :param fs: Sampling frequency in Hz
+    :return: DataFrame with gravity-corrected accelerometer signals
+    """
+
+    df_processed = df.copy()
+
+    acc_columns = [
+        column for column in (ACC_COLUMNS_HUB + ACC_COLUMNS_HD)
+        if column in df.columns
+    ]
+
+    for column in acc_columns:
+        df_processed[column] = df_processed[column] - _gravitational_filter(
             df_processed[column].values,
             fs
         )
@@ -79,48 +101,22 @@ def process_acc(df, fs):
 # private functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def _process_acc_hub(a, fs, axis):
+def _transfer_acc_hd(data, n=16):
     """
-    Process raw accelerometer data by converting it to physical units,
-    removing the gravitational component, and applying bandpass filtering.
+    Convert raw HD accelerometer ADC values into physical units (g).
 
-    :param a: Raw accelerometer signal
-    :param fs: Sampling frequency in Hz
-    :param axis: Accelerometer axis to be converted
-    :return: Filtered accelerometer signal
-    """
-    acc_ms = _transfer_acc(a, axis)
-    acc_no_gravity = acc_ms - _gravitational_filter(acc_ms, fs)
-    return acc_no_gravity
-
-def _process_acc_hd(a, fs, n=16):
-    """
-    Convert HD accelerometer raw ADC values to physical units (g).
-
-    Acc(g) = (ADC - 2^n / 2) * (8 / 2^n)
-
-    Signal is assumed to be in range [-4g, 4g].
-
-    After conversion, gravitational component is removed.
-
-    :param a: Raw ADC signal
-    :param fs: Sampling frequency in Hz
+    :param data: Raw ADC signal
     :param n: Number of ADC bits (default = 16)
-    :return: Processed acceleration signal in g
+    :return: Acceleration in g
     """
+    adc = np.asarray(data)
 
-    adc = np.asarray(a)
+    midpoint = (2 ** n) / 2
+    scale = 8 / (2 ** n)
 
-    midpoint = (2**n) / 2
-    scale = 8 / (2**n)
+    return (adc - midpoint) * scale
 
-    acc_g = (adc - midpoint) * scale
-
-    acc_no_gravity = acc_g - _gravitational_filter(acc_g, fs)
-
-    return acc_no_gravity
-
-def _transfer_acc(data, axis):
+def _transfer_acc_hub(data, axis):
     """
     This Function transforms the bit values into m.s^-2 units from the Accelerometer sensor.
     :param data: array with bit values from the ACC sensor.

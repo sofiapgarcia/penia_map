@@ -31,7 +31,7 @@ def convert_force(df):
 
     df_converted = df.copy()
 
-    factor = 0.0158709
+    factor = 0.0158709 * 0.4
 
     if FORCE_COLUMN in df_converted.columns:
         df_converted[FORCE_COLUMN] = df_converted[FORCE_COLUMN] * factor
@@ -39,6 +39,3 @@ def convert_force(df):
     return df_converted
 
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# private functions
-# ------------------------------------------------------------------------------------------------------------------- #

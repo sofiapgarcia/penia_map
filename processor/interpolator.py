@@ -1,8 +1,11 @@
 """
+Functions to interpolate the data.
+
 Available Functions
 -------------------
 
 [Public]
+interpolate_signal(...): Fill missing samples and interpolate signal values.
 fill_missing_samples(...): Detects sequence gaps and inserts missing samples
 interpolate_missing_values(...): Interpolates sensor signals using spline and linear methods
 
@@ -20,15 +23,41 @@ _unfold_sequence_counter(...): Converts wrapped nSeq counter into a continuous s
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
+import matplotlib.pyplot as plt
 
 # internal imports
-from data_acquisition.files_validation import analyze_sequence
+from data_acquisition.data_loader import analyze_sequence
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def fill_missing_samples(df):
+def interpolate_signal(df):
+    """
+    Fill missing samples and interpolate signal values.
+
+    Combines gap detection/filling (fill_missing_samples) with
+    interpolation (interpolate_missing_values) into a single step.
+
+    :param df: Input DataFrame containing the nSeq sequence counter and signal columns
+    :return: Tuple containing the interpolated DataFrame, sequence analysis information,
+             and a boolean mask DataFrame marking interpolated values
+    """
+
+    df_filled, info = _fill_missing_samples(df)
+
+    interpolated_mask = df_filled.isna()
+
+    df_interpolated = _interpolate_missing_values(df_filled)
+
+    return df_interpolated, info, interpolated_mask
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
+
+def _fill_missing_samples(df):
     """
     Fill missing samples in the signal sequence by detecting gaps in nSeq.
 
@@ -72,7 +101,7 @@ def fill_missing_samples(df):
     }
 
 
-def interpolate_missing_values(df):
+def _interpolate_missing_values(df):
     """
     Interpolate missing values according to signal type.
 
@@ -112,10 +141,6 @@ def interpolate_missing_values(df):
         df_filled = _fill_nan_linear(df_filled, other_columns)
 
     return df_filled
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# private functions
-# ------------------------------------------------------------------------------------------------------------------- #
 
 def _fill_nan_linear(df, columns):
     """

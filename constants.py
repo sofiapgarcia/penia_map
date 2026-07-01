@@ -248,6 +248,12 @@ PENIA_MAP_GROUPS = {
 
 RANDOM_SEED = 42
 
+ACC_COLUMNS = ["x", "y", "z","gACCx", "gACCy", "gACCz"]
+ACC_COLUMNS_HUB = ["x", "y", "z"]
+ACC_COLUMNS_HD = ["gACCx", "gACCy", "gACCz"]
+FORCE_COLUMN = "FORCE"
+DISPLACEMENT_COLUMN = "DISPLACEMENT"
+
 """
 Functions to...
 

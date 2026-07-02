@@ -77,20 +77,18 @@ def _fill_missing_samples(df):
         analysis["invalid_jumps"]
     )
 
-    # No missing samples detected
-    if not missing_rows:
-        return df, {
-            "inserted_samples": 0,
-            "analysis": analysis
-        }
+    # Insert missing samples into DataFrame, if any
+    if missing_rows:
+        df_filled = _insert_missing_rows(
+            df,
+            missing_rows
+        )
+    else:
+        df_filled = df
 
-    # Insert missing samples into DataFrame
-    df_filled = _insert_missing_rows(
-        df,
-        missing_rows
-    )
-
-    # Convert wrapped nSeq into continuous sequence
+    # Always unfold nSeq into a continuous sequence,
+    # regardless of whether missing samples were found —
+    # wraps happen independently of gaps.
     df_filled["nSeq"] = _unfold_sequence_counter(
         df_filled["nSeq"]
     )

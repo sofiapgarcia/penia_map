@@ -253,6 +253,7 @@ ACC_COLUMNS_HUB = ["x", "y", "z"]
 ACC_COLUMNS_HD = ["gACCx", "gACCy", "gACCz"]
 FORCE_COLUMN = "FORCE"
 DISPLACEMENT_COLUMN = "DISPLACEMENT"
+FS = 1000
 
 """
 Functions to...

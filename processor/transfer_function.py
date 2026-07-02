@@ -13,10 +13,10 @@ apply_all_transfers(...): Applies all available sensor transfer functions to a r
 # ------------------------------------------------------------------------------------------------------------------- #
 
 # internal imports
-from acc import transfer_acc
-from displacement import convert_displacement
-from load_cell import convert_force
-from emg import emg_transfer_function
+from processor.acc import transfer_acc
+from processor.displacement import convert_displacement
+from processor.load_cell import convert_force
+from processor.emg import emg_transfer_function
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions

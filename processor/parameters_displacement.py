@@ -40,6 +40,7 @@ from matplotlib.widgets import SpanSelector
 
 # internal imports
 from data_acquisition.data_loader import extract_data_from_file
+from processor.transfer_function import apply_transfer_functions
 
 
 # ---------------------------------------------------------------------------
@@ -443,5 +444,5 @@ def _handle_key(event, state, ax, signal, time, squeeze_mask, squeeze_line):
 if __name__ == "__main__":
     summary = analyze_handgrip_calibration(BASE_PATH, signal_col=SIGNAL_COL)
     print(summary)
-    summary.to_csv(SUMMARY_CSV, index=False)
-    print(f"\nSummary saved to: {SUMMARY_CSV}")
+    #summary.to_csv(SUMMARY_CSV, index=False)
+    #print(f"\nSummary saved to: {SUMMARY_CSV}")

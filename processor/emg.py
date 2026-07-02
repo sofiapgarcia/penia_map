@@ -17,9 +17,9 @@ def emg_transfer_function(df, emg_cols=('EMG_Flexor', 'EMG_Extensor'),
     df = df.copy()
 
     for col in emg_cols:
-        # Ensure the column exists in the DataFrame
+        # Skip channels that don't exist for this condition
         if col not in df.columns:
-            raise ValueError(f"Column '{col}' not found in DataFrame")
+            continue
 
         # Convert to float for numerical stability
         adc = df[col].astype(float)

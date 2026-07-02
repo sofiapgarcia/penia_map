@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
-    selected_subject = "S83"
+    selected_subject = "S2"
 
     subject_path = os.path.join(base_path, selected_subject)
 
@@ -24,7 +24,12 @@ if __name__ == '__main__':
 
     subject_data = load_subject_data(base_path, selected_subject)
 
+    non_condition_keys = {"potentiometer_position", "HI_values"}
+
     for condition, content in subject_data.items():
+
+        if condition in non_condition_keys:
+            continue
 
         params = content["params"]
         df = content["data"]

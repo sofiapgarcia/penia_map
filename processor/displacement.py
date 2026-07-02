@@ -59,7 +59,13 @@ def convert_displacement(df, x0, xmax=1, Nmax=13867):
     b = handle_x0 - a * N0
 
     # Apply linear transformation to full signal
-    df_converted[DISPLACEMENT_COLUMN] = a * N + b
+    absolute_position = a * N + b
+
+    # Shift so that the initial position (x0) becomes 0 —
+    # this represents the actual displacement performed by the subject
+    df_converted[DISPLACEMENT_COLUMN] = handle_x0 - absolute_position
+
+    df_converted
 
     return df_converted
 

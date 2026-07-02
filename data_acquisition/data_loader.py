@@ -51,7 +51,10 @@ def load_subject_data(base_path, subject):
     pot_value = _load_potentiometer_position(base_path, subject_id)
     hg_values = _load_handgrip_isometric(base_path, subject_id)
 
-    subject_data = {}
+    subject_data = {
+        "potentiometer_position": pot_value,
+        "HI_values": hg_values
+    }
 
     for filename in os.listdir(subject_path):
 
@@ -66,9 +69,7 @@ def load_subject_data(base_path, subject):
 
         subject_data[condition] = {
             "params": params,
-            "data": df,
-            "potentiometer_position": pot_value,
-            "handgrip_isometric": hg_values
+            "data": df
         }
 
     return subject_data
@@ -196,6 +197,13 @@ def extract_data_from_file(file_path):
             for column in df.columns
         ]
 
+        # Drop DI and magnetometer columns, not needed for this condition
+        columns_to_drop = ["DI", "pMAGx", "pMAGy", "pMAGz"]
+
+        df = df.drop(
+            columns=[col for col in columns_to_drop if col in df.columns]
+        )
+
     elif condition in ["HI", "MVC"]:
 
         # Find EMG columns
@@ -262,7 +270,7 @@ def _load_potentiometer_position(base_path, subject_id):
     df = pd.read_excel(file_path)
 
     # Ensure consistent ID format
-    df.iloc[:, 0] = df.iloc[:, 0].astype(str)
+    df[df.columns[0]] = df[df.columns[0]].astype(str)
 
     # Find matching subject row
     match = df[df.iloc[:, 0] == subject_id]
@@ -286,7 +294,7 @@ def _load_handgrip_isometric(base_path, subject_id):
     df = pd.read_excel(file_path)
 
     # Ensure consistent ID format
-    df.iloc[:, 0] = df.iloc[:, 0].astype(str)
+    df[df.columns[0]] = df[df.columns[0]].astype(str)
 
     # Find matching subject row
     match = df[df.iloc[:, 0] == subject_id]

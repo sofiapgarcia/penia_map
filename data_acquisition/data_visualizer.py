@@ -133,195 +133,155 @@ def plot_interpolated_signal(df, mask, column, time_column="nSeq", title=None):
     plt.show()
 
 
-def plot_synchronized_hd_signals(params_hd,
-                                 df_hd,
-                                 params_hd_emg,
-                                 df_hd_emg,
-                                 hd_accelerometer=("gACCx", "gACCy", "gACCz"),
-                                 hd_emg_accelerometer=("x", "y", "z"),
-                                 title=None):
+def plot_subject_data(subject_data):
     """
-    Plot the synchronized HD and HD_EMG acquisitions.
+    Plot all acquisitions contained in subject_data.
 
-    The three accelerometer axes are overlaid to visually inspect the
-    synchronization quality, while the remaining channels are displayed
-    individually.
+    HD and HD_EMG acquisitions are displayed together for comparison.
+    If both are available and contain the required columns, an additional
+    subplot overlays HD gACCy and HD_EMG y.
+    All other acquisitions are plotted individually.
 
-    :param params_hd: Acquisition parameters of the HD recording
-    :param df_hd: Synchronized HD DataFrame
-    :param params_hd_emg: Acquisition parameters of the HD_EMG recording
-    :param df_hd_emg: Synchronized HD_EMG DataFrame
-    :param hd_accelerometer: Tuple containing the HD accelerometer
-                             column names (x, y, z)
-    :param hd_emg_accelerometer: Tuple containing the HD_EMG
-                                 accelerometer column names (x, y, z)
-    :param title: Optional figure title
-    :return: Matplotlib figure object
+    :param subject_data: Dictionary returned by load_subject_data()
     """
 
-    import numpy as np
     import matplotlib.pyplot as plt
 
-    # Sampling rate (both acquisitions should already be synchronized)
-    fs = params_hd["sampling rate"]
+    non_condition_keys = {"potentiometer_position", "HI_values"}
 
-    # Time vector
-    time = np.arange(len(df_hd)) / fs
+    # ------------------------------------------------------------------
+    # Check availability of HD / HD_EMG
+    # ------------------------------------------------------------------
 
-    # Accelerometer column names
-    hd_x, hd_y, hd_z = hd_accelerometer
-    emg_x, emg_y, emg_z = hd_emg_accelerometer
-
-    # Create figure
-    fig, axes = plt.subplots(
-        7,
-        1,
-        figsize=(15, 18),
-        sharex=True
+    has_hd = (
+        "HD" in subject_data
+        and isinstance(subject_data["HD"], dict)
+        and "data" in subject_data["HD"]
     )
 
-    # ----------------------------------------------------------------------------------
-    # Accelerometer X
-    # ----------------------------------------------------------------------------------
+    has_hd_emg = (
+        "HD_EMG" in subject_data
+        and isinstance(subject_data["HD_EMG"], dict)
+        and "data" in subject_data["HD_EMG"]
+    )
 
-    if hd_x in df_hd.columns and emg_x in df_hd_emg.columns:
+    # ------------------------------------------------------------------
+    # Plot HD and HD_EMG (+ comparison if possible)
+    # ------------------------------------------------------------------
 
-        axes[0].plot(
-            time,
-            df_hd[hd_x],
-            label="HD",
-            linewidth=1.5
+    if has_hd or has_hd_emg:
+
+        hd = subject_data["HD"]["data"] if has_hd else None
+        hd_emg = subject_data["HD_EMG"]["data"] if has_hd_emg else None
+
+        comparison_available = (
+            has_hd
+            and has_hd_emg
+            and "gACCy" in hd.columns
+            and "y" in hd_emg.columns
         )
 
-        axes[0].plot(
-            time,
-            df_hd_emg[emg_x],
-            label="HD_EMG",
-            linewidth=1.5,
-            alpha=0.8
+        n_subplots = (
+            int(has_hd)
+            + int(has_hd_emg)
+            + int(comparison_available)
         )
 
-        axes[0].set_ylabel("Accel X")
-        axes[0].legend()
-        axes[0].grid(True, alpha=0.3)
-
-    # ----------------------------------------------------------------------------------
-    # Accelerometer Y
-    # ----------------------------------------------------------------------------------
-
-    if hd_y in df_hd.columns and emg_y in df_hd_emg.columns:
-
-        axes[1].plot(
-            time,
-            df_hd[hd_y],
-            linewidth=1.5
+        fig, axes = plt.subplots(
+            n_subplots,
+            1,
+            figsize=(14, 3.5 * n_subplots),
+            sharex=True
         )
 
-        axes[1].plot(
-            time,
-            df_hd_emg[emg_y],
-            linewidth=1.5,
-            alpha=0.8
-        )
+        if n_subplots == 1:
+            axes = [axes]
 
-        axes[1].set_ylabel("Accel Y")
-        axes[1].grid(True, alpha=0.3)
+        idx = 0
 
-    # ----------------------------------------------------------------------------------
-    # Accelerometer Z
-    # ----------------------------------------------------------------------------------
+        # ---------------- HD ----------------
+        if has_hd:
 
-    if hd_z in df_hd.columns and emg_z in df_hd_emg.columns:
+            for column in hd.columns:
 
-        axes[2].plot(
-            time,
-            df_hd[hd_z],
-            linewidth=1.5
-        )
+                if column == "nSeq":
+                    continue
 
-        axes[2].plot(
-            time,
-            df_hd_emg[emg_z],
-            linewidth=1.5,
-            alpha=0.8
-        )
+                signal = -hd[column] if column == "gACCy" else hd[column]
 
-        axes[2].set_ylabel("Accel Z")
-        axes[2].grid(True, alpha=0.3)
+                axes[idx].plot(signal, label=column, linewidth=0.8)
 
-    # ----------------------------------------------------------------------------------
-    # Force
-    # ----------------------------------------------------------------------------------
+            axes[idx].set_title("HD")
+            axes[idx].legend(loc="upper right", ncol=4, fontsize=8)
 
-    if "FORCE" in df_hd.columns:
+            idx += 1
 
-        axes[3].plot(
-            time,
-            df_hd["FORCE"],
-            linewidth=1.5
-        )
+        # ---------------- HD_EMG ----------------
+        if has_hd_emg:
 
-        axes[3].set_ylabel("Force")
-        axes[3].grid(True, alpha=0.3)
+            for column in hd_emg.columns:
 
-    # ----------------------------------------------------------------------------------
-    # Displacement
-    # ----------------------------------------------------------------------------------
+                if column == "nSeq":
+                    continue
 
-    if "DISPLACEMENT" in df_hd.columns:
+                axes[idx].plot(hd_emg[column], label=column, linewidth=0.8)
 
-        axes[4].plot(
-            time,
-            df_hd["DISPLACEMENT"],
-            linewidth=1.5
-        )
+            axes[idx].set_title("HD_EMG")
+            axes[idx].legend(loc="upper right", ncol=4, fontsize=8)
 
-        axes[4].set_ylabel("Displacement")
-        axes[4].grid(True, alpha=0.3)
+            idx += 1
 
-    # ----------------------------------------------------------------------------------
-    # EMG Extensor
-    # ----------------------------------------------------------------------------------
+        # ---------------- Comparison ----------------
+        if comparison_available:
 
-    if "EMG_Extensor" in df_hd_emg.columns:
+            axes[idx].plot(
+                -hd["gACCy"],
+                label="HD gACCy",
+                linewidth=1.2
+            )
 
-        axes[5].plot(
-            time,
-            df_hd_emg["EMG_Extensor"],
-            linewidth=1.2
-        )
+            axes[idx].plot(
+                hd_emg["y"],
+                label="HD_EMG y",
+                linewidth=1.2
+            )
 
-        axes[5].set_ylabel("EMG Ext.")
-        axes[5].grid(True, alpha=0.3)
+            axes[idx].set_title("HD gACCy vs HD_EMG y")
+            axes[idx].legend(loc="upper right")
 
-    # ----------------------------------------------------------------------------------
-    # EMG Flexor
-    # ----------------------------------------------------------------------------------
+        plt.tight_layout()
+        plt.show()
 
-    if "EMG_Flexor" in df_hd_emg.columns:
+    # ------------------------------------------------------------------
+    # Plot remaining acquisitions
+    # ------------------------------------------------------------------
 
-        axes[6].plot(
-            time,
-            df_hd_emg["EMG_Flexor"],
-            linewidth=1.2
-        )
+    for condition, content in subject_data.items():
 
-        axes[6].set_ylabel("EMG Flex.")
-        axes[6].set_xlabel("Time (s)")
-        axes[6].grid(True, alpha=0.3)
+        if condition in non_condition_keys:
+            continue
 
-    # Add global title
-    if title is not None:
+        if condition in {"HD", "HD_EMG"}:
+            continue
 
-        fig.suptitle(
-            title,
-            fontsize=14,
-            fontweight="bold"
-        )
+        if (
+            not isinstance(content, dict)
+            or "data" not in content
+        ):
+            continue
 
-    # Adjust layout
-    plt.tight_layout()
+        df = content["data"]
 
-    plt.show()
+        plt.figure(figsize=(14, 4))
 
-    return fig
+        for column in df.columns:
+
+            if column == "nSeq":
+                continue
+
+            plt.plot(df[column], label=column, linewidth=0.8)
+
+        plt.title(condition)
+        plt.legend(loc="upper right", ncol=4, fontsize=8)
+        plt.tight_layout()
+        plt.show()

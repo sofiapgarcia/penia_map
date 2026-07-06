@@ -107,14 +107,14 @@ def _transfer_acc_hd(data, n=16):
 
     :param data: Raw ADC signal
     :param n: Number of ADC bits (default = 16)
-    :return: Acceleration in g
+    :return: Acceleration in m/s^2
     """
     adc = np.asarray(data)
 
     midpoint = (2 ** n) / 2
     scale = 8 / (2 ** n)
 
-    return (adc - midpoint) * scale
+    return (adc - midpoint) * scale * 9.8
 
 def _transfer_acc_hub(data, axis):
     """

@@ -65,8 +65,6 @@ def convert_displacement(df, x0, xmax=1, Nmax=13867):
     # this represents the actual displacement performed by the subject
     df_converted[DISPLACEMENT_COLUMN] = handle_x0 - absolute_position
 
-    df_converted
-
     return df_converted
 
 

@@ -197,8 +197,8 @@ def extract_data_from_file(file_path):
             for column in df.columns
         ]
 
-        # Drop DI and magnetometer columns, not needed for this condition
-        columns_to_drop = ["DI", "pMAGx", "pMAGy", "pMAGz"]
+        # Drop magnetometer columns, not needed for this condition
+        columns_to_drop = ["pMAGx", "pMAGy", "pMAGz"]
 
         df = df.drop(
             columns=[col for col in columns_to_drop if col in df.columns]
@@ -225,6 +225,10 @@ def extract_data_from_file(file_path):
             df.columns.values[emg_indices[0]] = "EMG_Extensor"
 
             df.columns.values[emg_indices[1]] = "EMG_Flexor"
+
+    df = df.drop(
+        columns="DI"
+    )
 
     params = {
         "sampling rate": device_info["sampling rate"],

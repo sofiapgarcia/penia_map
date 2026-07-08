@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks, correlate, correlation_lags
@@ -12,8 +11,8 @@ def apply_saved_sync_indices(subject_data, subject_folder,
                              filename="sync_indices.xlsx"):
     """
     If a sync_indices.xlsx file already exists for this subject, use it to
-    trim the HD and HD_EMG DataFrames directly, without running the
-    interactive synchronization again.
+    trim the HD and HD_EMG DataFrames and merge them into a single DataFrame
+    (stored under hd_key), without running the interactive synchronization again.
 
     Expects an Excel file with columns: acquisition | start_idx | end_idx
     and exactly two rows, one for hd_key and one for hd_emg_key.
@@ -25,7 +24,8 @@ def apply_saved_sync_indices(subject_data, subject_folder,
     :param hd_key: Key of the HD entry in subject_data
     :param hd_emg_key: Key of the HD_EMG entry in subject_data
     :param filename: Name of the Excel file with the saved indices
-    :return: subject_data with HD/HD_EMG trimmed, if the file was found;
+    :return: subject_data with HD and HD_EMG trimmed and merged into a single
+        DataFrame under hd_key (hd_emg_key is removed), if the file was found;
         otherwise None (so the caller knows to run the synchronization)
     """
     sync_path = os.path.join(subject_folder, filename)
@@ -49,9 +49,28 @@ def apply_saved_sync_indices(subject_data, subject_folder,
     df_hd = subject_data[hd_key]["data"].iloc[start_hd:end_hd].reset_index(drop=True)
     df_hd_emg = subject_data[hd_emg_key]["data"].iloc[start_hd_emg:end_hd_emg].reset_index(drop=True)
 
+    # Ensure both trimmed DataFrames have the same length before merging columns
+    min_len = min(len(df_hd), len(df_hd_emg))
 
-    subject_data[hd_key]["data"] = df_hd
-    subject_data[hd_emg_key]["data"] = df_hd_emg
+    if len(df_hd) != len(df_hd_emg):
+        print(
+            f"[warning] '{hd_key}' ({len(df_hd)} samples) and '{hd_emg_key}' "
+            f"({len(df_hd_emg)} samples) have different lengths after trimming — "
+            f"truncating both to {min_len} samples."
+        )
+
+    df_hd = df_hd.iloc[:min_len].reset_index(drop=True)
+    df_hd_emg = df_hd_emg.iloc[:min_len].reset_index(drop=True)
+
+    # Merge HD and HD_EMG side by side into a single DataFrame
+    # Drop duplicate columns from HD_EMG
+    duplicate_cols = [col for col in df_hd_emg.columns if col in df_hd.columns]
+    df_hd_emg = df_hd_emg.drop(columns=duplicate_cols)
+
+    df_merged = pd.concat([df_hd, df_hd_emg], axis=1)
+
+    subject_data[hd_key]["data"] = df_merged
+    del subject_data[hd_emg_key]
 
     print(f"Loaded existing synchronization indices from: {sync_path}")
 

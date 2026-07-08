@@ -6,13 +6,14 @@ from processor.transfer_function import apply_transfer_functions
 from synchronization.sync import synchronize_hd_acquisitions, apply_saved_sync_indices
 from data_acquisition.data_visualizer import plot_subject_data, plot_interpolated_signal, plot_sensors_over_time
 from processor.trimming import apply_trim_indices , select_trim_regions
+from power.peak_power_calculation import process_hd_power
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
 non_condition_keys = {"potentiometer_position", "HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S36"]
+subjects = ["S45"]
 for subject in subjects:
 
     print(f"\n{'='*60}")
@@ -56,9 +57,12 @@ for subject in subjects:
 
     # Trim data
     # Interactively select and save trim regions for this subject
-    select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
-    #subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys)
+    #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
+    subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
+
+    # peak power calculation
+    subject_data_power = process_hd_power(subject_data_sync)
 
 
 

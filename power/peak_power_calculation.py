@@ -102,9 +102,9 @@ def _plot_hd_power_analysis(df, power_info):
     # --- Force subplot ---
     ax_force.plot(df[FORCE_COLUMN].values, linewidth=0.8, color="tab:gray")
     ax_force.scatter(peak_idx, info["force_at_peak_power"], color="darkred", zorder=5,
-                      label=f"Force @ peak power ({info['force_at_peak_power']:.2f})")
+                      label=f"Force @ peak power ({info['force_at_peak_power']:.2f} N)")
     ax_force.scatter(max_force_idx, info["max_force"], color="darkgreen", zorder=5,
-                      label=f"Max force ({info['max_force']:.2f})")
+                      label=f"Max force ({info['max_force']:.2f} N)")
     ax_force.set_ylabel("Force")
     ax_force.legend(fontsize=8, loc="upper right")
 

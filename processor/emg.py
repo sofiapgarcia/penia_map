@@ -1,4 +1,4 @@
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, iirnotch
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -40,50 +40,41 @@ def emg_transfer_function(df, emg_cols=('EMG_Flexor', 'EMG_Extensor'),
 
 
 
-def process_emg(subject_data, fs, non_condition_keys=None, show_plot=False):
+def process_emg(df, fs, show_plot=True):
     """
-    Process EMG channels (EMG_Flexor, EMG_Extensor) for every condition in
-    subject_data: remove the DC offset and apply a 4th-order Butterworth
-    bandpass filter (10-499 Hz) to preserve the physiological content of the
-    surface EMG signal. Filtered signals are added as new columns
-    (e.g. 'EMG_Flexor_filt').
+    Process EMG channels (EMG_Flexor, EMG_Extensor) in a DataFrame: remove the
+    DC offset, apply a notch filter at 50 Hz to remove power-line
+    interference, and apply a 4th-order Butterworth bandpass filter
+    (10-499 Hz) to preserve the physiological content of the surface EMG
+    signal. Filtered signals are added as new columns (e.g. 'EMG_Flexor_filt').
 
-    :param subject_data: Dictionary as returned by load_subject_data
+    :param df: DataFrame containing the EMG channel(s) to process
     :param fs: Sampling frequency (Hz) of the EMG signals
-    :param non_condition_keys: Set of keys in subject_data to ignore
-        (default: {"potentiometer_position", "HI_values"})
     :param show_plot: If True, shows raw vs filtered EMG on the same graph,
-        for each channel and condition
-    :return: subject_data with filtered EMG columns added
+        for each channel present
+    :return: df with filtered EMG columns added
     """
 
-    if non_condition_keys is None:
-        non_condition_keys = {"potentiometer_position", "HI_values"}
+    for channel in EMG_CHANNELS:
 
-    for condition, content in subject_data.items():
-
-        if condition in non_condition_keys:
+        if channel not in df.columns:
             continue
 
-        df = content["data"]
+        notch_filtered = _notch_filter_emg(df[channel].values, fs)
+        filtered = _bandpass_filter_emg(notch_filtered, fs)
+        df[f"{channel}_filt"] = filtered
 
-        for channel in EMG_CHANNELS:
+        if show_plot:
+            _plot_emg_processing(channel, df[channel].values, filtered)
 
-            if channel not in df.columns:
-                continue
-
-            filtered = _bandpass_filter_emg(df[channel].values, fs)
-            df[f"{channel}_filt"] = filtered
-
-            if show_plot:
-                _plot_emg_processing(condition, channel, df[channel].values, filtered)
-
-    return subject_data
+    return df
 
 def _bandpass_filter_emg(signal, fs, lowcut=10, highcut=499, order=4):
     """
     Remove the DC offset and apply a 4th-order Butterworth bandpass filter
     to a raw EMG signal.
+
+    Frequency range: https://doi.org/10.1038/s41597-023-02223-x
 
     :param signal: 1D array with the raw EMG signal
     :param fs: Sampling frequency (Hz)
@@ -100,13 +91,28 @@ def _bandpass_filter_emg(signal, fs, lowcut=10, highcut=499, order=4):
 
     return filtfilt(b, a, offset_removed)
 
+def _notch_filter_emg(signal, fs, notch_freq=50, quality_factor=30):
+    """
+    Apply a notch filter to remove power-line interference from an EMG
+    signal (e.g. 50 Hz mains noise).
 
-def _plot_emg_processing(condition, channel, raw, filtered):
+    :param signal: 1D array with the EMG signal (already bandpass filtered)
+    :param fs: Sampling frequency (Hz)
+    :param notch_freq: Frequency to remove (Hz)
+    :param quality_factor: Quality factor of the notch filter (higher = narrower notch)
+    :return: Filtered signal (same length as input)
+    """
+
+    nyquist = fs / 2
+    b, a = iirnotch(notch_freq / nyquist, quality_factor)
+
+    return filtfilt(b, a, signal)
+
+def _plot_emg_processing(channel, raw, filtered):
     """
     Plot the raw and filtered EMG signal on the same graph for visual
     comparison.
 
-    :param condition: Name of the condition (e.g. "HD", "HI", "MVC")
     :param channel: EMG channel name (e.g. "EMG_Flexor")
     :param raw: Raw EMG signal (1D array)
     :param filtered: Filtered EMG signal (1D array)
@@ -117,7 +123,7 @@ def _plot_emg_processing(condition, channel, raw, filtered):
     ax.plot(raw, linewidth=0.6, alpha=0.6, label="Raw")
     ax.plot(filtered, linewidth=0.8, label="Filtered")
 
-    ax.set_title(f"{condition} - {channel}")
+    ax.set_title(channel)
     ax.set_xlabel("Samples")
     ax.legend()
 

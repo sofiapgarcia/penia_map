@@ -6,6 +6,7 @@ from processor.transfer_function import apply_transfer_functions
 from synchronization.sync import synchronize_hd_acquisitions, apply_saved_sync_indices
 from data_acquisition.data_visualizer import plot_subject_data, plot_interpolated_signal, plot_sensors_over_time
 from processor.trimming import apply_trim_indices , select_trim_regions
+from processor.emg import process_emg
 from power.peak_power_calculation import process_hd_power
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
@@ -34,6 +35,7 @@ for subject in subjects:
 
         df = content["data"]
         params = content["params"]
+        fs = content["params"]["sampling rate"]
 
         # Apply transfer functions
         df_transferred = apply_transfer_functions(df, x0=pot_position)
@@ -41,14 +43,19 @@ for subject in subjects:
         # Interpolate
         df_interpolated, info, mask = interpolate_signal(df_transferred)
 
+        # Process emg signal
+        df_processed = process_emg(df_interpolated, fs, show_plot=False)
+
+
         # Update dictionary
-        subject_data[condition]["data"] = df_interpolated
+        subject_data[condition]["data"] = df_processed
 
         # plot the interpolated signal
         #for column in df_interpolated.columns:
             #plot_interpolated_signal(df_interpolated, mask, column)
 
         #plot_sensors_over_time(params, df_interpolated)
+
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
@@ -62,7 +69,8 @@ for subject in subjects:
     #plot_subject_data(subject_data_sync)
 
     # peak power calculation
-    subject_data_power = process_hd_power(subject_data_sync)
+    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
+
 
 
 

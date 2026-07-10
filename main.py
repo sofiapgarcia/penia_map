@@ -1,20 +1,21 @@
 import os
 
 from data_acquisition.data_loader import load_subject_data
+from data_acquisition.data_visualizer import plot_sensors_over_time
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
-from synchronization.sync import synchronize_hd_acquisitions, apply_saved_sync_indices
-from data_acquisition.data_visualizer import plot_subject_data, plot_interpolated_signal, plot_sensors_over_time
-from processor.trimming import apply_trim_indices , select_trim_regions
-from processor.emg import process_emg
-from power.peak_power_calculation import process_hd_power
+from synchronization.sync import apply_saved_sync_indices
+from processor.trimming import apply_trim_indices
+from processor.emg import process_emg , get_emg_envelope
+from metrics.power.peak_power_calculation import process_hd_power
+from metrics.mvc_values import get_mvc_values
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
 non_condition_keys = {"potentiometer_position", "HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S45"]
+subjects = ["S32","S45","S14"]
 for subject in subjects:
 
     print(f"\n{'='*60}")
@@ -69,7 +70,15 @@ for subject in subjects:
     #plot_subject_data(subject_data_sync)
 
     # peak power calculation
-    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
+    subject_data_power = process_hd_power(subject_data_sync, show_plot=True)
+
+    # calculate envelope
+    subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
+
+    # Get MVC values
+    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+
+
 
 
 

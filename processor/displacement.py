@@ -22,7 +22,7 @@ from constants import DISPLACEMENT_COLUMN
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def convert_displacement(df, x0, xmax=1, Nmax=13867):
+def convert_displacement(df, x0, xmax=0, Nmax=13867):
     """
     Convert displacement signal from bits to millimeters.
 
@@ -47,6 +47,7 @@ def convert_displacement(df, x0, xmax=1, Nmax=13867):
 
     # Convert x0 to the correct physical reference
     handle_x0 = _convert_x0(x0)
+    print("handle_x0", handle_x0)
 
     # Calculate N0 from x0 using regression
     N0 = _calculate_N0(x0)

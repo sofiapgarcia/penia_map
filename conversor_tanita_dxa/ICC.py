@@ -2,6 +2,19 @@ import pandas as pd
 import pingouin as pg
 
 
+# Variáveis do DXA que são reportadas em gramas e precisam de ser convertidas
+# para kg antes de comparar com a TANITA (que já reporta em kg)
+DXA_VARS_IN_GRAMS = {
+    "Magro_total",
+    "Massa_magra_braco_direito",
+    "Massa_magra_braco_esquerdo",
+    "Massa_magra_perna_direita",
+    "Massa_magra_perna_esquerda",
+    "Magro_tronco",
+    "BMC_total",
+}
+
+
 def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = "ICC3", alpha: float = 0.05) -> pd.DataFrame:
     """
     Compute Intraclass Correlation Coefficient (ICC) for each pair of variables
@@ -13,6 +26,8 @@ def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = 
     :param alpha: significance level used for confidence intervals
     :return: DataFrame summarizing ICC, CI95%, p-value and interpretation for each pair
     """
+    df = _convert_dxa_grams_to_kg(df, variable_mapping)
+
     results = []
 
     for dxa_col, tanita_col in variable_mapping.items():
@@ -23,6 +38,24 @@ def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = 
         results.append(_compute_single_icc(df, dxa_col, tanita_col, icc_type, alpha))
 
     return pd.DataFrame(results)
+
+
+def _convert_dxa_grams_to_kg(df: pd.DataFrame, variable_mapping: dict) -> pd.DataFrame:
+    """
+    Convert DXA columns known to be reported in grams (lean/muscle mass, BMC) to kg,
+    so that they are on the same scale as the corresponding TANITA columns (kg).
+    Returns a copy of the DataFrame with the relevant columns converted;
+    columns not in DXA_VARS_IN_GRAMS, or not present in df, are left untouched.
+
+    :param df: source DataFrame containing DXA columns
+    :param variable_mapping: dict mapping DXA column name -> TANITA column name
+    :return: copy of df with grams->kg conversion applied where relevant
+    """
+    df = df.copy()
+    for dxa_col in variable_mapping.keys():
+        if dxa_col in DXA_VARS_IN_GRAMS and dxa_col in df.columns:
+            df[dxa_col] = df[dxa_col] / 1000
+    return df
 
 
 def _missing_column_result(dxa_col: str, tanita_col: str, df: pd.DataFrame) -> dict:
@@ -43,7 +76,7 @@ def _missing_column_result(dxa_col: str, tanita_col: str, df: pd.DataFrame) -> d
         "CI95%": None,
         "p-value": None,
         "interpretation": None,
-        "note": f"Coluna '{missing}' não encontrada no DataFrame"
+        "note": f"Column '{missing}' not found"
     }
 
 
@@ -81,7 +114,7 @@ def _compute_single_icc(df: pd.DataFrame, dxa_col: str, tanita_col: str, icc_typ
             "CI95%": None,
             "p-value": None,
             "interpretation": None,
-            "note": "Amostra insuficiente (n < 3)"
+            "note": "n < 3"
         }
 
     long_df = pd.DataFrame({
@@ -141,4 +174,4 @@ def _interpret_icc(icc_value: float) -> str:
     elif icc_value < 0.9:
         return "good"
     else:
-        return "excelent"
+        return "excellent"

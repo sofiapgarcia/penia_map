@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pingouin as pg
 
+from conversor_tanita_dxa.ICC import DXA_VARS_IN_GRAMS
+
 
 def plot_bland_altman_pairs(
     df: pd.DataFrame,
@@ -20,10 +22,12 @@ def plot_bland_altman_pairs(
     :param show_plot: if True, displays each figure with plt.show() before moving to the next
     :return: None
     """
+    df = _convert_dxa_grams_to_kg(df, variable_mapping)
+
     valid_pairs = _filter_valid_pairs(df, variable_mapping)
 
     if not valid_pairs:
-        print("Nenhum par válido encontrado para plotar.")
+        print("No valid pairs found to plot.")
         return
 
     for dxa_col, tanita_col in valid_pairs:
@@ -40,6 +44,24 @@ def plot_bland_altman_pairs(
             plt.close(fig)
 
 
+def _convert_dxa_grams_to_kg(df: pd.DataFrame, variable_mapping: dict) -> pd.DataFrame:
+    """
+    Convert DXA columns known to be reported in grams (lean/muscle mass, BMC) to kg,
+    so that they are on the same scale as the corresponding TANITA columns (kg).
+    Returns a copy of the DataFrame with the relevant columns converted;
+    columns not in DXA_VARS_IN_GRAMS, or not present in df, are left untouched.
+
+    :param df: source DataFrame containing DXA columns
+    :param variable_mapping: dict mapping DXA column name -> TANITA column name
+    :return: copy of df with grams->kg conversion applied where relevant
+    """
+    df = df.copy()
+    for dxa_col in variable_mapping.keys():
+        if dxa_col in DXA_VARS_IN_GRAMS and dxa_col in df.columns:
+            df[dxa_col] = df[dxa_col] / 1000
+    return df
+
+
 def _filter_valid_pairs(df: pd.DataFrame, variable_mapping: dict) -> list:
     """
     Filter variable_mapping to only pairs where both columns exist in df and have
@@ -52,12 +74,12 @@ def _filter_valid_pairs(df: pd.DataFrame, variable_mapping: dict) -> list:
     valid = []
     for dxa_col, tanita_col in variable_mapping.items():
         if dxa_col not in df.columns or tanita_col not in df.columns:
-            print(f"Aviso: par ('{dxa_col}', '{tanita_col}') ignorado - coluna em falta.")
+            print(f"Warning: pair ('{dxa_col}', '{tanita_col}') skipped - missing column.")
             continue
 
         n = df[[dxa_col, tanita_col]].dropna().shape[0]
         if n < 3:
-            print(f"Aviso: par ('{dxa_col}', '{tanita_col}') ignorado - apenas {n} observações válidas.")
+            print(f"Warning: pair ('{dxa_col}', '{tanita_col}') skipped - only {n} valid observations.")
             continue
 
         valid.append((dxa_col, tanita_col))
@@ -85,8 +107,8 @@ def _plot_single_bland_altman(df: pd.DataFrame, dxa_col: str, tanita_col: str, a
     )
 
     ax.set_title(f"{dxa_col} vs {tanita_col}", fontsize=11)
-    ax.set_xlabel("Média (DXA, TANITA)")
-    ax.set_ylabel("Diferença (DXA - TANITA)")
+    ax.set_xlabel("Mean (DXA, TANITA)")
+    ax.set_ylabel("Difference (DXA - TANITA)")
 
 
 def _save_figure(fig: plt.Figure, save_dir: str, dxa_col: str, tanita_col: str) -> None:
@@ -103,4 +125,4 @@ def _save_figure(fig: plt.Figure, save_dir: str, dxa_col: str, tanita_col: str) 
     safe_name = f"{dxa_col}_vs_{tanita_col}".replace(" ", "_").replace("/", "-")
     filepath = os.path.join(save_dir, f"bland_altman_{safe_name}.png")
     fig.savefig(filepath, dpi=300, bbox_inches="tight")
-    print(f"Figura guardada em: {filepath}")
+    print(f"Figure saved to: {filepath}")

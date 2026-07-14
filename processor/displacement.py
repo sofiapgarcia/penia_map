@@ -22,7 +22,7 @@ from constants import DISPLACEMENT_COLUMN
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def convert_displacement(df, x0, xmax=0, Nmax=13867):
+def convert_displacement(df, x0, xmax=3, Nmax=13867):
     """
     Convert displacement signal from bits to millimeters.
 
@@ -65,6 +65,7 @@ def convert_displacement(df, x0, xmax=0, Nmax=13867):
     # Shift so that the initial position (x0) becomes 0 —
     # this represents the actual displacement performed by the subject
     df_converted[DISPLACEMENT_COLUMN] = handle_x0 - absolute_position
+    #df_converted[DISPLACEMENT_COLUMN] = absolute_position
 
     return df_converted
 

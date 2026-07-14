@@ -9,11 +9,6 @@ filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"
 # read the data
 df = pd.read_excel(filepath, index_col=0)
 
-plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=True)
-
-results_icc = compute_icc_pairs(df, VARIABLE_MAPPING, icc_type="ICC2")
-print(results_icc.to_string(index=False))
-
 # build the regression models to convert tanita to dxa variables
 #results = build_dxa_predictor(df)
 

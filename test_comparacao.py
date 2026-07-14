@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
-
+# ignorar este codigo
 excel_file = r"C:\Users\Sofia\Desktop\Tese\dados\compracao idade tanita e idade ossea.xlsx"
 
 x_column = "Estimated metabolic age"

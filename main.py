@@ -15,7 +15,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 non_condition_keys = {"potentiometer_position", "HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S32","S45","S14"]
+subjects = ["S15"]
 for subject in subjects:
 
     print(f"\n{'='*60}")
@@ -55,7 +55,7 @@ for subject in subjects:
         #for column in df_interpolated.columns:
             #plot_interpolated_signal(df_interpolated, mask, column)
 
-        #plot_sensors_over_time(params, df_interpolated)
+        plot_sensors_over_time(params, df_interpolated)
 
 
     # Synchronize acquisitions

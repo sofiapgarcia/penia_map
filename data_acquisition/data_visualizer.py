@@ -145,21 +145,115 @@ def _center_and_normalize(signal):
     return (signal - signal.mean()) / signal.std()
 
 
+import matplotlib.pyplot as plt
+
+
+def _group_signal_columns(columns):
+    """
+    Group column names so that raw signals are paired with their
+    filtered counterparts (columns ending in "_filt").
+
+    :param columns: List of column names to group
+    :return: List of groups, where each group is a list of one or
+        two column names to be plotted together
+    """
+    filt_suffix = "_filt"
+
+    raw_columns = [c for c in columns if not c.endswith(filt_suffix)]
+    filt_columns = {c for c in columns if c.endswith(filt_suffix)}
+
+    groups = []
+    used_filt = set()
+
+    # Pair each raw column with its filtered counterpart, if any
+    for raw_col in raw_columns:
+        filt_col = f"{raw_col}{filt_suffix}"
+        if filt_col in filt_columns:
+            groups.append([raw_col, filt_col])
+            used_filt.add(filt_col)
+        else:
+            groups.append([raw_col])
+
+    # Filtered columns without a matching raw column (edge case)
+    for filt_col in filt_columns:
+        if filt_col not in used_filt:
+            groups.append([filt_col])
+
+    return groups
+
+
+def _plot_group(ax, df, group, title):
+    """
+    Plot one or two related columns (raw + filtered) on a single axis.
+
+    :param ax: Matplotlib axis to plot on
+    :param df: DataFrame containing the columns
+    :param group: List with one or two column names to plot
+    :param title: Title to set on the axis
+    """
+    colors = ["tab:blue", "tab:red"]
+
+    for color, column in zip(colors, group):
+        signal = -df[column] if column == "gACCy" else df[column]
+        ax.plot(signal, label=column, linewidth=0.8, color=color)
+
+    ax.set_title(title, fontsize=10, pad=8)
+    ax.legend(loc="upper right", fontsize=8)
+
+
+def _make_subplot_figure(n_subplots, height_per_subplot=2.2, max_fig_height=30):
+    """
+    Create a figure with the given number of vertically stacked subplots,
+    sized so titles and axes have enough room to avoid overlap.
+
+    :param n_subplots: Number of subplots to create
+    :param height_per_subplot: Figure height allocated per subplot (inches)
+    :param max_fig_height: Maximum total figure height (inches), to avoid
+        unreasonably tall figures when there are many subplots
+    :return: Tuple of (fig, axes) where axes is always a list
+    """
+    fig_height = min(height_per_subplot * n_subplots, max_fig_height)
+
+    fig, axes = plt.subplots(
+        n_subplots,
+        1,
+        figsize=(14, fig_height),
+        sharex=True,
+        constrained_layout=True
+    )
+
+    if n_subplots == 1:
+        axes = [axes]
+
+    fig.get_layout_engine().set(h_pad=0.04, hspace=0.02)
+
+    return fig, axes
+
+
+# Columns to always exclude from plotting (nSeq is metadata; x, z, gACCx,
+# gACCz are accelerometer channels not needed in these plots)
+ALWAYS_EXCLUDED_COLUMNS = {"nSeq", "x", "z", "gACCx", "gACCz"}
+
+
 def plot_subject_data(subject_data):
     """
     Plot all acquisitions contained in subject_data.
 
     HD (which already merges the former HD and HD_EMG acquisitions into a
-    single DataFrame) is displayed with one subplot per signal. If both
-    gACCy and y columns are present, an additional subplot overlays them
-    (centered and normalized) for comparison.
-    All other acquisitions are plotted individually.
+    single DataFrame) is displayed with one subplot per signal, except
+    that each raw signal is plotted together with its filtered
+    counterpart (columns ending in "_filt") in the same subplot, using
+    different colors. If both gACCy and y columns are present, an
+    additional subplot overlays them (centered and normalized) for
+    comparison, and the individual gACCy/y subplots are skipped since
+    they are already shown in that overlay. The accelerometer channels
+    x, z, gACCx and gACCz are excluded from all plots. All other
+    acquisitions follow the same one-subplot-per-signal rule, with
+    raw/filtered pairing applied as well.
 
     :param subject_data: Dictionary returned by load_subject_data() /
         apply_saved_sync_indices() (with HD already merged)
     """
-
-    import matplotlib.pyplot as plt
 
     non_condition_keys = {"potentiometer_position", "HI_values"}
 
@@ -174,7 +268,7 @@ def plot_subject_data(subject_data):
     )
 
     # ------------------------------------------------------------------
-    # Plot HD (+ comparison if possible)
+    # Plot HD (one subplot per signal, raw+filtered paired + comparison)
     # ------------------------------------------------------------------
 
     if has_hd:
@@ -183,60 +277,53 @@ def plot_subject_data(subject_data):
 
         comparison_available = "gACCy" in hd.columns and "y" in hd.columns
 
-        n_subplots = 1 + int(comparison_available)
-
-        fig, axes = plt.subplots(
-            n_subplots,
-            1,
-            figsize=(14, 3.5 * n_subplots),
-            sharex=True
-        )
-
-        if n_subplots == 1:
-            axes = [axes]
-
-        idx = 0
-
-        # ---------------- HD ----------------
-        for column in hd.columns:
-
-            if column == "nSeq":
-                continue
-
-            signal = -hd[column] if column == "gACCy" else hd[column]
-
-            axes[idx].plot(signal, label=column, linewidth=0.8)
-
-        axes[idx].set_title("HD")
-        axes[idx].legend(loc="upper right", ncol=4, fontsize=8)
-
-        idx += 1
-
-        # ---------------- Comparison ----------------
+        # Always exclude nSeq and the unwanted accelerometer channels;
+        # skip gACCy/y individually if the comparison overlay covers them
+        excluded = set(ALWAYS_EXCLUDED_COLUMNS)
         if comparison_available:
-            gaccy_norm = _center_and_normalize(-hd["gACCy"])
-            y_norm = _center_and_normalize(hd["y"])
+            excluded |= {"gACCy", "y"}
 
-            axes[idx].plot(
-                gaccy_norm,
-                label="HD gACCy (z-scored)",
-                linewidth=1.2
-            )
+        hd_columns = [column for column in hd.columns if column not in excluded]
+        groups = _group_signal_columns(hd_columns)
 
-            axes[idx].plot(
-                y_norm,
-                label="HD_EMG y (z-scored)",
-                linewidth=1.2
-            )
+        n_subplots = len(groups) + int(comparison_available)
 
-            axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)")
-            axes[idx].legend(loc="upper right")
+        if n_subplots > 0:
 
-        plt.tight_layout()
-        plt.show()
+            fig, axes = _make_subplot_figure(n_subplots)
+
+            idx = 0
+
+            # ---------------- HD signals (raw + filtered paired) ----------------
+            for group in groups:
+                title = f"HD - {group[0]}"
+                _plot_group(axes[idx], hd, group, title)
+                idx += 1
+
+            # ---------------- Comparison (overlaid) ----------------
+            if comparison_available:
+                gaccy_norm = _center_and_normalize(-hd["gACCy"])
+                y_norm = _center_and_normalize(hd["y"])
+
+                axes[idx].plot(
+                    gaccy_norm,
+                    label="HD gACCy (z-scored)",
+                    linewidth=1.2
+                )
+
+                axes[idx].plot(
+                    y_norm,
+                    label="HD_EMG y (z-scored)",
+                    linewidth=1.2
+                )
+
+                axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)", fontsize=10, pad=8)
+                axes[idx].legend(loc="upper right")
+
+            plt.show()
 
     # ------------------------------------------------------------------
-    # Plot remaining acquisitions
+    # Plot remaining acquisitions (one subplot per signal, raw+filtered paired)
     # ------------------------------------------------------------------
 
     for condition, content in subject_data.items():
@@ -255,17 +342,19 @@ def plot_subject_data(subject_data):
 
         df = content["data"]
 
-        plt.figure(figsize=(14, 4))
+        columns = [column for column in df.columns if column not in ALWAYS_EXCLUDED_COLUMNS]
+        groups = _group_signal_columns(columns)
 
-        for column in df.columns:
+        n_subplots = len(groups)
 
-            if column == "nSeq":
-                continue
+        if n_subplots == 0:
+            continue
 
-            plt.plot(df[column], label=column, linewidth=0.8)
+        fig, axes = _make_subplot_figure(n_subplots)
 
-        plt.title(condition)
-        plt.legend(loc="upper right", ncol=4, fontsize=8)
-        plt.tight_layout()
+        for idx, group in enumerate(groups):
+            title = f"{condition} - {group[0]}"
+            _plot_group(axes[idx], df, group, title)
+
         plt.show()
 

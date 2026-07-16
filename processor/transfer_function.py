@@ -22,7 +22,7 @@ from processor.emg import emg_transfer_function
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def apply_transfer_functions(df, x0=5 , xmax=1, Nmax=13867):
+def apply_transfer_functions(df, x0=5 , xmax=3, Nmax=13867):
     """
     Apply all sensor transfer functions to a raw DataFrame.
 
@@ -43,7 +43,7 @@ def apply_transfer_functions(df, x0=5 , xmax=1, Nmax=13867):
 
     df_out = transfer_acc(df_out)
 
-    df_out = convert_displacement(df_out, x0=x0, xmax=xmax, Nmax=Nmax)
+    df_out = convert_displacement(df_out, x0=x0)
 
     df_out = emg_transfer_function(df_out)
 

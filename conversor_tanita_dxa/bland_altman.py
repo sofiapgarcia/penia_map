@@ -13,23 +13,23 @@ def plot_bland_altman_pairs(
     show_plot: bool = True
 ) -> None:
     """
-    Generate one Bland-Altman plot at a time for each DXA-TANITA variable pair
-    defined in variable_mapping.
+    Generate Bland-Altman plots for each DXA-TANITA variable pair defined in
+    variable_mapping.
 
     :param df: DataFrame containing both DXA and TANITA columns, one row per subject
     :param variable_mapping: dict mapping DXA column name -> TANITA column name
     :param save_dir: if provided, path to directory where each figure will be saved as PNG
-    :param show_plot: if True, displays each figure with plt.show() before moving to the next
+    :param show_plot: if True, displays all figures at once with a single plt.show() call
     :return: None
     """
     df = _convert_dxa_grams_to_kg(df, variable_mapping)
-
     valid_pairs = _filter_valid_pairs(df, variable_mapping)
 
     if not valid_pairs:
         print("No valid pairs found to plot.")
         return
 
+    figs = []
     for dxa_col, tanita_col in valid_pairs:
         fig, ax = plt.subplots(figsize=(7, 6))
         _plot_single_bland_altman(df, dxa_col, tanita_col, ax)
@@ -38,9 +38,12 @@ def plot_bland_altman_pairs(
         if save_dir:
             _save_figure(fig, save_dir, dxa_col, tanita_col)
 
-        if show_plot:
-            plt.show()
-        else:
+        figs.append(fig)
+
+    if show_plot:
+        plt.show()
+    else:
+        for fig in figs:
             plt.close(fig)
 
 

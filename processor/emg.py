@@ -39,7 +39,7 @@ def emg_transfer_function(df,
 
 def process_emg(df, fs, show_plot=True):
     """
-    Process EMG channels (EMG_Flexor, EMG_Extensor) in a DataFrame: apply a notch filter at 50 Hz to remove power-line
+    Process EMG channels (EMG_Flexor, EMG_Extensor) in a DataFrame: apply a notch filter at 50 Hz to remove powerpenia-line
     interference, and apply a 4th-order Butterworth bandpass filter
     (10-499 Hz) to preserve the physiological content of the surface EMG
     signal. Filtered signals are added as new columns (e.g. 'EMG_Flexor_filt').
@@ -132,7 +132,7 @@ def _bandpass_filter_emg(signal, fs, lowcut=10, highcut=499, order=4):
 
 def _notch_filter_emg(signal, fs, notch_freq=50, quality_factor=30):
     """
-    Apply a notch filter to remove power-line interference from an EMG
+    Apply a notch filter to remove powerpenia-line interference from an EMG
     signal (e.g. 50 Hz mains noise).
 
     :param signal: 1D array with the EMG signal (already bandpass filtered)

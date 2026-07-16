@@ -1,22 +1,33 @@
 import os
+import pandas as pd
 
 from data_acquisition.data_loader import load_subject_data
-from data_acquisition.data_visualizer import plot_sensors_over_time
+from data_acquisition.data_visualizer import plot_sensors_over_time , plot_subject_data
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
 from synchronization.sync import apply_saved_sync_indices
 from processor.trimming import apply_trim_indices
 from processor.emg import process_emg , get_emg_envelope
-from metrics.power.peak_power_calculation import process_hd_power
+from metrics.powerpenia.peak_power_calculation import process_hd_power
 from metrics.mvc_values import get_mvc_values
+from metrics.concentric_phase_detetection import detect_concentric_eccentric_phases
+from constants import DISPLACEMENT_COLUMN
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
+
 non_condition_keys = {"potentiometer_position", "HI_values"}
 
-#subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S15"]
+subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
+#subjects = ["S100"]
+
+# collects one power_info row (with subject id) per subject, for the final Excel export
+all_power_info = []
+
 for subject in subjects:
+
+    if subject in ["S107","S53","S39"]:
+        continue
 
     print(f"\n{'='*60}")
     print(f"Processing {subject}")
@@ -28,6 +39,7 @@ for subject in subjects:
     subject_data = load_subject_data(path, subject)
 
     pot_position = subject_data["potentiometer_position"]
+
 
     for condition, content in subject_data.items():
 
@@ -55,7 +67,8 @@ for subject in subjects:
         #for column in df_interpolated.columns:
             #plot_interpolated_signal(df_interpolated, mask, column)
 
-        plot_sensors_over_time(params, df_interpolated)
+        #if condition=="HD":
+            #plot_sensors_over_time(params, df_processed)
 
 
     # Synchronize acquisitions
@@ -69,15 +82,29 @@ for subject in subjects:
     subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
 
-    # peak power calculation
-    subject_data_power = process_hd_power(subject_data_sync, show_plot=True)
+    # concentric phase detection
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
+
+    # peak powerpenia calculation
+    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
-    subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
+    #subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
 
     # Get MVC values
-    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+    #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
 
+    # collect this subject's power_info row, tagged with their numeric id
+    subject_power_info = subject_data_power["power_info"].copy()
+    subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
+    all_power_info.append(subject_power_info)
+
+
+# build the final table (one row per subject) and export it to Excel
+power_summary = pd.concat(all_power_info, ignore_index=True)
+power_summary_path = os.path.join(path, "power_domain_results.xlsx")
+power_summary.to_excel(power_summary_path, index=False)
+print(f"\nSaved power summary for {len(power_summary)} subject(s) to {power_summary_path}")
 
 
 

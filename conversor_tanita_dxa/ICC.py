@@ -1,9 +1,6 @@
 import pandas as pd
 import pingouin as pg
 
-
-# Variáveis do DXA que são reportadas em gramas e precisam de ser convertidas
-# para kg antes de comparar com a TANITA (que já reporta em kg)
 DXA_VARS_IN_GRAMS = {
     "Magro_total",
     "Massa_magra_braco_direito",
@@ -31,11 +28,7 @@ def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = 
     results = []
 
     for dxa_col, tanita_col in variable_mapping.items():
-        if dxa_col not in df.columns or tanita_col not in df.columns:
-            results.append(_missing_column_result(dxa_col, tanita_col, df))
-            continue
-
-        results.append(_compute_single_icc(df, dxa_col, tanita_col, icc_type, alpha))
+        results.append(_compute_single_icc(df, dxa_col, tanita_col, icc_type))
 
     return pd.DataFrame(results)
 
@@ -58,27 +51,6 @@ def _convert_dxa_grams_to_kg(df: pd.DataFrame, variable_mapping: dict) -> pd.Dat
     return df
 
 
-def _missing_column_result(dxa_col: str, tanita_col: str, df: pd.DataFrame) -> dict:
-    """
-    Build a placeholder result row when one of the mapped columns is missing from the DataFrame.
-
-    :param dxa_col: DXA variable name
-    :param tanita_col: TANITA variable name
-    :param df: DataFrame being checked, used to identify which column is missing
-    :return: dict with NaN metrics and a note indicating the missing column
-    """
-    missing = dxa_col if dxa_col not in df.columns else tanita_col
-    return {
-        "DXA_variable": dxa_col,
-        "TANITA_variable": tanita_col,
-        "n": 0,
-        "ICC": None,
-        "CI95%": None,
-        "p-value": None,
-        "interpretation": None,
-        "note": f"Column '{missing}' not found"
-    }
-
 
 _ICC_TYPE_MAP = {
     "ICC1": "ICC(1,1)",
@@ -90,7 +62,7 @@ _ICC_TYPE_MAP = {
 }
 
 
-def _compute_single_icc(df: pd.DataFrame, dxa_col: str, tanita_col: str, icc_type: str, alpha: float) -> dict:
+def _compute_single_icc(df: pd.DataFrame, dxa_col: str, tanita_col: str, icc_type: str) -> dict:
     """
     Reshape a single pair of columns into long format and compute the ICC using pingouin.
 
@@ -99,23 +71,10 @@ def _compute_single_icc(df: pd.DataFrame, dxa_col: str, tanita_col: str, icc_typ
     :param tanita_col: TANITA variable name
     :param icc_type: which ICC form to extract (accepts legacy names like 'ICC2' or new pingouin
                       labels like 'ICC(A,1)')
-    :param alpha: significance level used for confidence intervals
     :return: dict with ICC value, CI95%, p-value and interpretation
     """
     pair_df = df[[dxa_col, tanita_col]].dropna()
     n = len(pair_df)
-
-    if n < 3:
-        return {
-            "DXA_variable": dxa_col,
-            "TANITA_variable": tanita_col,
-            "n": n,
-            "ICC": None,
-            "CI95%": None,
-            "p-value": None,
-            "interpretation": None,
-            "note": "n < 3"
-        }
 
     long_df = pd.DataFrame({
         "subject": list(pair_df.index) * 2,

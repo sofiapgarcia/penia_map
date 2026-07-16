@@ -32,12 +32,17 @@ merged_df = (
     .merge(power, on=id_column, how="outer")
     .merge(osteo, on=id_column, how="outer")
 )
+
 # Add the estimated metabolic age
 merged_df = merged_df.merge(
     df_ant[[id_column, "Estimated metabolic age"]],
     on=id_column,
     how="left",
 )
+
+# Exclude subjects with incomplete/invalid data
+excluded_ids = [107, 53, 39]
+merged_df = merged_df[~merged_df[id_column].isin(excluded_ids)]
 
 # Save the merged DataFrame
 merged_df.to_excel(output_path, index=False)

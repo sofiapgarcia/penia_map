@@ -47,7 +47,7 @@ from constants import PENIA_MAP_GROUPS
 def select_features_by_group(
     df,
     groups_dict=PENIA_MAP_GROUPS,
-    selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia", "Body Fat"],
+    selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia"],
     target_col="Estimated metabolic age",
     n_features_per_group=2,
     corr_threshold=0.85,

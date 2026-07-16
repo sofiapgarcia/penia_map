@@ -33,7 +33,7 @@ from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 
 # internal imports
-from nested_cross_validation import nested_cross_val , tune_production_model
+from ml_pipeline.modeling.nested_cross_validation import nested_cross_val , tune_production_model
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants
 # ------------------------------------------------------------------------------------------------------------------- #

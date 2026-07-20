@@ -121,7 +121,7 @@ def evaluate_production_model(train_df: pd.DataFrame,
     estimator = RandomForestRegressor(random_state=RANDOM_SEED)
 
     param_grid = {
-        "n_estimators": [50, 100, 500],
+        "n_estimators": [50,75, 100, 200, 500],
         "max_depth": [5, 10, 20, None],
         "min_samples_split": [2, 5, 10]
     }

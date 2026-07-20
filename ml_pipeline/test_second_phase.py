@@ -1,6 +1,6 @@
 from ml_pipeline.preprocessing.data_augmentation import *
 from ml_pipeline.preprocessing.feature_reduction import select_features_by_group
-from ml_pipeline.modeling.test_models import run_training_pipeline , split_train_test_df
+from ml_pipeline.modeling.test_models import run_training_pipeline , split_train_test_df , evaluate_production_model
 import pandas as pd
 
 filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\final_dataframe.xlsx"
@@ -21,28 +21,28 @@ df_features = df.drop(columns=["ID"], errors="ignore")
 #corr_penia = correlation_by_groups(df_features)
 
 # reduce the number of features based on correlation by group
-df_reduced = select_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia"],n_features_per_group=3 , verbose=True)
+df_reduced = select_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia"],n_features_per_group=2 , verbose=True)
 
 
 df_train , df_test = split_train_test_df(df_reduced, test_size=0.15)
 
 # apply data augmentation
 # Gaussian Copula + SMOGN
-#df_augmented = apply_data_augmentation(df_train)
+#df_augmented = apply_data_augmentation(df_train, n_samples = 30)
 
 # analyse the new distribution of target
 #plot_distribution(df_augmented, "Estimated metabolic age", bin_width=1)
 
 # Model selection
-results_summary = run_training_pipeline(df_train, splits_inner=3, splits_outer=5)
+#results_summary = run_training_pipeline(df_augmented, splits_inner=3, splits_outer=5)
 
 
-filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\results_summary_second_phase.xlsx"
+filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\results\results_summary_second_phase.xlsx"
 
-results_summary.to_excel(filepath3, index=False)
+#results_summary.to_excel(filepath3, index=False)
 
 # Evaluation of production model
-#evaluate_production_model(df_train, df_test)
+evaluate_production_model(df_train, df_test)
 
 
 # Additional functions

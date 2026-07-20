@@ -8,9 +8,9 @@ from data_acquisition.data_visualizer import plot_sensors_over_time
 
 if __name__ == '__main__':
 
-    base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
+    base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 
-    selected_subject = "S39"
+    selected_subject = "S26"
 
     subject_path = os.path.join(base_path, selected_subject)
 
@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     subject_data = load_subject_data(base_path, selected_subject)
 
-    non_condition_keys = {"potentiometer_position", "HI_values"}
+    non_condition_keys = {"handgrip_position", "handgrip_position_source","HI_values"}
 
     for condition, content in subject_data.items():
 

@@ -22,7 +22,7 @@ from processor.emg import emg_transfer_function
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def apply_transfer_functions(df, x0=5 , xmax=3, Nmax=13867):
+def apply_transfer_functions(df, x0 , hp_source,  xmax=3, Nmax=13867):
     """
     Apply all sensor transfer functions to a raw DataFrame.
 
@@ -33,7 +33,8 @@ def apply_transfer_functions(df, x0=5 , xmax=3, Nmax=13867):
     4. Force
 
     :param df: Raw input DataFrame
-    :param x0: potentiometer measurement of the open position
+    :param x0: handgrip measurement of the open position
+    :param hp_source: handle or potentiometer
     :param xmax: handle measurement of the closed position
     :param Nmax: bits of the closed position
     :return: Transformed DataFrame
@@ -43,7 +44,7 @@ def apply_transfer_functions(df, x0=5 , xmax=3, Nmax=13867):
 
     df_out = transfer_acc(df_out)
 
-    df_out = convert_displacement(df_out, x0=x0)
+    df_out = convert_displacement(df_out, x0=x0 , hp_source = hp_source)
 
     df_out = emg_transfer_function(df_out)
 

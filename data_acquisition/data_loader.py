@@ -20,6 +20,7 @@ _parse_filename(...): Parses information from filenames.
 import pandas as pd
 import os
 import json
+import numpy as np
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
@@ -38,7 +39,8 @@ def load_subject_data(base_path, subject):
                          "subject": ...,
                          "params": {...},
                          "data": df,
-                         "potentiometer_position": ...,
+                         "handgrip_position": ...,
+                         "handgrip_position_source":...,
                          "handgrip_isometric": {...}
                      },
                      ...
@@ -48,11 +50,12 @@ def load_subject_data(base_path, subject):
     subject_path = os.path.join(base_path, subject)
     subject_id = subject.replace("S", "")
 
-    pot_value = _load_potentiometer_position(base_path, subject_id)
+    hp_value, hp_source = _load_potentiometer_position(base_path, subject_id)
     hg_values = _load_handgrip_isometric(base_path, subject_id)
 
     subject_data = {
-        "potentiometer_position": pot_value,
+        "handgrip_position": hp_value,
+        "handgrip_position_source": hp_source,
         "HI_values": hg_values
     }
 
@@ -67,10 +70,22 @@ def load_subject_data(base_path, subject):
 
         condition = filename.replace(".txt", "").split("_", 1)[1]
 
-        subject_data[condition] = {
-            "params": params,
-            "data": df
-        }
+        if condition == "calibration":
+            # Only the two displacement levels are needed for calibration,
+            # not the full raw signal
+            low_level, high_level = _get_levels(df["DISPLACEMENT"])
+
+            subject_data[condition] = {
+                "params": params,
+                "low_level": low_level,
+                "high_level": high_level
+            }
+
+        else:
+            subject_data[condition] = {
+                "params": params,
+                "data": df
+            }
 
     return subject_data
 
@@ -226,9 +241,20 @@ def extract_data_from_file(file_path):
 
             df.columns.values[emg_indices[1]] = "EMG_Flexor"
 
-    df = df.drop(
-        columns="DI"
-    )
+    elif condition == "calibration":
+
+        df.columns = [
+            column.replace("MICRO", "DISPLACEMENT")
+            .replace("RAW", "FORCE")
+            for column in df.columns
+        ]
+
+        # Drop magnetometer columns, not needed for calibration
+        columns_to_drop = ["pMAGx", "pMAGy", "pMAGz"]
+
+        df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
+
+    df = df.drop(columns="DI")
 
     params = {
         "sampling rate": device_info["sampling rate"],
@@ -262,27 +288,37 @@ def _parse_filename(file):
 def _load_potentiometer_position(base_path, subject_id):
     """
     Load potentiometer position for a given subject.
+    Tries 'pega_positions.xlsx' first; if the subject is not found there,
+    falls back to 'potentiometer_positions.xlsx'.
 
-    ```
     :param base_path: Path to dataset folder
     :param subject_id: Subject ID without "S" prefix
-    :return: Potentiometer position value or None if not found
-    ```
+    :return: Tuple (position value or None, source label or None)
+             source label is "handle" if found in pega_positions.xlsx,
+             or "potentiometer" if found in potentiometer_positions.xlsx
     """
 
-    file_path = os.path.join(base_path, "potentiometer_positions.xlsx")
-    df = pd.read_excel(file_path)
+    # Try pega_positions.xlsx first
+    pega_path = os.path.join(base_path, "pega_positions.xlsx")
+    df_pega = pd.read_excel(pega_path)
+    df_pega[df_pega.columns[0]] = df_pega[df_pega.columns[0]].astype(str)
 
-    # Ensure consistent ID format
-    df[df.columns[0]] = df[df.columns[0]].astype(str)
+    match = df_pega[df_pega.iloc[:, 0] == subject_id]
 
-    # Find matching subject row
-    match = df[df.iloc[:, 0] == subject_id]
+    if not match.empty:
+        return match.iloc[0, 1], "handle"
 
-    if match.empty:
-        return None
+    # Fallback to potentiometer_positions.xlsx
+    pot_path = os.path.join(base_path, "potentiometer_positions.xlsx")
+    df_pot = pd.read_excel(pot_path)
+    df_pot[df_pot.columns[0]] = df_pot[df_pot.columns[0]].astype(str)
 
-    return match.iloc[0, 1]
+    match = df_pot[df_pot.iloc[:, 0] == subject_id]
+
+    if not match.empty:
+        return match.iloc[0, 1], "potentiometer"
+
+    return None, None
 
 def _load_handgrip_isometric(base_path, subject_id):
     """
@@ -314,3 +350,25 @@ def _load_handgrip_isometric(base_path, subject_id):
         "H3": row.get("H3")
     }
 
+def _get_levels(signal, pct=10):
+    """
+    Estimate the low and high levels of a square-wave-like signal.
+
+    :param signal: 1D array (or list) containing the signal samples, e.g. in bits
+    :param pct: Percentage of samples (from each end of the sorted signal) used to estimate each level
+    :return: Tuple (low_level, high_level) with the estimated low and high levels
+    """
+    # Sort the signal to group low, transition, and high samples together
+    s = np.sort(np.asarray(signal))
+    n = len(s)
+
+    # Number of samples used to estimate each level
+    k = max(1, int(n * pct / 100))
+
+    # Median of the lowest k samples -> low level estimate
+    low_level = np.median(s[:k])
+
+    # Median of the highest k samples -> high level estimate
+    high_level = np.median(s[-k:])
+
+    return low_level, high_level

@@ -5,7 +5,7 @@ from data_acquisition.data_loader import load_subject_data
 from data_acquisition.data_visualizer import plot_sensors_over_time , plot_subject_data
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
-from synchronization.sync import apply_saved_sync_indices
+from synchronization.sync import apply_saved_sync_indices, synchronize_hd_acquisitions
 from processor.trimming import apply_trim_indices
 from processor.emg import process_emg , get_emg_envelope
 from metrics.powerpenia.peak_power_calculation import process_hd_power
@@ -16,17 +16,17 @@ from constants import DISPLACEMENT_COLUMN
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
 
 
-non_condition_keys = {"potentiometer_position", "HI_values"}
+non_condition_keys = {"potentiometer_position", "potentiometer_position_source","HI_values"}
 
-subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-#subjects = ["S100"]
+#subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
+subjects = ["S131"]
 
 # collects one power_info row (with subject id) per subject, for the final Excel export
 all_power_info = []
 
 for subject in subjects:
 
-    if subject in ["S107","S53","S39"]:
+    if subject in ["S107","S53","S39","129"]:
         continue
 
     print(f"\n{'='*60}")
@@ -38,8 +38,8 @@ for subject in subjects:
     # Read data
     subject_data = load_subject_data(path, subject)
 
-    pot_position = subject_data["potentiometer_position"]
-
+    handgrip_position = subject_data["handgrip_position"]
+    hp_source = subject_data["handgrip_position_source"]
 
     for condition, content in subject_data.items():
 
@@ -51,7 +51,7 @@ for subject in subjects:
         fs = content["params"]["sampling rate"]
 
         # Apply transfer functions
-        df_transferred = apply_transfer_functions(df, x0=pot_position)
+        df_transferred = apply_transfer_functions(df, x0=handgrip_position, hp_source = hp_source)
 
         # Interpolate
         df_interpolated, info, mask = interpolate_signal(df_transferred)
@@ -72,21 +72,21 @@ for subject in subjects:
 
 
     # Synchronize acquisitions
-    #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
-    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder)
+    subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
+    #subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder)
     #plot_subject_data(subject_data_sync)
 
     # Trim data
     # Interactively select and save trim regions for this subject
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
-    subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
+    #subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
+    #subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
 
     # peak powerpenia calculation
-    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
+    #subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
     #subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
@@ -95,16 +95,17 @@ for subject in subjects:
     #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
 
     # collect this subject's power_info row, tagged with their numeric id
-    subject_power_info = subject_data_power["power_info"].copy()
-    subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
-    all_power_info.append(subject_power_info)
+    #subject_power_info = subject_data_power["power_info"].copy()
+    #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
+    #all_power_info.append(subject_power_info)
 
-
+"""
 # build the final table (one row per subject) and export it to Excel
 power_summary = pd.concat(all_power_info, ignore_index=True)
 power_summary_path = os.path.join(path, "power_domain_results.xlsx")
 power_summary.to_excel(power_summary_path, index=False)
 print(f"\nSaved power summary for {len(power_summary)} subject(s) to {power_summary_path}")
+"""
 
 
 

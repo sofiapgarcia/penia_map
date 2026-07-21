@@ -41,6 +41,15 @@ for subject in subjects:
     handgrip_position = subject_data["handgrip_position"]
     hp_source = subject_data["handgrip_position_source"]
 
+    calibration = subject_data.get("calibration")
+
+    if calibration is not None:
+        low_level = calibration["low_level"]
+        high_level = calibration["high_level"]
+    else:
+        low_level = None
+        high_level = None
+
     for condition, content in subject_data.items():
 
         if condition in non_condition_keys:
@@ -51,7 +60,7 @@ for subject in subjects:
         fs = content["params"]["sampling rate"]
 
         # Apply transfer functions
-        df_transferred = apply_transfer_functions(df, x0=handgrip_position, hp_source = hp_source)
+        df_transferred = apply_transfer_functions(df, x0=handgrip_position, hp_source = hp_source , low_level = low_level , high_level = high_level)
 
         # Interpolate
         df_interpolated, info, mask = interpolate_signal(df_transferred)

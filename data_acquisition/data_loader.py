@@ -73,7 +73,7 @@ def load_subject_data(base_path, subject):
         if condition == "calibration":
             # Only the two displacement levels are needed for calibration,
             # not the full raw signal
-            low_level, high_level = _get_levels(df["DISPLACEMENT"])
+            low_level, high_level = _get_levels(df["DISPLACEMENT"], show_plot = True)
 
             subject_data[condition] = {
                 "params": params,
@@ -350,12 +350,16 @@ def _load_handgrip_isometric(base_path, subject_id):
         "H3": row.get("H3")
     }
 
-def _get_levels(signal, pct=10):
+import matplotlib.pyplot as plt
+
+
+def _get_levels(signal, pct=10, show_plot=False):
     """
     Estimate the low and high levels of a square-wave-like signal.
 
     :param signal: 1D array (or list) containing the signal samples, e.g. in bits
     :param pct: Percentage of samples (from each end of the sorted signal) used to estimate each level
+    :param show_plot: If True, plot the signal with the estimated low/high levels for visual confirmation
     :return: Tuple (low_level, high_level) with the estimated low and high levels
     """
     # Sort the signal to group low, transition, and high samples together
@@ -370,5 +374,21 @@ def _get_levels(signal, pct=10):
 
     # Median of the highest k samples -> high level estimate
     high_level = np.median(s[-k:])
+
+    if show_plot:
+
+        plt.figure(figsize=(12, 4))
+
+        plt.plot(np.asarray(signal), label="Signal")
+
+        plt.axhline(low_level, color="red", linestyle="--", label=f"Low level = {low_level:.1f}")
+        plt.axhline(high_level, color="green", linestyle="--", label=f"High level = {high_level:.1f}")
+
+        plt.xlabel("Sample")
+        plt.ylabel("Displacement")
+        plt.title("Calibration signal - estimated levels")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
     return low_level, high_level

@@ -25,7 +25,7 @@ X_MAX= 29
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def convert_displacement(df, x0 , hp_source, xmax = X_MAX):
+def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX):
     """
     Convert displacement signal from bits to millimeters.
 
@@ -60,6 +60,11 @@ def convert_displacement(df, x0 , hp_source, xmax = X_MAX):
 
     elif hp_source == "handle":
 
+        # N0 of the calibration file
+        N0 = high_level
+
+        # Nmax of the calibration file
+        Nmax = low_level
 
     # Extract raw sensor signal and ensure numeric type
     N = df_converted[DISPLACEMENT_COLUMN].astype(float)
@@ -90,7 +95,7 @@ def _convert_x0(x0):
     :param x0: Input numeric value
     :return: Transformed value computed as 0.2146 * x0 + 3.0154
     """
-    return 0.2146 * x0 + 3.0154
+    return (0.2146 * x0 + 3.0154) * 10
 
 def _calculate_N0(x0):
     """

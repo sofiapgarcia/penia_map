@@ -42,7 +42,7 @@ def apply_transfer_functions(df, x0 , hp_source , low_level , high_level):
 
     df_out = transfer_acc(df_out)
 
-    df_out = convert_displacement(df_out, x0=x0 , hp_source = hp_source , low_level, high_level)
+    df_out = convert_displacement(df_out, x0=x0 , hp_source = hp_source , low_level = low_level, high_level = high_level)
 
     df_out = emg_transfer_function(df_out)
 

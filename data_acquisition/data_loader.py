@@ -21,6 +21,7 @@ import pandas as pd
 import os
 import json
 import numpy as np
+import matplotlib.pyplot as plt
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
@@ -50,7 +51,7 @@ def load_subject_data(base_path, subject):
     subject_path = os.path.join(base_path, subject)
     subject_id = subject.replace("S", "")
 
-    hp_value, hp_source = _load_potentiometer_position(base_path, subject_id)
+    hp_value, hp_source = _load_handgrip_position(base_path, subject_id)
     hg_values = _load_handgrip_isometric(base_path, subject_id)
 
     subject_data = {
@@ -285,7 +286,7 @@ def _parse_filename(file):
 
     return subject, condition
 
-def _load_potentiometer_position(base_path, subject_id):
+def _load_handgrip_position(base_path, subject_id):
     """
     Load potentiometer position for a given subject.
     Tries 'pega_positions.xlsx' first; if the subject is not found there,
@@ -350,16 +351,14 @@ def _load_handgrip_isometric(base_path, subject_id):
         "H3": row.get("H3")
     }
 
-import matplotlib.pyplot as plt
 
 
-def _get_levels(signal, pct=10, show_plot=False):
+def _get_levels(signal, pct=10 , show_plot = False):
     """
     Estimate the low and high levels of a square-wave-like signal.
 
     :param signal: 1D array (or list) containing the signal samples, e.g. in bits
     :param pct: Percentage of samples (from each end of the sorted signal) used to estimate each level
-    :param show_plot: If True, plot the signal with the estimated low/high levels for visual confirmation
     :return: Tuple (low_level, high_level) with the estimated low and high levels
     """
     # Sort the signal to group low, transition, and high samples together
@@ -376,19 +375,30 @@ def _get_levels(signal, pct=10, show_plot=False):
     high_level = np.median(s[-k:])
 
     if show_plot:
-
-        plt.figure(figsize=(12, 4))
-
-        plt.plot(np.asarray(signal), label="Signal")
-
-        plt.axhline(low_level, color="red", linestyle="--", label=f"Low level = {low_level:.1f}")
-        plt.axhline(high_level, color="green", linestyle="--", label=f"High level = {high_level:.1f}")
-
-        plt.xlabel("Sample")
-        plt.ylabel("Displacement")
-        plt.title("Calibration signal - estimated levels")
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
+        _plot_levels(signal, low_level, high_level)
 
     return low_level, high_level
+
+
+def _plot_levels(signal, low_level, high_level):
+    """
+    Plot a signal together with its estimated low and high levels, for visual confirmation.
+
+    :param signal: 1D array (or list) containing the signal samples, e.g. in bits
+    :param low_level: Estimated low level, plotted as a dashed horizontal line
+    :param high_level: Estimated high level, plotted as a dashed horizontal line
+    :return: None
+    """
+    plt.figure(figsize=(12, 4))
+
+    plt.plot(np.asarray(signal), label="Signal")
+
+    plt.axhline(low_level, color="red", linestyle="--", label=f"Low level = {low_level:.1f}")
+    plt.axhline(high_level, color="green", linestyle="--", label=f"High level = {high_level:.1f}")
+
+    plt.xlabel("Sample")
+    plt.ylabel("Displacement")
+    plt.title("Calibration signal - estimated levels")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()

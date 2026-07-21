@@ -13,13 +13,13 @@ from metrics.mvc_values import get_mvc_values
 from metrics.concentric_phase_detetection import detect_concentric_eccentric_phases
 from constants import DISPLACEMENT_COLUMN
 
-path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos"
+path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 
 
-non_condition_keys = {"potentiometer_position", "potentiometer_position_source","HI_values"}
+non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S131"]
+subjects = ["S14"]
 
 # collects one power_info row (with subject id) per subject, for the final Excel export
 all_power_info = []
@@ -54,7 +54,7 @@ for subject in subjects:
 
         if condition in non_condition_keys:
             continue
-
+        print(condition)
         df = content["data"]
         params = content["params"]
         fs = content["params"]["sampling rate"]
@@ -76,13 +76,13 @@ for subject in subjects:
         #for column in df_interpolated.columns:
             #plot_interpolated_signal(df_interpolated, mask, column)
 
-        #if condition=="HD":
-            #plot_sensors_over_time(params, df_processed)
+        if condition=="HD":
+            plot_sensors_over_time(params, df_processed)
 
 
     # Synchronize acquisitions
-    subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
-    #subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder)
+    #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
+    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder)
     #plot_subject_data(subject_data_sync)
 
     # Trim data

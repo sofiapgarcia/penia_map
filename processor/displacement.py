@@ -88,16 +88,6 @@ def convert_displacement_2(df, x0 , hp_source, low_level, high_level, xmax = X_M
         # negative displacement values; rescale to the physical range
         absolute_position = _correct_displacement(absolute_position, xmax_physical_mm=L)
 
-        absolute_position = pd.Series(
-            absolute_position,
-            index=df_converted.index,
-            name=DISPLACEMENT_COLUMN
-        )
-
-        absolute_position.to_excel(
-            r"C:\Users\Sofia\Desktop\funcao_professor.xlsx"
-        )
-
     df_converted[DISPLACEMENT_COLUMN] = absolute_position
 
     return df_converted

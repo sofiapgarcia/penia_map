@@ -30,6 +30,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
+from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 
 # internal imports
@@ -75,8 +77,10 @@ def run_training_pipeline(
     X_train = train_df.drop(columns=[target_column])
     y_train = train_df[target_column]
 
-    # Initialize results container (replaces global variable)
-    results = _init_results_tracker()
+    # Initialize results container
+    results = {
+        'all_results': []
+    }
 
     # Perform model selection using nested cross-validation
     results = _perform_model_selection(
@@ -94,7 +98,7 @@ def run_training_pipeline(
 
     return results_summary
 
-def evaluate_production_model(train_df: pd.DataFrame,
+def evaluate_production_model_simple(train_df: pd.DataFrame,
                               test_df: pd.DataFrame,
                               target_column: str = "Estimated metabolic age",
                               cv_splits: int = 5) -> None:
@@ -121,9 +125,11 @@ def evaluate_production_model(train_df: pd.DataFrame,
     estimator = RandomForestRegressor(random_state=RANDOM_SEED)
 
     param_grid = {
-        "n_estimators": [50,75, 100, 200, 500],
-        "max_depth": [5, 10, 20, None],
-        "min_samples_split": [2, 5, 10]
+        "n_estimators": [50, 75, 100, 200, 500],
+        "max_depth": [3, 5, 7, 10, None],
+        "min_samples_leaf": [1, 3, 5, 10],
+        "min_samples_split": [2, 5, 10],
+        "max_features": ["sqrt", "log2", None]
     }
 
     # Perform hyperparameter tuning on training data only (to avoid data leakage)
@@ -162,25 +168,135 @@ def evaluate_production_model(train_df: pd.DataFrame,
     print(f"MAE:      {mae_test:.4f}")
     print(f"RMSE:     {rmse_test:.4f}")
 
+
+def evaluate_production_model_k_fold(df: pd.DataFrame,
+                               target_column: str = "Estimated metabolic age",
+                               n_splits: int = 5,
+                               param_grid: Dict = None,
+                               inner_cv_splits: int = 5,
+                               n_strat_bins: int = 5,
+                               plot_distribution: bool = True) -> pd.DataFrame:
+    """
+    Evaluates the production model using k-fold cross-validation over the full
+    dataset, with folds stratified by the target variable (binned into
+    quantile-based groups) to ensure a similar target distribution across
+    folds. Hyperparameter tuning is performed independently within each fold's
+    training data only, to avoid data leakage into the validation fold.
+
+    :param df: full DataFrame (features + target), e.g. df_reduced
+    :param target_column: name of the target column
+    :param n_splits: number of outer k-fold splits (used for evaluation)
+    :param param_grid: hyperparameter grid for the Random Forest
+    :param inner_cv_splits: number of CV splits used for hyperparameter tuning
+        within each outer fold's training data
+    :param n_strat_bins: number of quantile bins used to stratify the
+        continuous target for fold splitting
+    :param plot_distribution: whether to plot the target distribution per fold
+    :return: DataFrame containing the metrics and best hyperparameters for each fold
+    """
+
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
+
+    if param_grid is None:
+        param_grid = {
+            "n_estimators": [100, 200],
+            "max_depth": [3, 5, 7, None],
+            "min_samples_leaf": [3, 5, 10],
+        }
+
+    y_binned = pd.qcut(y, q=n_strat_bins, labels=False, duplicates="drop")
+
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=RANDOM_SEED)
+    fold_results = []
+    fold_target_data = []  # holds target values per fold, for plotting
+
+    for fold_num, (train_idx, val_idx) in enumerate(skf.split(X, y_binned), start=1):
+        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+        y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+
+        # Store target values for the distribution plot
+        fold_target_data.append({
+            "fold": fold_num,
+            "train_values": y_train.values,
+            "val_values": y_val.values,
+        })
+
+        estimator = RandomForestRegressor(random_state=RANDOM_SEED)
+        best_model = tune_production_model(
+            X=X_train, y=y_train, estimator=estimator,
+            param_grid=param_grid, cv_splits=inner_cv_splits
+        )
+
+        y_train_pred = best_model.predict(X_train)
+        y_val_pred = best_model.predict(X_val)
+
+        r2_train = r2_score(y_train, y_train_pred)
+        mae_train = mean_absolute_error(y_train, y_train_pred)
+        rmse_train = np.sqrt(mean_squared_error(y_train, y_train_pred))
+
+        r2_val = r2_score(y_val, y_val_pred)
+        mae_val = mean_absolute_error(y_val, y_val_pred)
+        rmse_val = np.sqrt(mean_squared_error(y_val, y_val_pred))
+
+        print(f"\n--- Fold {fold_num}/{n_splits} ---")
+        print(f"Train target range: [{y_train.min():.1f}, {y_train.max():.1f}] "
+              f"(mean={y_train.mean():.1f})")
+        print(f"Val target range:   [{y_val.min():.1f}, {y_val.max():.1f}] "
+              f"(mean={y_val.mean():.1f})")
+        print(f"Best params: n_estimators={best_model.get_params()['n_estimators']}, "
+              f"max_depth={best_model.get_params()['max_depth']}, "
+              f"min_samples_leaf={best_model.get_params()['min_samples_leaf']}")
+        print(f"Train  -> R²: {r2_train:.4f} | MAE: {mae_train:.4f} | RMSE: {rmse_train:.4f}")
+        print(f"Val    -> R²: {r2_val:.4f} | MAE: {mae_val:.4f} | RMSE: {rmse_val:.4f}")
+
+        fold_results.append({
+            "fold": fold_num,
+            "n_estimators": best_model.get_params()["n_estimators"],
+            "max_depth": best_model.get_params()["max_depth"],
+            "min_samples_leaf": best_model.get_params()["min_samples_leaf"],
+            "r2_train": r2_train, "mae_train": mae_train, "rmse_train": rmse_train,
+            "r2_val": r2_val, "mae_val": mae_val, "rmse_val": rmse_val,
+        })
+
+    results_df = pd.DataFrame(fold_results)
+
+    print("\n=== Average k-fold results (validation) ===")
+    print(f"R²:   {results_df['r2_val'].mean():.4f} +/- {results_df['r2_val'].std():.4f}")
+    print(f"MAE:  {results_df['mae_val'].mean():.4f} +/- {results_df['mae_val'].std():.4f}")
+    print(f"RMSE: {results_df['rmse_val'].mean():.4f} +/- {results_df['rmse_val'].std():.4f}")
+
+    # Plot target distribution across folds to visually confirm stratification
+    if plot_distribution:
+        _plot_target_distribution_by_fold(fold_target_data, target_column)
+
+    return results_df
+
 def split_train_test_df(
         df: pd.DataFrame,
+        target_col: str = "Estimated metabolic age",
         test_size: float = 0.2,
-        random_state: int = RANDOM_SEED
+        random_state: int = RANDOM_SEED,
+        n_bins: int = 5
 ) -> tuple:
     """
-    Splits a DataFrame into training and testing sets.
+    Splits a DataFrame into training and testing sets, preserving the
+    distribution of the target variable (metabolic age) between the two sets.
 
     :param df: Input DataFrame
+    :param target_col: Name of the target column (metabolic age) used for stratification
     :param test_size: Proportion of the dataset for testing
     :param random_state: Random seed for reproducibility
+    :param n_bins: Number of bins used to stratify the split
     :return: train_df, test_df
     """
-    # Perform row-wise split of the full DataFrame
-    # All columns (including target) are preserved
+    target_bins = pd.qcut(df[target_col], q=n_bins, duplicates="drop")
+
     train_df, test_df = train_test_split(
         df,
         test_size=test_size,
-        random_state=random_state
+        random_state=random_state,
+        stratify=target_bins
     )
 
     # Reset indices to avoid misalignment issues later
@@ -193,7 +309,10 @@ def split_train_test_df(
     print(f"Train set: {len(train_df)} rows ({len(train_df) / len(df):.2%})")
     print(f"Test set:  {len(test_df)} rows ({len(test_df) / len(df):.2%})")
 
-    # Return full DataFrames
+    print("\nTarget distribution check:")
+    print(f"Train - mean: {train_df[target_col].mean():.2f}, std: {train_df[target_col].std():.2f}")
+    print(f"Test  - mean: {test_df[target_col].mean():.2f}, std: {test_df[target_col].std():.2f}")
+
     return train_df, test_df
 
 
@@ -211,7 +330,7 @@ def _get_best_models_summary(results: Dict) -> pd.DataFrame:
 
     # Handle empty results
     if not results['all_results']:
-        print("⚠️ No results available.")
+        print("️ No results available.")
         return pd.DataFrame()
 
     summary_data = []
@@ -240,18 +359,6 @@ def _get_best_models_summary(results: Dict) -> pd.DataFrame:
 
     return best_per_algorithm
 
-
-def _init_results_tracker() -> Dict:
-    """
-    Initializes the results tracking structure.
-
-    :return: Dictionary with empty containers
-    """
-
-    return {
-        'all_results': [],
-        'best_per_model': {}
-    }
 
 
 def _perform_model_selection(
@@ -437,34 +544,79 @@ def _track_results(info_df: pd.DataFrame, model_name: str, normalization_method:
     # Store full history of all runs (for later analysis)
     results['all_results'].append(result_entry)
 
-    # Update best model per algorithm
-    # Comparison is based on mean R² score
-    if model_name not in results['best_per_model']:
-        results['best_per_model'][model_name] = result_entry
-    else:
-        if result_entry['estimator_avg_r2'] > results['best_per_model'][model_name]['estimator_avg_r2']:
-            results['best_per_model'][model_name] = result_entry
-
     return results
 
 
 def _extract_best_params(info_df: pd.DataFrame) -> str:
     """
-    Extracts best parameters from CV results.
+    Extracts the hyperparameters corresponding to the highest outer-fold R².
 
-    :param info_df: DataFrame from nested CV
-    :return: String with best parameters
+    :param info_df: DataFrame from nested CV.
+    :return: String with best parameters.
     """
 
-    # Identify columns that correspond to hyperparameters
-    # (exclude all metric-related columns)
-    params_cols = [col for col in info_df.columns
-                   if col not in ['inner_r2', 'inner_mae', 'fold_r2', 'fold_mae',
-                                  'estimator_avg_r2', 'estimator_std_r2',
-                                  'estimator_avg_mae', 'estimator_std_mae']]
+    # Metric columns to ignore
+    metric_cols = [
+        'inner_r2', 'inner_mae',
+        'fold_r2', 'fold_mae',
+        'estimator_avg_r2', 'estimator_std_r2',
+        'estimator_avg_mae', 'estimator_std_mae'
+    ]
 
-    # Extract parameter values from first row (same across folds)
-    best_params = {col: info_df[col].iloc[0] for col in params_cols}
+    # Hyperparameter columns
+    params_cols = [col for col in info_df.columns if col not in metric_cols]
 
-    # Convert to string for easier logging / storage
+    # Row with highest outer R²
+    best_row = info_df.loc[info_df['fold_r2'].idxmax()]
+
+    # Extract hyperparameters
+    best_params = {col: best_row[col] for col in params_cols}
+
     return str(best_params)
+
+import matplotlib.pyplot as plt
+
+def _plot_target_distribution_by_fold(fold_target_data: List[Dict], target_column: str) -> None:
+    """
+    Plots the distribution of the target variable across folds, comparing
+    training and validation sets side by side. Useful to visually confirm
+    that stratified k-fold produced folds with similar target distributions.
+
+    :param fold_target_data: list of dicts, each containing 'fold', 'train_values'
+        and 'val_values' (arrays of target values for that fold)
+    :param target_column: name of the target column (used for the y-axis label)
+    :return: None
+    """
+
+    n_folds = len(fold_target_data)
+
+    # Build data and labels for a grouped boxplot:
+    # for each fold, one box for train and one box for validation
+    box_data = []
+    box_labels = []
+    box_colors = []
+
+    for fold_info in fold_target_data:
+        box_data.append(fold_info["train_values"])
+        box_labels.append(f"Fold {fold_info['fold']}\nTrain")
+        box_colors.append("#4C72B0")
+
+        box_data.append(fold_info["val_values"])
+        box_labels.append(f"Fold {fold_info['fold']}\nVal")
+        box_colors.append("#DD8452")
+
+    fig, ax = plt.subplots(figsize=(2.2 * n_folds, 5))
+
+    bp = ax.boxplot(box_data, patch_artist=True, labels=box_labels)
+
+    # Color train boxes and val boxes differently
+    for patch, color in zip(bp["boxes"], box_colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+
+    ax.set_ylabel(target_column)
+    ax.set_title(f"{target_column} distribution across folds (Train vs Validation)")
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+
+    plt.tight_layout()
+    plt.show()

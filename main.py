@@ -8,6 +8,7 @@ from processor.transfer_function import apply_transfer_functions
 from synchronization.sync import apply_saved_sync_indices, synchronize_hd_acquisitions
 from processor.trimming import apply_trim_indices
 from processor.emg import process_emg , get_emg_envelope
+from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
 from metrics.mvc_values import get_mvc_values
 from metrics.concentric_phase_detetection import detect_concentric_eccentric_phases
@@ -54,7 +55,7 @@ for subject in subjects:
 
         if condition in non_condition_keys:
             continue
-        print(condition)
+
         df = content["data"]
         params = content["params"]
         fs = content["params"]["sampling rate"]
@@ -68,6 +69,10 @@ for subject in subjects:
         # Process emg signal
         df_processed = process_emg(df_interpolated, fs, show_plot=False)
 
+        # Process force signal
+
+        df_processed = process_force(df_processed, fs, show_plot = True)
+
 
         # Update dictionary
         subject_data[condition]["data"] = df_processed
@@ -76,8 +81,8 @@ for subject in subjects:
         #for column in df_interpolated.columns:
             #plot_interpolated_signal(df_interpolated, mask, column)
 
-        if condition=="HD":
-            plot_sensors_over_time(params, df_processed)
+        #if condition=="HD":
+            #plot_sensors_over_time(params, df_processed)
 
 
     # Synchronize acquisitions
@@ -88,11 +93,11 @@ for subject in subjects:
     # Trim data
     # Interactively select and save trim regions for this subject
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
-    #subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
+    subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # concentric phase detection
-    #subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
 
     # peak powerpenia calculation
     #subject_data_power = process_hd_power(subject_data_sync, show_plot=False)

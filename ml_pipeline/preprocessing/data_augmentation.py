@@ -59,16 +59,18 @@ def apply_data_augmentation(
     """
 
     # Step 1: Apply SMOGN
-    smogn_df = _apply_smogn(df=df, k=k, target_column=target_column, rel_ctrl_pts_rg=rel_ctrl_pts_rg,
-                            samp_method=samp_method, rel_method=rel_method, preserve_original=preserve_original,
-                            verbose=False)
+    """
+    df = _apply_smogn(df=df, k=k, target_column=target_column, rel_ctrl_pts_rg=rel_ctrl_pts_rg,
+                      samp_method=samp_method, rel_method=rel_method, preserve_original=preserve_original,
+                      verbose=False)
+    """
 
     # Print intermediate dataset size
     if verbose:
-        print("Sample size after SMOGN step:", len(smogn_df))
+        print("Sample size after SMOGN step:", len(df))
 
     # Step 2: Apply Gaussian Copula
-    final_df = _augment_dataframe_gaussian_copula(df=smogn_df, n_samples=n_samples)
+    final_df = _augment_dataframe_gaussian_copula(df=df, n_samples=n_samples)
 
     # Print final dataset size
     if verbose:

@@ -17,7 +17,7 @@ None
 # ------------------------------------------------------------------------------------------------------------------- #
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.model_selection import KFold, GridSearchCV, StratifiedKFold
 from sklearn.metrics import r2_score, mean_absolute_error
 from typing import Union, List, Dict, Any
 from sklearn.base import RegressorMixin
@@ -32,30 +32,28 @@ RANDOM_SEED = 42
 
 def nested_cross_val(X: pd.DataFrame, y: pd.Series, estimator: RegressorMixin,
                     splits_outer: int, splits_inner: int,
-                     param_grid: Union[List[Dict[str, Any]], Dict[str, Any]]
+                     param_grid: Union[List[Dict[str, Any]], Dict[str, Any]],
+                     n_bins: int = 5
                      ) -> pd.DataFrame:
     """
-    Performs nested cross-validation using KFold to evaluate a machine learning regression model with hyperparameter tuning.
+    Performs nested cross-validation using StratifiedKFold (stratified by binned
+    target values) to evaluate a machine learning regression model with hyperparameter tuning.
 
-    The function applies a nested cross-validation strategy, where the outer loop performs model evaluation
-    and the inner loop performs hyperparameter tuning using GridSearchCV.
-
-    The function generates a pandas.DataFrame containing the hyperparameters of the model as well as:
-    - avg. R² score of the inner GridSearch
-    - avg. MAE of the inner GridSearch
-    - R² score per outer fold
-    - MAE per outer fold
-    - mean and std of R² over all folds
-    - mean and std of MAE over all folds
+    The function applies a nested cross-validation strategy, where the outer loop performs
+    model evaluation and the inner loop performs hyperparameter tuning using GridSearchCV.
+    Both loops are stratified by binned target values (e.g. metabolic age) to preserve
+    its distribution across folds. The inner stratification bins are recomputed within
+    each outer training fold to avoid information leakage from the outer validation set.
 
     :param X: pandas.DataFrame containing the feature matrix
-    :param y: pandas.Series containing the target values
+    :param y: pandas.Series containing the target values (e.g. metabolic age)
     :param estimator: the estimator to be evaluated
     :param param_grid: the parameter grid for the estimator
     :param splits_outer: number of outer cross-validation splits.
     :param splits_inner: number of inner cross-validation splits.
+    :param n_bins: number of bins used to stratify the target for CV splitting
     :return: pandas.DataFrame containing the best hyperparameters found for each outer fold,
-        inner cross-validation R² and MAE scores, outer fold R² and MAE scores, and the overall
+        inner cross-validation R² score, outer fold R² and MAE scores, and the overall
         mean and standard deviation of R² and MAE across all outer folds.
     """
 
@@ -64,57 +62,55 @@ def nested_cross_val(X: pd.DataFrame, y: pd.Series, estimator: RegressorMixin,
     fold_mae_scores = []
     fold_info = []
 
-    # set up cross-validation for outer loop
-    outer_cv = KFold(n_splits=splits_outer, shuffle=True, random_state=RANDOM_SEED)
+    # Bin the target (y) to allow stratification
+    y_bins = pd.qcut(y, q=n_bins, duplicates="drop")
+    y_bins_codes = y_bins.cat.codes.values
 
-    # set up inner cross-validation for hyperparameter tuning using gridSearch
-    inner_cv = KFold(n_splits=splits_inner, shuffle=True, random_state=RANDOM_SEED)
-    grid_search = GridSearchCV(estimator=estimator, param_grid=param_grid, scoring='r2',
-                               n_jobs=-1, cv=inner_cv, verbose=1, refit=True)
+    # set up cross-validation for the outer loop
+    outer_cv = StratifiedKFold(n_splits=splits_outer, shuffle=True, random_state=RANDOM_SEED)
 
-    # run outer loop
-    for fold_num, (train_idx, valid_idx) in enumerate(outer_cv.split(X, y), start=1):
+    # set up cross-validation for the inner loop
+    inner_cv = StratifiedKFold(n_splits=splits_inner, shuffle=True, random_state=RANDOM_SEED)
 
-        # get the corresponding X, y
+    # run outer loop — split() receives X and the target bins, not the raw target
+    for fold_num, (train_idx, valid_idx) in enumerate(outer_cv.split(X, y_bins_codes), start=1):
+
+        # get the corresponding X, y for this outer fold
         X_train = X.iloc[train_idx]
         X_val = X.iloc[valid_idx]
         y_train = y.iloc[train_idx]
         y_val = y.iloc[valid_idx]
 
-        # run inner loop for hyperparameter optimization
+        # bin the target ONLY within the training fold, to properly stratify the inner CV
+        # without leaking information from the outer validation set
+        y_train_bins = pd.qcut(y_train, q=n_bins, duplicates="drop")
+        y_train_bins_codes = y_train_bins.cat.codes.values
+
+        # pre-compute the stratified inner CV splits (list of (train_idx, val_idx) tuples)
+        inner_splits = list(inner_cv.split(X_train, y_train_bins_codes))
+
+        # build the grid search using the pre-computed stratified splits
+        grid_search = GridSearchCV(estimator=estimator, param_grid=param_grid, scoring='r2',
+                                   n_jobs=-1, cv=inner_splits, refit=True, verbose=1)
+
+        # run inner loop for hyperparameter optimization (fit uses the continuous target)
         grid_search.fit(X_train, y_train)
 
-        # test the best estimator on the validation set of the current fold (this is possible as refit=True)
+        # test the best estimator on the validation set of the current outer fold
         y_pred = grid_search.best_estimator_.predict(X_val)
 
-        # Calculate metrics for outer fold
+        # calculate metrics for the outer fold
         fold_r2 = r2_score(y_val, y_pred)
         fold_mae = mean_absolute_error(y_val, y_pred)
 
-        # Get metrics from inner fold
+        # get the best inner CV R² score
         inner_r2 = grid_search.best_score_
 
-        # Calculate inner MAE by doing cross-validation manually
-        inner_mae_scores = []
-        for train_idx_inner, val_idx_inner in inner_cv.split(X_train, y_train):
-            X_train_inner = X_train.iloc[train_idx_inner]
-            X_val_inner = X_train.iloc[val_idx_inner]
-            y_train_inner = y_train.iloc[train_idx_inner]
-            y_val_inner = y_train.iloc[val_idx_inner]
-
-            # Fit with best params and calculate MAE
-            grid_search.best_estimator_.fit(X_train_inner, y_train_inner)
-            y_pred_inner = grid_search.best_estimator_.predict(X_val_inner)
-            mae_inner = mean_absolute_error(y_val_inner, y_pred_inner)
-            inner_mae_scores.append(mae_inner)
-
-        inner_mae = np.mean(inner_mae_scores)
         best_params = grid_search.best_params_
 
         # print the results
         print(f'\nResults of fold {fold_num}/{splits_outer}')
-        print(f'Inner fold R² score (avg.): {inner_r2:.4f}')
-        print(f'Inner fold MAE (avg.):      {inner_mae:.4f}')
+        print(f'Inner fold R² score: {inner_r2:.4f}')
         print(f'Best params: {best_params}')
         print(f'--> Outer fold R² score: {fold_r2:.4f}')
         print(f'--> Outer fold MAE:      {fold_mae:.4f}')
@@ -124,10 +120,9 @@ def nested_cross_val(X: pd.DataFrame, y: pd.Series, estimator: RegressorMixin,
         fold_r2_scores.append(fold_r2)
         fold_mae_scores.append(fold_mae)
 
-        # append the info for the fold
+        # append the info for this fold
         best_params.update({
             'inner_r2': inner_r2,
-            'inner_mae': inner_mae,
             'fold_r2': fold_r2,
             'fold_mae': fold_mae
         })
@@ -140,16 +135,16 @@ def nested_cross_val(X: pd.DataFrame, y: pd.Series, estimator: RegressorMixin,
     outer_fold_avg_mae = np.mean(fold_mae_scores)
     outer_fold_std_mae = np.std(fold_mae_scores)
 
-    # print the results
+    # print the overall results
     print(f'\nAverage R² score over all folds:  {outer_fold_avg_r2:.4f} +/- {outer_fold_std_r2:.4f}')
     print(f'Average MAE over all folds:      {outer_fold_avg_mae:.4f} +/- {outer_fold_std_mae:.4f}')
     print('### ----------------------------------------- ###')
 
-    # generate a pandas DataFrame containing the info
+    # generate a pandas DataFrame containing the fold-level info
     info_df = pd.DataFrame(fold_info)
 
-    # add the average scores
-    # (adding here to not have it to re-calculate again. The entire column thus has the same value)
+    # add the overall average/std scores (same value repeated across all rows,
+    # kept here to avoid recomputing them later)
     info_df['estimator_avg_r2'] = outer_fold_avg_r2
     info_df['estimator_std_r2'] = outer_fold_std_r2
 

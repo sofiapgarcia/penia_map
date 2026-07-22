@@ -2,7 +2,10 @@ from scipy.signal import butter, filtfilt, iirnotch
 from matplotlib import pyplot as plt
 import numpy as np
 
-EMG_CHANNELS = ["EMG_Flexor", "EMG_Extensor"]
+from constants import EMG_Flexor_filt, EMG_Extensor_filt , EMG_Flexor, EMG_Extensor
+
+EMG_CHANNELS_filt = [EMG_Flexor_filt, EMG_Extensor_filt]
+EMG_CHANNELS =[EMG_Flexor, EMG_Extensor]
 
 def emg_transfer_function(df,
                           n_bits=16, vcc=3.0, g_emg=1000):
@@ -37,7 +40,7 @@ def emg_transfer_function(df,
     return df
 
 
-def process_emg(df, fs, show_plot=True):
+def process_emg(df, fs, show_plot=False):
     """
     Process EMG channels (EMG_Flexor, EMG_Extensor) in a DataFrame: apply a notch filter at 50 Hz to remove powerpenia-line
     interference, and apply a 4th-order Butterworth bandpass filter

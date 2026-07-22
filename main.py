@@ -10,8 +10,9 @@ from processor.trimming import apply_trim_indices
 from processor.emg import process_emg , get_emg_envelope
 from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
-from metrics.mvc_values import get_mvc_values
+from metrics.emg_normalization import get_mvc_values , normalize_emg
 from metrics.concentric_phase_detetection import detect_concentric_eccentric_phases
+from metrics.onset_detection import detect_emg_onsets
 from constants import DISPLACEMENT_COLUMN
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
@@ -20,14 +21,14 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S14"]
+subjects = ["S19"]
 
 # collects one power_info row (with subject id) per subject, for the final Excel export
 all_power_info = []
 
 for subject in subjects:
 
-    if subject in ["S107","S53","S39","129"]:
+    if subject in ["S107","S53","S39","129","S130"]:
         continue
 
     print(f"\n{'='*60}")
@@ -67,12 +68,10 @@ for subject in subjects:
         df_interpolated, info, mask = interpolate_signal(df_transferred)
 
         # Process emg signal
-        df_processed = process_emg(df_interpolated, fs, show_plot=False)
+        df_processed = process_emg(df_interpolated, fs)
 
         # Process force signal
-
-        df_processed = process_force(df_processed, fs, show_plot = True)
-
+        df_processed = process_force(df_processed, fs)
 
         # Update dictionary
         subject_data[condition]["data"] = df_processed
@@ -100,13 +99,19 @@ for subject in subjects:
     subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
 
     # peak powerpenia calculation
-    #subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
+    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
-    #subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
+    subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
 
     # Get MVC values
-    #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+
+    # Normalize EMG signals
+    subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
+
+    # Onset information
+    onset_info = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=True)
 
     # collect this subject's power_info row, tagged with their numeric id
     #subject_power_info = subject_data_power["power_info"].copy()

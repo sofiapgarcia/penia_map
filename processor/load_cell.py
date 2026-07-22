@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 from constants import FORCE_COLUMN
 
 
-def process_force(df, fs, window_ms=50, show_plot=True):
+def process_force(df, fs, window_ms=50, show_plot=False):
     """
     Centers the force column of a DataFrame on zero, then smooths it with a
     simple moving average, to remove sample-level noise before further processing

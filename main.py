@@ -87,35 +87,38 @@ for subject in subjects:
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
-    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder)
-    plot_subject_data(subject_data_sync)
+    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
+    #plot_subject_data(subject_data_sync)
 
     # Trim data
     # Interactively select and save trim regions for this subject
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
-    #subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
+    subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # concentric phase detection
-    #subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
 
-    # peak powerpenia calculation
-    #subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
+    # peak power calculation
+    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
-    #subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
+    subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
 
     # Get MVC values
-    #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
 
     # Normalize EMG signals
-    #subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
+    subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
-    #onset_info = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=True)
+    onset_info = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=False)
+    print(onset_info)
+
 
     # collect this subject's power_info row, tagged with their numeric id
-    #subject_power_info = subject_data_power["power_info"].copy()
+    subject_power_info = subject_data_power["power_info"].copy()
+    print("power_info",subject_power_info)
     #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
     #all_power_info.append(subject_power_info)
 

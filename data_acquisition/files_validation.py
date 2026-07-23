@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 
-    selected_subject = "S21"
+    selected_subject = "S1"
 
     subject_path = os.path.join(base_path, selected_subject)
 
@@ -24,9 +24,10 @@ if __name__ == '__main__':
 
     subject_data = load_subject_data(base_path, selected_subject)
 
-    non_condition_keys = {"handgrip_position", "handgrip_position_source","HI_values"}
+    non_condition_keys = {"handgrip_position", "handgrip_position_source","HI_values", "condition"}
 
     for condition, content in subject_data.items():
+
 
         if condition in non_condition_keys:
             continue

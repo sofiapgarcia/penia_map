@@ -61,14 +61,15 @@ def _compute_velocity(displacement_cm, fs):
 def _get_power_summary(df):
     """
     Build a summary DataFrame with the peak power point (and its associated
-    velocity and force), plus the maximum velocity and maximum force,
-    restricted to the concentric phase only (rows where 'Phase' starts with
-    'C'). Rest ('R') and eccentric ('E...') samples are excluded.
+    velocity, force and repetition number), plus the maximum velocity and
+    maximum force, restricted to the concentric phase only (rows where
+    'Phase' starts with 'C'). Rest ('R') and eccentric ('E...') samples are
+    excluded.
 
     :param df: DataFrame with 'velocity', 'power', 'Phase' and FORCE columns
     :return: DataFrame with one row and columns:
         ['peak_power', 'velocity_at_peak_power', 'force_at_peak_power',
-         'max_velocity', 'max_force']
+         'rep_at_peak_power', 'max_velocity', 'max_force']
     """
 
     # restrict to concentric-phase samples only
@@ -86,6 +87,7 @@ def _get_power_summary(df):
         "peak_power": df.loc[peak_idx, "power"],
         "velocity_at_peak_power": df.loc[peak_idx, "velocity"],
         "force_at_peak_power": df.loc[peak_idx, FORCE_COLUMN],
+        "rep_at_peak_power": int(df.loc[peak_idx, "Phase"].lstrip("C")),
         "max_velocity": df.loc[max_vel_idx, "velocity"],
         "max_force": df.loc[max_force_idx, FORCE_COLUMN],
     }

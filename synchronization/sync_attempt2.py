@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 
 
 def apply_saved_sync_indices(subject_data, subject_folder,
+                             column_hd="gACCy",
                              hd_key="HD", hd_emg_key="HD_EMG",
-                             filename="sync_indices.xlsx"):
+                             filename="sync_indices.xlsx", show_plot=False):
     """
     If a sync_indices.xlsx file already exists for this subject, use the
     saved drift-correction parameters (offset_start, offset_end, anchors)
@@ -34,6 +35,7 @@ def apply_saved_sync_indices(subject_data, subject_folder,
     sync_path = os.path.join(subject_folder, filename)
 
     if not os.path.isfile(sync_path):
+        print("Sync indices were not found, retrieving original signals")
         return subject_data
 
     params_df = pd.read_excel(sync_path)
@@ -54,6 +56,10 @@ def apply_saved_sync_indices(subject_data, subject_folder,
     df_hd = subject_data[hd_key]["data"]
     df_hd_emg = subject_data[hd_emg_key]["data"]
 
+    # HD accelerometer axis is flipped relative to HD_EMG's convention —
+    # must match the inversion applied in synchronize_hd_acquisitions
+    df_hd = _invert_column(df_hd, column_hd)
+
     df_hd_trim, df_hd_emg_trim, _ = _apply_drift_correction(
         df_hd, df_hd_emg,
         offset_start=int(row["offset_start"]),
@@ -62,16 +68,15 @@ def apply_saved_sync_indices(subject_data, subject_folder,
         anchor_end=int(row["anchor_end"]),
     )
 
-    # Drop duplicate columns from HD_EMG before merging
-    duplicate_cols = [col for col in df_hd_emg_trim.columns if col in df_hd_trim.columns]
-    df_hd_emg_trim = df_hd_emg_trim.drop(columns=duplicate_cols)
-
     df_merged = pd.concat([df_hd_trim, df_hd_emg_trim], axis=1)
 
     subject_data[hd_key]["data"] = df_merged
     del subject_data[hd_emg_key]
 
     print(f"Loaded existing synchronization parameters from: {sync_path}")
+
+    if show_plot:
+        _plot_validation(df_merged, column_hd="gACCy", column_hd_emg="y")
 
     return subject_data
 
@@ -90,9 +95,8 @@ def synchronize_hd_acquisitions(subject_data,
     """
     Synchronize HD and HD_EMG acquisitions, correcting not just a constant
     offset but also the sample-rate drift between the two recording
-    systems (i.e. HD and HD_EMG don't run at *exactly* the same real
-    sampling rate, so a single offset that looks good at the start of the
-    recording will look wrong at the end, and vice-versa).
+    systems (i.e. HD and HD_EMG don't run at exactly the same real
+    sampling rate).
 
     Workflow:
       1. A validation window is shown with the candidate peaks detected on
@@ -180,15 +184,17 @@ def synchronize_hd_acquisitions(subject_data,
         df_hd, df_hd_emg, offset_start, offset_end, anchor_start, anchor_end,
     )
 
-    _plot_validation(df_hd_aligned, df_hd_emg_aligned, column_hd, column_hd_emg)
+    df_merged = pd.concat([df_hd_aligned, df_hd_emg_aligned], axis=1)
+
+    _plot_validation(df_merged, column_hd, column_hd_emg)
 
     if subject_folder is not None:
         _save_sync_params(subject_folder, params, hd_key, hd_emg_key)
     else:
         print("[warning] subject_folder not provided — synchronization parameters not saved.")
 
-    subject_data[hd_key]["data"] = df_hd_aligned
-    subject_data[hd_emg_key]["data"] = df_hd_emg_aligned
+    subject_data[hd_key]["data"] = df_merged
+    del subject_data[hd_emg_key]
 
     return subject_data
 
@@ -657,18 +663,29 @@ def _interactive_local_alignment(signal_hd, signal_hd_emg, fs, anchor_emg, initi
 
 def _apply_drift_correction(df_hd, df_hd_emg, offset_start, offset_end, anchor_start, anchor_end):
     """
-    Resample HD_EMG onto HD's sample grid, correcting for the linear
+    Resample HD onto HD_EMG's sample grid, correcting for the linear
     clock drift implied by having two different (offset, anchor) pairs
     instead of a single constant offset.
+
+    NOTE ON THIS VERSION: there is no physical reason to treat either
+    acquisition system as the "stable" one — both clocks can drift
+    relative to each other, and we have no way of knowing which one is
+    "truer". So the choice of which signal gets interpolated (and
+    therefore very slightly smoothed) and which one keeps its original
+    samples untouched is arbitrary. This version keeps HD_EMG's original
+    grid intact and interpolates HD onto it instead of the other way
+    around. Because of this, no inversion of the offset(j) line is
+    needed: the same forward equation used to define the drift model is
+    directly usable as the interpolation grid.
 
     Model: for a HD_EMG sample at index j, the corresponding HD index is
         k(j) = j + offset(j)
     where offset(j) is a straight line through (anchor_start, offset_start)
-    and (anchor_end, offset_end). We invert this relationship to find,
-    for every integer HD index k in range, the (generally fractional)
-    HD_EMG index j(k), and linearly interpolate HD_EMG's columns there.
+    and (anchor_end, offset_end). For every integer HD_EMG index j in
+    range, we compute the (generally fractional) HD index k(j) directly,
+    and linearly interpolate HD's columns there.
 
-    :return: (df_hd_trimmed, df_hd_emg_resampled, params), where params is
+    :return: (df_hd_resampled, df_hd_emg_trimmed, params), where params is
         a dict with the parameters needed to redo this exact correction
         later (see apply_saved_sync_indices)
     """
@@ -680,37 +697,42 @@ def _apply_drift_correction(df_hd, df_hd_emg, offset_start, offset_end, anchor_s
     else:
         slope = (offset_end - offset_start) / (anchor_end - anchor_start)
 
+    # forward equation: for every HD_EMG index j, where does it fall in HD?
     j_all = np.arange(n_emg)
     k_all = j_all * (1 + slope) + offset_start - slope * anchor_start
 
-    k_min = max(0, int(np.ceil(k_all.min())))
-    k_max = min(n_hd - 1, int(np.floor(k_all.max())))
+    # keep only the HD_EMG samples whose corresponding HD point actually
+    # exists (i.e. falls inside [0, n_hd - 1])
+    valid = (k_all >= 0) & (k_all <= n_hd - 1)
 
-    if k_max <= k_min:
+    if not valid.any():
         raise ValueError(
             "No valid overlap found between HD and HD_EMG with the given "
             "offsets — please redo the manual alignment."
         )
 
-    k_grid = np.arange(k_min, k_max + 1)
-    j_grid = (k_grid - offset_start + slope * anchor_start) / (1 + slope)
-    j_grid = np.clip(j_grid, 0, n_emg - 1)
+    j_min = int(np.where(valid)[0].min())
+    j_max = int(np.where(valid)[0].max())
 
-    df_hd_trim = df_hd.iloc[k_min:k_max + 1].reset_index(drop=True)
+    j_grid = np.arange(j_min, j_max + 1)
+    k_grid = j_grid * (1 + slope) + offset_start - slope * anchor_start
+    k_grid = np.clip(k_grid, 0, n_hd - 1)
 
-    j_source = np.arange(n_emg)
+    df_hd_emg_trim = df_hd_emg.iloc[j_min:j_max + 1].reset_index(drop=True)
+
+    k_source = np.arange(n_hd)
     resampled_cols = {}
-    for col in df_hd_emg.columns:
-        values = df_hd_emg[col].values
+    for col in df_hd.columns:
+        values = df_hd[col].values
         if np.issubdtype(values.dtype, np.number):
-            resampled_cols[col] = np.interp(j_grid, j_source, values)
+            resampled_cols[col] = np.interp(k_grid, k_source, values)
         else:
             # non-numeric columns can't be interpolated: take the nearest
             # original sample instead
-            nearest_idx = np.round(j_grid).astype(int)
+            nearest_idx = np.round(k_grid).astype(int)
             resampled_cols[col] = values[nearest_idx]
 
-    df_hd_emg_trim = pd.DataFrame(resampled_cols)
+    df_hd_trim = pd.DataFrame(resampled_cols)
 
     params = {
         "offset_start": int(offset_start),
@@ -744,15 +766,15 @@ def _save_sync_params(subject_folder, params, hd_key, hd_emg_key):
     print(f"Synchronization parameters saved to: {out_path}")
 
 
-def _plot_validation(df_hd, df_hd_emg, column_hd, column_hd_emg):
+def _plot_validation(df_merged, column_hd, column_hd_emg):
     """
     Overlay both z-scored signals so the alignment can be checked visually,
     across the whole recording.
     """
     plt.figure(figsize=(12, 4))
 
-    hd = _zscore(df_hd[column_hd].values)
-    emg = _zscore(df_hd_emg[column_hd_emg].values)
+    hd = _zscore(df_merged[column_hd].values)
+    emg = _zscore(df_merged[column_hd_emg].values)
 
     plt.plot(hd, label="HD")
     plt.plot(emg, label="HD_EMG")

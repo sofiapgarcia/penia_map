@@ -122,13 +122,13 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
 
         N = df_converted[DISPLACEMENT_COLUMN]
 
-        N0 = N.max()
+        N0 = _get_N0(N)
 
-        Nmax = N.min()
+        Nmax = 13867
 
     elif hp_source == "handle":
 
-        # xo in mm
+        # x0 in mm
         x0 = x0 * 10
 
         # N0 of the calibration file
@@ -176,7 +176,9 @@ def _calculate_N0(x0):
     :param x0: Input numeric value
     :return: Computed N0 value using the formula 2570.1 * x0 + 11261
     """
-    return 2570.1 * x0 + 11261
+    x0_cm = x0 / 10
+
+    return 2570.1 * x0_cm + 11261
 
 def _correct_displacement(displacement_mm, xmax_physical_mm):
     """
@@ -214,6 +216,19 @@ def _correct_displacement(displacement_mm, xmax_physical_mm):
 
     return corrected
 
+def _get_N0(displacement):
+    pct = 10
+    # Sort the signal to group low, transition, and high samples together
+    s = np.sort(np.asarray(displacement))
+    n = len(s)
+
+    # Number of samples used to estimate each level
+    k = max(1, int(n * pct / 100))
+
+    # Median of the highest k samples -> high level estimate
+    N0 = np.median(s[-k:])
+
+    return N0
 
 
 

@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 from data_acquisition.data_loader import load_subject_data
-from data_acquisition.data_visualizer import plot_sensors_over_time , plot_subject_data
+from data_acquisition.data_visualizer import plot_sensors_over_time , plot_subject_data , plot_column_over_time
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
 from synchronization.sync_attempt2 import apply_saved_sync_indices, synchronize_hd_acquisitions
@@ -14,6 +14,7 @@ from metrics.emg_normalization import get_mvc_values , normalize_emg
 from metrics.concentric_phase_detetection import detect_concentric_eccentric_phases
 from metrics.onset_detection import detect_emg_onsets
 from constants import DISPLACEMENT_COLUMN
+from metrics.powerpenia.coordination import get_muscle_coordination_info, build_coordination_dataframe
 
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
@@ -22,7 +23,9 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S19"]
+subjects = ["S26"]
+subjects_with_no_calibration = ["S1","S2", "S4","S5","S6","S8","S9","S10","S11","S12","S13","S14","S15","S16","S17","S18","S20","S22","S24","S25","S84"]
+
 
 # collects one power_info row (with subject id) per subject, for the final Excel export
 all_power_info = []
@@ -31,6 +34,8 @@ for subject in subjects:
 
     if subject in ["S107","S53","S39","129","S130"]:
         continue
+    #if subject in subjects_with_no_calibration:
+        #continue
 
     print(f"\n{'='*60}")
     print(f"Processing {subject}")
@@ -83,7 +88,7 @@ for subject in subjects:
 
         #if condition=="HD":
             #plot_sensors_over_time(params, df_processed)
-
+            #plot_column_over_time(params, df_processed, DISPLACEMENT_COLUMN)
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
@@ -115,10 +120,17 @@ for subject in subjects:
     onset_info = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=False)
     print(onset_info)
 
-
     # collect this subject's power_info row, tagged with their numeric id
     subject_power_info = subject_data_power["power_info"].copy()
-    print("power_info",subject_power_info)
+
+    coordination_info = get_muscle_coordination_info(
+        subject_data_normalized, onset_info, subject_power_info, condition="HD"
+    )
+    print(coordination_info)
+
+    coordination_df = build_coordination_dataframe(
+        coordination_info, subject_id=int(subject.replace("S", "")), condition="HD"
+    )
     #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
     #all_power_info.append(subject_power_info)
 

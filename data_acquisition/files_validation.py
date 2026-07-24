@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     base_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 
-    selected_subject = "S1"
+    selected_subject = "S10"
 
     subject_path = os.path.join(base_path, selected_subject)
 
@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     subject_data = load_subject_data(base_path, selected_subject)
 
-    non_condition_keys = {"handgrip_position", "handgrip_position_source","HI_values", "condition"}
+    non_condition_keys = {"handgrip_position", "handgrip_position_source","HI_values", "calibration"}
 
     for condition, content in subject_data.items():
 

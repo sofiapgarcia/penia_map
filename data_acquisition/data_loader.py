@@ -74,7 +74,7 @@ def load_subject_data(base_path, subject):
         if condition == "calibration":
             # Only the two displacement levels are needed for calibration,
             # not the full raw signal
-            low_level, high_level = _get_levels(df["DISPLACEMENT"], show_plot = False)
+            low_level, high_level = _get_levels(df["DISPLACEMENT"], show_plot = True)
 
             subject_data[condition] = {
                 "params": params,

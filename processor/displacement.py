@@ -118,13 +118,20 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
     if hp_source == "potentiometer":
 
         # Convert x0 to the correct physical reference
-        x0 = _convert_x0(x0)
+        print("x0_pega", x0)
 
         N = df_converted[DISPLACEMENT_COLUMN]
 
-        N0 = _get_N0(N)
-
+        N0 = _calculate_N0(x0)
+        print("N0 regressao",N0)
+        N0_real = _get_N0(N)
+        print("N0_real", N0_real)
+        Nmax_max = N.min()
+        print("Nmax serie", Nmax_max)
         Nmax = 13867
+        print("Nmax utilizado:", Nmax)
+        x0 = _convert_x0(x0)
+        print("posicao pega", x0)
 
     elif hp_source == "handle":
 
@@ -151,6 +158,17 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
     # Apply linear transformation to full signal
     absolute_position = a * N + b
 
+    max_displacement = absolute_position.max()
+    print("Posição máxima da série:", max_displacement)
+
+    if hp_source == "handle":
+        tolerance = 0.5  # mm
+
+        #if max_displacement >= L - tolerance:
+            #print(f"✓ O valor máximo foi atingido ({max_displacement:.4f} mm).")
+        #else:
+            #print(f"✗ O valor máximo não foi atingido. Deslocamento máximo: {max_displacement:.4f} mm (esperado: {L:.2f} mm).")
+
     df_converted[DISPLACEMENT_COLUMN] = absolute_position
 
     return df_converted
@@ -176,9 +194,8 @@ def _calculate_N0(x0):
     :param x0: Input numeric value
     :return: Computed N0 value using the formula 2570.1 * x0 + 11261
     """
-    x0_cm = x0 / 10
 
-    return 2570.1 * x0_cm + 11261
+    return 2570.1 * x0 + 11261
 
 def _correct_displacement(displacement_mm, xmax_physical_mm):
     """

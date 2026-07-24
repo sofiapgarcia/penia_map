@@ -90,6 +90,54 @@ def plot_sensors_over_time(params, df, title=None):
     return fig
 
 
+def plot_column_over_time(params, df, column, title=None):
+    """
+    Plot a single DataFrame column over acquisition time.
+
+    :param params: Dictionary containing acquisition parameters (e.g., sampling rate)
+    :param df: DataFrame containing the signal
+    :param column: Name of the column to plot
+    :param title: Optional title for the plot
+    :return: Matplotlib figure object
+    """
+
+    # Check if column exists
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' not found in DataFrame.")
+
+    # Extract sampling rate
+    sampling_rate = params["sampling rate"]
+
+    # Create time vector
+    time_seconds = np.arange(len(df)) / sampling_rate
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(14, 4))
+
+    # Plot signal
+    ax.plot(
+        time_seconds,
+        df[column],
+        linewidth=1.5,
+        color="C0"
+    )
+
+    # Labels
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(column)
+    ax.grid(True, alpha=0.3)
+
+    # Title
+    if title is None:
+        title = column
+
+    ax.set_title(title)
+
+    plt.tight_layout()
+    plt.show()
+
+    return fig
+
 def plot_interpolated_signal(df, mask, column, time_column="nSeq", title=None):
     """
     Plot a signal column highlighting interpolated values in red.

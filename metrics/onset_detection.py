@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
 
@@ -17,19 +18,23 @@ def _tkeo(x):
     return tkeo
 
 
-def _emg_envelope(x, fs, sigma_ms):
+def _emg_envelope(x, fs, window_ms):
     """
-    Compute a smooth energy envelope from a raw EMG signal.
+    Compute a smooth energy envelope from a raw EMG signal using a moving average.
 
     :param x: 1D array with the raw EMG signal.
     :param fs: Sampling rate (Hz).
-    :param sigma_ms: Standard deviation (ms) of the Gaussian kernel used for smoothing.
+    :param window_ms: Moving average window length (ms).
     :return: 1D array with the smoothed energy envelope (same length as x).
     """
-    tkeo = _tkeo(x)
-    rectified = np.abs(tkeo)
-    sigma_samples = (sigma_ms / 1000.0) * fs
-    return gaussian_filter1d(rectified, sigma=sigma_samples)
+    rectified = np.abs(x)
+    tkeo = _tkeo(rectified)
+    tkeo_rectified = np.abs(tkeo)
+
+    window_samples = max(1, int(round((window_ms / 1000.0) * fs)))
+    kernel = np.ones(window_samples) / window_samples
+
+    return np.convolve(tkeo_rectified, kernel, mode="same")
 
 
 def _const_sse(y):
@@ -403,7 +408,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
     return results
 
 
-def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=50, window_ms=300, guard_ms=10,
+def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window_ms=100, guard_ms=10,
                        min_window_ms=100, emg_columns=None, show_plot=True,
                        n_reps=3, threshold_k=4.0, min_duration_ms=300, min_gap_ms=300,
                        forward_margin_ms=50, offset_margin_ms=None, show_pipeline_plots=False,
@@ -445,8 +450,8 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=50, window
     :param pipeline_margin_before_ms: Signal margin (ms) before the onset in pipeline plots.
     :param pipeline_margin_after_ms: Signal margin (ms) after the reference point in pipeline plots.
     :param pipeline_max_reps: If set, limits repetitions plotted per muscle in pipeline plots.
-    :return: Dict keyed by condition name, each value a list of per-(rep, muscle) result dicts
-        (see _detect_emg_onsets_single_condition / _detect_emg_onsets_isometric_condition).
+    :return: Dict keyed by condition name, each value a pandas DataFrame with one row
+        per (repetition, muscle) -- see `_results_to_dataframe`.
     """
     columns = emg_columns if emg_columns is not None else EMG_COLUMNS
 
@@ -483,91 +488,42 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=50, window
                 max_reps=pipeline_max_reps,
             )
 
-    return reshape_onset_results(results_by_condition)
+    results_dict = {condition: _results_to_dataframe(condition_results)
+        for condition, condition_results in results_by_condition.items()}
+
+    info_hd = results_dict["HD"]
+    info_hi = results_dict["HI"]
+
+    return info_hd, info_hi
 
 
-def reshape_onset_results(results_by_condition):
+def _results_to_dataframe(results):
     """
-    Reestrutura o output de detect_emg_onsets (uma lista plana de dicts por
-    condicao, um por (rep, muscle)) num dicionario aninhado organizado por
-    condicao -> repeticao -> {'onset': {...}, <fase>: {...}}.
+    Convert a flat list of per-(repetition, muscle) onset/offset result dicts
+    (as produced by `_detect_emg_onsets_single_condition` or
+    `_detect_emg_onsets_isometric_condition`) into a tidy pandas DataFrame.
 
-    Duas condicoes sao tratadas de forma diferente:
-      - Condicoes com fase concentrica real e partilhada entre musculos (ex: HD,
-        identificada pela presenca da chave 'concentric_end_idx' nos resultados):
-        a chave e 'concentric_phase', um unico dict {'start': ..., 'end': ...}
-        por repeticao (e mesmo uma fase concentrica).
-      - Condicoes isometricas sem fase concentrica real (ex: HI, identificada pela
-        ausencia de 'concentric_end_idx' mas presenca de 'offset_idx'): a chave e
-        'contraction' (nao 'concentric_phase', porque nao ha fase concentrica),
-        organizada por musculo, com 'contraction_beginning' / 'contraction_end'
-        em vez de 'start' / 'end', ja que o inicio e o fim sao calculados de
-        forma independente por musculo.
+    Since every dict in `results` belongs to the same condition, they all share
+    the same set of keys, so the columns come out consistent automatically:
+      - HD-like conditions (with a real, shared concentric phase): 'rep',
+        'muscle', 'onset_idx', 'concentric_start_idx', 'concentric_end_idx',
+        'onset_to_start_ms'.
+      - HI-like conditions (isometric, per-muscle contraction window): 'rep',
+        'muscle', 'onset_idx', 'offset_idx', 'concentric_start_idx',
+        'onset_to_start_ms'.
 
-    :param results_by_condition: Dict tal como devolvido por detect_emg_onsets.
-    :return: Dict no formato:
-        {
-            condicao: {
-                rep: {
-                    'onset': {musculo: onset_idx, ...},
-                    'concentric_phase': {'start': idx, 'end': idx}   # ex: HD
-                        OU
-                    'contraction': {                                  # ex: HI
-                        musculo: {
-                            'contraction_beginning': idx,
-                            'contraction_end': idx,
-                        },
-                        ...
-                    }
-                },
-                ...
-            },
-            ...
-        }
+    :param results: List of result dicts for a single condition (possibly empty).
+    :return: pandas.DataFrame with one row per (repetition, muscle), sorted by
+        'rep' then 'muscle'. Empty DataFrame if `results` is empty.
     """
-    reshaped = {}
-
-    for condition, results in results_by_condition.items():
-        condition_dict = {}
-
-        # Deteta o "tipo" de condicao a partir da primeira entrada de resultados.
-        has_shared_phase = bool(results) and 'concentric_end_idx' in results[0]
-
-        for r in results:
-            rep = r['rep']
-            muscle = r['muscle']
-
-            if rep not in condition_dict:
-                if has_shared_phase:
-                    condition_dict[rep] = {
-                        'onset': {},
-                        'concentric_phase': {
-                            'start': r.get('concentric_start_idx'),
-                            'end': r.get('concentric_end_idx'),
-                        },
-                    }
-                else:
-                    condition_dict[rep] = {
-                        'onset': {},
-                        'contraction': {},
-                    }
-
-            condition_dict[rep]['onset'][muscle] = r['onset_idx']
-
-            if not has_shared_phase:
-                # HI-like: inicio/fim da contracao calculados por musculo.
-                condition_dict[rep]['contraction'][muscle] = {
-                    'contraction_beginning': r.get('concentric_start_idx'),
-                    'contraction_end': r.get('offset_idx'),
-                }
-
-        reshaped[condition] = condition_dict
-
-    return reshaped
+    df = pd.DataFrame(results)
+    if df.empty:
+        return df
+    return df.sort_values(['rep', 'muscle']).reset_index(drop=True)
 
 
-def _plot_pipeline_steps(df, columns, fs, sigma_ms, results, condition,
-                          margin_before_ms=300, margin_after_ms=200, max_reps=None):
+def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
+                          margin_before_ms=300, margin_after_ms=300, max_reps=None):
     """
     Plot, for every repetition and muscle, the intermediate signal-processing steps
     used to build the envelope and detect the EMG onset/offset: the raw (filtered)
@@ -593,11 +549,14 @@ def _plot_pipeline_steps(df, columns, fs, sigma_ms, results, condition,
 
     for col in columns:
         raw = df[col].to_numpy()
+        rectified = np.abs(raw)
+        tkeo = _tkeo(rectified)
 
-        tkeo = _tkeo(raw)
-        rectified = np.abs(tkeo)
-        sigma_samples = (sigma_ms / 1000.0) * fs
-        envelope = gaussian_filter1d(rectified, sigma=sigma_samples)
+        tkeo_rectified = np.abs(tkeo)
+
+        window_samples = max(1, int(round((window_ms / 1000.0) * fs)))
+        kernel = np.ones(window_samples) / window_samples
+        envelope = np.convolve(tkeo_rectified, kernel, mode="same")
 
         muscle_results = [r for r in results if r['muscle'] == col]
         if max_reps is not None:
@@ -608,37 +567,39 @@ def _plot_pipeline_steps(df, columns, fs, sigma_ms, results, condition,
             onset_idx = r['onset_idx']
             offset_idx = r.get('offset_idx')
 
-            anchor = onset_idx if onset_idx is not None else ref_idx
-            end_anchor = offset_idx if offset_idx is not None else ref_idx
-            plot_start = max(0, anchor - margin_before_samples)
-            plot_end = min(raw.size, end_anchor + margin_after_samples)
+            if offset_idx is None:
+                offset_idx = r.get("concentric_end_idx")
+
+            plot_start = max(0, onset_idx - margin_before_samples)
+            plot_end = min(raw.size, offset_idx + margin_after_samples)
             sl = slice(plot_start, plot_end)
             t = np.arange(plot_start, plot_end)
 
-            fig, axes = plt.subplots(3, 1, figsize=(10, 7.5), sharex=True)
+            fig, axes = plt.subplots(4, 1, figsize=(10, 7.5), sharex=True)
 
             axes[0].plot(t, raw[sl], color='black', linewidth=0.8)
             axes[0].set_ylabel('Raw EMG\n(filtered)', fontsize=8)
 
-            axes[1].plot(t, tkeo[sl], color='tab:purple', linewidth=0.8)
-            axes[1].set_ylabel('TKEO', fontsize=8)
+            axes[1].plot(t, rectified[sl], color='tab:purple', linewidth=0.8)
+            axes[1].set_ylabel('Rectified EMG', fontsize=8)
 
-            axes[2].plot(t, rectified[sl], color='gray', linewidth=0.6, alpha=0.6, label='|TKEO|')
-            axes[2].plot(t, envelope[sl], color='tab:orange', linewidth=1.6, label='Smoothed envelope')
-            axes[2].set_ylabel('Envelope', fontsize=8)
-            axes[2].legend(fontsize=7, loc='upper left')
+            axes[2].plot(t, tkeo[sl], color='black', linewidth=0.6, alpha=0.6, label='TKEO')
+            axes[2].set_ylabel('TKEO', fontsize=8)
+
+            axes[3].plot(t, tkeo_rectified[sl], color='tab:gray', linewidth=1.6, label='|TKEO|')
+            axes[3].set_ylabel('|TKEO|', fontsize=8)
+            axes[3].plot(t,envelope[sl], color='tab:orange', linewidth=1.6, label='envelope')
 
             for ax in axes:
                 ax.axvline(ref_idx, color='tab:blue', linestyle='--', alpha=0.6)
-                if onset_idx is not None:
-                    ax.axvline(onset_idx, color='tab:red', linestyle='-', alpha=0.8)
+                ax.axvline(onset_idx, color='tab:red', linestyle='-', alpha=0.8)
                 if offset_idx is not None:
                     ax.axvline(offset_idx, color='tab:green', linestyle='-', alpha=0.8)
 
             axes[-1].set_xlabel('Samples')
             fig.suptitle(
                 f"{condition} -- {col} -- Rep {r['rep']} -- pipeline steps\n"
-                f"(blue dashed = reference point, red = onset, green = offset)",
+                f"(blue dashed = reference point, red = onset, green = offset (HI) or end of concentric phase (HD))",
                 fontsize=10,
             )
             plt.tight_layout()

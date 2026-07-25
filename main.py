@@ -11,7 +11,7 @@ from processor.emg import process_emg , get_emg_envelope
 from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
 from metrics.emg_normalization import get_mvc_values , normalize_emg
-from metrics.concentric_phase_detetection import detect_concentric_eccentric_phases
+from metrics.concentric_phase_detection_attempt2 import detect_concentric_eccentric_phases
 from metrics.onset_detection import detect_emg_onsets
 from constants import DISPLACEMENT_COLUMN
 from metrics.powerpenia.coordination import get_muscle_coordination_info, build_coordination_dataframe
@@ -23,14 +23,16 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S26"]
-subjects_with_no_calibration = ["S1","S2", "S4","S5","S6","S8","S9","S10","S11","S12","S13","S14","S15","S16","S17","S18","S20","S22","S24","S25","S84"]
+subjects = ["S14"]
+subjects_with_no_calibration = ["S1","S2", "S4","S8","S11","S12","S13","S14","S15","S16","S17","S18","S22","S24","S25","S84"]
 
 
 # collects one power_info row (with subject id) per subject, for the final Excel export
 all_power_info = []
 
 for subject in subjects:
+
+    subject_number = int(subject.replace("S", ""))
 
     if subject in ["S107","S53","S39","129","S130"]:
         continue
@@ -102,7 +104,7 @@ for subject in subjects:
     #plot_subject_data(subject_data_sync)
 
     # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
 
     # peak power calculation
     subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
@@ -117,20 +119,13 @@ for subject in subjects:
     subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
-    onset_info = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=False)
-    print(onset_info)
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=True)
 
     # collect this subject's power_info row, tagged with their numeric id
     subject_power_info = subject_data_power["power_info"].copy()
 
-    coordination_info = get_muscle_coordination_info(
-        subject_data_normalized, onset_info, subject_power_info, condition="HD"
-    )
-    print(coordination_info)
-
-    coordination_df = build_coordination_dataframe(
-        coordination_info, subject_id=int(subject.replace("S", "")), condition="HD"
-    )
+    info_hd , info_hi = get_muscle_coordination_info(subject_data_normalized, onset_hd, subject_power_info, subject_id = subject_number)
+    print("oi")
     #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
     #all_power_info.append(subject_power_info)
 

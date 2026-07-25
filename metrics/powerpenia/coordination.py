@@ -1,56 +1,32 @@
-"""
-Muscle coordination metrics.
-
-Computes, per repetition, the temporal coordination between the extensor and
-flexor muscles (onset difference, co-contraction time) and the relative EMG
-activation (normalized EMG peak ratio) during the concentric phase.
-
-Assumptions (adjust if they don't match your pipeline):
-- `subject_data_normalized[condition]["data"]` is the DataFrame that already
-  went through `normalize_emg`. The normalized EMG signals live in their own
-  columns, "EMG_Extensor_norm" / "EMG_Flexor_norm", separate from the raw
-  filtered ones ("EMG_Extensor_filt" / "EMG_Flexor_filt") that onset_info's
-  keys refer to. That's why the function takes two separate pairs of column
-  names: onset_extensor_column/onset_flexor_column (for looking up onsets in
-  onset_info) and emg_extensor_column/emg_flexor_column (for the actual EMG
-  peak values, which must come from the normalized signal).
-- The EMG peak is taken as the maximum of the normalized EMG signal within
-  the concentric phase window (`concentric_phase["start"]` ->
-  `concentric_phase["end"]`), since that's the "power" phase of the
-  repetition. If you actually want it at a single instant (e.g. the exact
-  sample of peak power), swap `get_emg_peak_in_phase` for a single-sample
-  lookup instead.
-- Currently only implemented for the "HD" condition, as requested, but the
-  functions are condition-agnostic (they just need onset + concentric_phase
-  info), so extending to other conditions later is just a matter of passing
-  condition="HI" etc. and adapting the onset_info structure for that
-  condition (HI currently has "contraction" instead of "concentric_phase").
-"""
-
 import pandas as pd
 
+from constants import FORCE_COLUMN
 
 def get_onset_difference(onset_extensor_idx, onset_flexor_idx, fs):
     """
     Difference (ms) between the extensor and flexor onset.
     Positive -> extensor onset happened AFTER flexor onset.
     Negative -> extensor onset happened BEFORE flexor onset.
+
+    :param onset_extensor_idx: Sample index of extensor onset
+    :param onset_flexor_idx: Sample index of flexor onset
+    :param fs: Sampling frequency (Hz)
+    :return: Time difference in milliseconds
     """
     diff_samples = onset_extensor_idx - onset_flexor_idx
     return (diff_samples / fs) * 1000
-
-
-def get_onset_difference_abs(onset_extensor_idx, onset_flexor_idx, fs):
-    """
-    Absolute value (ms) of the onset difference between extensor and flexor.
-    """
-    return abs(get_onset_difference(onset_extensor_idx, onset_flexor_idx, fs))
 
 
 def get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_idx, fs):
     """
     Time (ms) between the onset of whichever muscle activated LAST and the
     end of the concentric phase.
+
+    :param onset_extensor_idx: Sample index of extensor onset
+    :param onset_flexor_idx: Sample index of flexor onset
+    :param concentric_end_idx: Sample index where concentric phase ends
+    :param fs: Sampling frequency (Hz)
+    :return: Co-contraction duration in milliseconds
     """
     last_onset_idx = max(onset_extensor_idx, onset_flexor_idx)
     cocontraction_samples = concentric_end_idx - last_onset_idx
@@ -59,25 +35,68 @@ def get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_
 
 def get_emg_peak_in_phase(df_normalized, phase_start_idx, phase_end_idx, emg_column):
     """
-    Peak (max) value of the normalized EMG signal for one muscle, within a
-    given sample window (by default the concentric phase of the repetition).
+    Peak (max) value AND its global sample index for one muscle's normalized
+    EMG envelope, within a given sample window (by default the concentric
+    phase of the repetition).
+
+    :param df_normalized: DataFrame containing normalized EMG signals
+    :param phase_start_idx: Start sample index of the phase window
+    :param phase_end_idx: End sample index of the phase window
+    :param emg_column: Column name of the normalized EMG signal
+    :return: Tuple (peak_idx, peak_value) -- peak_idx is the global index (not
+        positional) of the peak sample, peak_value is the max amplitude
     """
-    phase_signal = df_normalized[emg_column].iloc[phase_start_idx:phase_end_idx + 1]
-    return phase_signal.max()
+    phase_signal = df_normalized[emg_column].iloc[phase_start_idx : phase_end_idx + 1]
+    peak_idx = phase_signal.idxmax()
+    peak_value = phase_signal.max()
+    return peak_idx, peak_value
 
 
-def get_emg_peak_ratio(emg_peak_extensor, emg_peak_flexor):
+def get_envelope_peak_delay(peak_idx_extensor, peak_idx_flexor, fs):
     """
-    Ratio between extensor and flexor normalized EMG peaks:
-    emg_peak_extensor / emg_peak_flexor
-    """
-    return emg_peak_extensor / emg_peak_flexor
+    Envelope Peak Delay (ms): temporal difference between the agonist (extensor)
+    and antagonist (flexor) envelope peaks.
+    Positive -> extensor envelope peak happened AFTER flexor envelope peak.
+    Negative -> extensor envelope peak happened BEFORE flexor envelope peak.
 
+    :param peak_idx_extensor: Sample index of the extensor envelope peak
+    :param peak_idx_flexor: Sample index of the flexor envelope peak
+    :param fs: Sampling frequency (Hz)
+    :return: Envelope peak delay in milliseconds
+    """
+    diff_samples = peak_idx_extensor - peak_idx_flexor
+    return (diff_samples / fs) * 1000
+def get_peak_rate_of_force_development(
+    df,
+    start_idx,
+    end_idx,
+    force_column,
+    fs,
+):
+    """
+    Compute the Peak Rate of Force Development (Peak RFD) during a given phase.
+
+    The Peak RFD is defined as the maximum first derivative of the force signal
+    within the specified interval.
+
+    :param df: DataFrame containing the force signal.
+    :param start_idx: Start index of the phase.
+    :param end_idx: End index of the phase.
+    :param force_column: Name of the force column.
+    :param fs: Sampling frequency (Hz).
+    :return: Peak Rate of Force Development (N/s).
+    """
+    force = df.loc[start_idx:end_idx, force_column].to_numpy()
+
+    derivative = np.gradient(force) * fs
+
+    return float(np.max(derivative))
 
 def get_muscle_coordination_info(
     subject_data_normalized,
-    onset_info,
+    onset_df,
     power_info,
+    subject_id,
     condition="HD",
     fs=None,
     onset_extensor_column="EMG_Extensor_filt",
@@ -86,40 +105,20 @@ def get_muscle_coordination_info(
     emg_flexor_column="EMG_Flexor_norm",
 ):
     """
-    Build the full muscle coordination info for a given condition (only "HD"
-    supported for now).
+    Build the full muscle coordination info for a given condition (only 'HD'
+    supported for now) using the onset DataFrame from detect_emg_onsets.
 
-    Parameters
-    ----------
-    subject_data_normalized : dict
-        Output of `normalize_emg` (has subject_data_normalized[condition]["data"]
-        and ["params"]).
-    onset_info : dict
-        Output of `detect_emg_onsets`. Expects, per repetition:
-        {"onset": {extensor_column: idx, flexor_column: idx},
-         "concentric_phase": {"start": idx, "end": idx}}
-    power_info : pandas.DataFrame
-        Output row(s) from `process_hd_power`. Must contain a
-        "rep_at_peak_power" column.
-    condition : str
-        Condition to process. Only "HD" is implemented right now.
-    fs : float or None
-        Sampling rate. If None, it's pulled from
-        subject_data_normalized[condition]["params"]["sampling rate"].
-    onset_extensor_column, onset_flexor_column : str
-        Column names used as keys inside onset_info[condition][rep]["onset"]
-        (these are the raw/filtered EMG column names, e.g. "EMG_Extensor_filt").
-    emg_extensor_column, emg_flexor_column : str
-        Column names of the NORMALIZED EMG signals in
-        subject_data_normalized[condition]["data"], used to compute the EMG
-        peaks (e.g. "EMG_Extensor_norm").
-
-    Returns
-    -------
-    dict
-        {condition: {rep_number_or_"rep_peakpower": {metrics...}, ...}}
-        The repetition that matches power_info["rep_at_peak_power"] is keyed
-        as "rep_peakpower" instead of its numeric repetition number.
+    :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params'
+    :param onset_df: DataFrame output for a condition from detect_emg_onsets
+    :param power_info: DataFrame containing a 'rep_at_peak_power' column
+    :param subject_id: Subject identifier tag
+    :param condition: Condition name to process (default 'HD')
+    :param fs: Sampling frequency (Hz). If None, extracted from subject_data_normalized
+    :param onset_extensor_column: Muscle column name used for extensor onsets
+    :param onset_flexor_column: Muscle column name used for flexor onsets
+    :param emg_extensor_column: Column name of normalized extensor EMG
+    :param emg_flexor_column: Column name of normalized flexor EMG
+    :return: Tuple (df_hd, df_hi) containing coordination DataFrames
     """
     if condition != "HD":
         raise NotImplementedError(
@@ -134,25 +133,53 @@ def get_muscle_coordination_info(
 
     coordination_info = {}
 
-    for rep, rep_info in onset_info[condition].items():
-        onset_extensor_idx = rep_info["onset"][onset_extensor_column]
-        onset_flexor_idx = rep_info["onset"][onset_flexor_column]
-        concentric_start_idx = rep_info["concentric_phase"]["start"]
-        concentric_end_idx = rep_info["concentric_phase"]["end"]
+    # Group rows by repetition number from the onset DataFrame
+    repetition_groups = onset_df.groupby("rep")
+
+    for rep, rep_data in repetition_groups:
+        ext_row = rep_data[rep_data["muscle"] == onset_extensor_column]
+        flex_row = rep_data[rep_data["muscle"] == onset_flexor_column]
+
+        if ext_row.empty or flex_row.empty:
+            continue
+
+        onset_extensor_idx = ext_row["onset_idx"].values[0]
+        onset_flexor_idx = flex_row["onset_idx"].values[0]
+
+        # Extract concentric phase boundaries (shared between muscles in HD condition)
+        concentric_start_idx = ext_row["concentric_start_idx"].values[0]
+        concentric_end_idx = ext_row["concentric_end_idx"].values[0]
+        concentric_duration_ms = (concentric_end_idx - concentric_start_idx) / fs * 1000
 
         onset_diff_ms = get_onset_difference(onset_extensor_idx, onset_flexor_idx, fs)
         onset_diff_ms_abs = abs(onset_diff_ms)
-        cocontraction_ms = get_cocontraction_time(
-            onset_extensor_idx, onset_flexor_idx, concentric_end_idx, fs
-        )
 
-        emg_peak_extensor = get_emg_peak_in_phase(
+        cocontraction_ms = get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_idx, fs)
+        cocontraction_normalized = cocontraction_ms / concentric_duration_ms
+
+        # EMG peak for both muscles
+        peak_idx_extensor, emg_peak_extensor = get_emg_peak_in_phase(
             df_normalized, concentric_start_idx, concentric_end_idx, emg_extensor_column
         )
-        emg_peak_flexor = get_emg_peak_in_phase(
+        peak_idx_flexor, emg_peak_flexor = get_emg_peak_in_phase(
             df_normalized, concentric_start_idx, concentric_end_idx, emg_flexor_column
         )
-        emg_peak_ratio = get_emg_peak_ratio(emg_peak_extensor, emg_peak_flexor)
+        emg_peak_ratio = emg_peak_extensor / emg_peak_flexor
+
+        # Envelope Peak Delay metrics
+        envelope_peak_delay_ms = get_envelope_peak_delay(peak_idx_extensor, peak_idx_flexor, fs)
+        envelope_peak_delay_ms_abs = abs(envelope_peak_delay_ms)
+        normalized_envelope_peak_delay = envelope_peak_delay_ms / concentric_duration_ms
+        normalized_envelope_peak_delay_abs = envelope_peak_delay_ms_abs / concentric_duration_ms
+
+        # Rate of Force Development Peak
+        peak_rfd = get_peak_rate_of_force_development(
+            df_normalized,
+            concentric_start_idx,
+            concentric_end_idx,
+            FORCE_COLUMN,
+            fs,
+        )
 
         rep_key = "rep_peakpower" if rep == rep_at_peak_power else rep
 
@@ -160,20 +187,31 @@ def get_muscle_coordination_info(
             "onset_diff_ms": onset_diff_ms,
             "onset_diff_ms_abs": onset_diff_ms_abs,
             "cocontraction_ms": cocontraction_ms,
+            "cocontraction_normalized": cocontraction_normalized,
             "emg_peak_extensor": emg_peak_extensor,
             "emg_peak_flexor": emg_peak_flexor,
             "emg_peak_ratio": emg_peak_ratio,
+            "envelope_peak_delay_ms": envelope_peak_delay_ms,
+            "envelope_peak_delay_ms_abs": envelope_peak_delay_ms_abs,
+            "normalized_envelope_peak_delay": normalized_envelope_peak_delay,
+            "normalized_envelope_peak_delay_abs": normalized_envelope_peak_delay_abs,
+            "peak_rfd": peak_rfd,
         }
 
-    return {condition: coordination_info}
+    df_hd = build_coordination_dataframe({condition: coordination_info}, subject_id)
+    df_hi = None
+
+    return df_hd, df_hi
 
 
 def build_coordination_dataframe(coordination_info, subject_id=None, condition="HD"):
     """
-    Flatten coordination_info[condition] into a tidy DataFrame (one row per
-    repetition), handy for Excel export alongside power_info. Optionally
-    tags each row with subject_id, mirroring the pattern used for
-    power_info in the main script.
+    Flatten coordination_info into a tidy DataFrame with one row per repetition.
+
+    :param coordination_info: Dict containing metric values per repetition key
+    :param subject_id: Optional subject identifier to prepending as first column
+    :param condition: Condition key inside coordination_info (default 'HD')
+    :return: Tidy DataFrame with repetition metrics
     """
     rows = []
     for rep_key, metrics in coordination_info[condition].items():

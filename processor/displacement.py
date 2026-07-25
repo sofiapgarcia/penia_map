@@ -122,16 +122,11 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
 
         N = df_converted[DISPLACEMENT_COLUMN]
 
-        N0 = _calculate_N0(x0)
-        print("N0 regressao",N0)
-        N0_real = _get_N0(N)
-        print("N0_real", N0_real)
-        Nmax_max = N.min()
-        print("Nmax serie", Nmax_max)
+        N0 = _get_N0(N)
+
         Nmax = 13867
-        print("Nmax utilizado:", Nmax)
+
         x0 = _convert_x0(x0)
-        print("posicao pega", x0)
 
     elif hp_source == "handle":
 
@@ -152,14 +147,13 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
     b = - a * N0
 
     L = x0 - xmax
-    print("Curso total (L): ", L)
+    #print("Curso total (L): ", L)
 
 
     # Apply linear transformation to full signal
     absolute_position = a * N + b
 
     max_displacement = absolute_position.max()
-    print("Posição máxima da série:", max_displacement)
 
     if hp_source == "handle":
         tolerance = 0.5  # mm

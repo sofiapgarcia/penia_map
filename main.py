@@ -15,7 +15,8 @@ from metrics.concentric_phase_detection_attempt2 import detect_concentric_eccent
 from metrics.onset_detection import detect_emg_onsets
 from metrics.powerpenia.scalogram import get_muscle_scalogram_info
 from constants import DISPLACEMENT_COLUMN
-from metrics.powerpenia.coordination import get_muscle_coordination_info, build_coordination_dataframe
+from metrics.powerpenia.coordination import get_muscle_coordination_metrics
+from metrics.spectral_density import get_muscle_band_power_info
 
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
@@ -120,15 +121,16 @@ for subject in subjects:
     subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=False, pipeline_max_reps=2)
-
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=True, show_pipeline_plots=False, pipeline_max_reps=2)
 
     # collect this subject's power_info row, tagged with their numeric id
     power_info = subject_data_power["power_info"].copy()
 
-    info_hd , info_hi = get_muscle_coordination_info(subject_data_normalized, onset_hd, power_info, subject_id = subject_number)
+    info_hd , info_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
-    scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, subject_number, show_scalogram_plot=True)
+    scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, subject_number, show_scalogram_plot=False)
+
+    band_power_hd , band_power_hi = get_muscle_band_power_info(subject_data_normalized,onset_hd, onset_hi,power_info,subject_number)
     print("oi")
     #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
     #all_power_info.append(subject_power_info)

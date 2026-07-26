@@ -234,19 +234,54 @@ def _detect_emg_onsets_single_condition(df, fs, sigma_ms, window_ms, guard_ms, m
     return results
 
 
-def _robust_baseline_threshold(envelope, threshold_k):
+import numpy as np
+
+def _robust_baseline_threshold(envelope, top_percentage=0.05, threshold_ratio=0.6):
     """
-    Estimate a robust detection threshold for an envelope signal, based on the median
-    and the median absolute deviation (MAD).
+    Compute a threshold based on the median of the highest envelope values.
 
     :param envelope: 1D array with the (smoothed) energy envelope.
-    :param threshold_k: Multiplier applied to the robust spread estimate.
+    :param top_percentage: Fraction of the highest values to consider
+        (e.g. 0.1 = top 10%).
+    :param threshold_ratio: Fraction of the median used as threshold.
     :return: Scalar threshold value.
     """
-    baseline = np.median(envelope)
-    mad = np.median(np.abs(envelope - baseline))
-    robust_std = mad * 1.4826
-    return baseline + threshold_k * robust_std
+    envelope = np.asarray(envelope)
+
+    # Number of samples to keep
+    n_top = max(1, int(len(envelope) * top_percentage))
+    print(n_top)
+
+    # Highest values
+    top_values = np.sort(envelope)[-n_top:]
+
+    # Median of the highest values
+    reference = np.median(top_values)
+    print(reference)
+
+    return reference * threshold_ratio
+
+
+def _raw_active_segments(envelope, threshold):
+    """
+    Find every contiguous segment where the envelope is above the threshold,
+    with NO merging and NO duration filtering applied yet. This is the "before"
+    picture used by `_detect_active_segments` -- useful on its own for visualizing
+    the coarse (unfiltered) detection step, e.g. in `_plot_hi_coarse_detection`.
+
+    :param envelope: 1D array with the (smoothed) energy envelope.
+    :param threshold: Amplitude threshold above which the signal is considered "active".
+    :return: List of (start_idx, end_idx) tuples (end exclusive), sorted by start_idx.
+    """
+    above = envelope > threshold
+    diff = np.diff(above.astype(int))
+    starts = list(np.flatnonzero(diff == 1) + 1)
+    ends = list(np.flatnonzero(diff == -1) + 1)
+    if above.size and above[0]:
+        starts = [0] + starts
+    if above.size and above[-1]:
+        ends = ends + [above.size]
+    return list(zip(starts, ends))
 
 
 def _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms):
@@ -261,16 +296,7 @@ def _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms
     :param min_gap_ms: Maximum gap (ms) between two active segments for them to be merged into one.
     :return: List of (start_idx, end_idx) tuples (end exclusive), sorted by start_idx.
     """
-    above = envelope > threshold
-    diff = np.diff(above.astype(int))
-    starts = list(np.flatnonzero(diff == 1) + 1)
-    ends = list(np.flatnonzero(diff == -1) + 1)
-    if above.size and above[0]:
-        starts = [0] + starts
-    if above.size and above[-1]:
-        ends = ends + [above.size]
-
-    segments = list(zip(starts, ends))
+    segments = _raw_active_segments(envelope, threshold)
     if not segments:
         return []
 
@@ -287,6 +313,76 @@ def _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms
     merged = [(s, e) for s, e in merged if (e - s) >= min_duration_samples]
 
     return merged
+
+
+def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms, condition):
+    """
+    Plot, for every muscle in an isometric condition (e.g. HI), the three stages of
+    the COARSE contraction detection step (before onset/offset refinement):
+      1. Raw (filtered) EMG signal.
+      2. Envelope + robust threshold + every raw threshold crossing (unfiltered).
+      3. Final segments kept after merging close crossings (`min_gap_ms`) and
+         discarding short ones (`min_duration_ms`).
+
+    This is meant purely for visual sanity-checking of `threshold_k`, `min_gap_ms`
+    and `min_duration_ms` -- it does NOT perform onset/offset refinement (see
+    `_plot_hi_pipeline_steps` for that).
+
+    :param df: DataFrame containing the EMG columns to plot.
+    :param columns: List of EMG column names to plot (one figure per column).
+    :param fs: Sampling rate (Hz).
+    :param sigma_ms: Moving-average window (ms) used to build the envelope (must
+        match the value used for detection).
+    :param threshold_k: Multiplier applied to the robust baseline spread (MAD-based)
+        to set the "active" detection threshold (must match the value used for
+        detection).
+    :param min_duration_ms: Minimum duration (ms) for a detected active segment to be
+        accepted as a real contraction (must match the value used for detection).
+    :param min_gap_ms: Maximum gap (ms) between two active segments for them to be
+        merged into a single contraction (must match the value used for detection).
+    :param condition: Name of the condition being plotted (used in the plot title).
+    :return: None. Displays one figure per muscle column.
+    """
+    for col in columns:
+        raw = df[col].to_numpy()
+        t = np.arange(raw.size) / fs
+
+        envelope = _emg_envelope(raw, fs, sigma_ms)
+        threshold = _robust_baseline_threshold(envelope)
+        raw_segments = _raw_active_segments(envelope, threshold)
+        kept_segments = _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms)
+
+        fig, axes = plt.subplots(3, 1, figsize=(13, 8), sharex=True)
+
+        axes[0].plot(t, raw, color='black', linewidth=0.6)
+        axes[0].set_ylabel('Raw EMG\n(filtered)', fontsize=9)
+        axes[0].set_title(f'{condition} -- {col} -- 1. Raw signal')
+
+        axes[1].plot(t, envelope, color='tab:orange', linewidth=1.2, label='envelope')
+        axes[1].axhline(threshold, color='tab:brown', linestyle=':', linewidth=1.5,
+                         label=f'threshold = median + {threshold_k}xMAD')
+        for i, (s, e) in enumerate(raw_segments):
+            axes[1].axvspan(t[s], t[e - 1], color='tab:red', alpha=0.15,
+                             label='raw segment (unfiltered)' if i == 0 else None)
+        axes[1].set_ylabel('Envelope', fontsize=9)
+        axes[1].legend(fontsize=8, loc='upper right')
+        axes[1].set_title('2. Coarse detection: every raw threshold crossing')
+
+        axes[2].plot(t, envelope, color='tab:orange', linewidth=1.2)
+        axes[2].axhline(threshold, color='tab:brown', linestyle=':', linewidth=1.5)
+        for i, (s, e) in enumerate(kept_segments):
+            axes[2].axvspan(t[s], t[e - 1], color='tab:green', alpha=0.25,
+                             label='kept segment (merged + duration-filtered)' if i == 0 else None)
+        axes[2].set_ylabel('Envelope', fontsize=9)
+        axes[2].set_xlabel('Time (s)')
+        axes[2].legend(fontsize=8, loc='upper right')
+        axes[2].set_title(
+            f'3. Final segments: merged if gap < {min_gap_ms}ms, kept if duration >= {min_duration_ms}ms '
+            f'-> {len(kept_segments)} segments found'
+        )
+
+        plt.tight_layout()
+        plt.show()
 
 
 def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms, min_window_ms,
@@ -360,7 +456,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
     results = []
     for col in columns:
         envelope = envelopes[col]
-        threshold = _robust_baseline_threshold(envelope, threshold_k)
+        threshold = _robust_baseline_threshold(envelope)
         segments = _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms)
 
         if len(segments) != n_reps:
@@ -402,11 +498,11 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
 
 
 def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window_ms=100, guard_ms=10,
-                       min_window_ms=100, emg_columns=None, show_plot=True,
+                       min_window_ms=100, emg_columns=None, show_plot=False,
                        n_reps=3, threshold_k=4.0, min_duration_ms=300, min_gap_ms=300,
-                       forward_margin_ms=50, offset_margin_ms=None, show_pipeline_plots=False,
+                       forward_margin_ms=0, offset_margin_ms=None, show_pipeline_plots=False,
                        pipeline_margin_before_ms=300, pipeline_margin_after_ms=200,
-                       pipeline_max_reps=None):
+                       pipeline_max_reps=None, show_coarse_detection_plots=True):
     """
     Detect the EMG onset (and, for isometric conditions, offset) for both muscles,
     for every repetition, in every requested condition, using a simplified and
@@ -448,6 +544,11 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
     :param pipeline_max_reps: How many repetitions to show in the pipeline plots, per muscle.
         Can be None (show all), an int (same number for every muscle), or a dict
         {muscle_column: n} to choose a different number of repetitions for each muscle.
+    :param show_coarse_detection_plots: If True (HI only), plots the coarse contraction
+        detection step per muscle -- raw signal, envelope + threshold + every raw
+        crossing, and the final segments kept after merging/duration-filtering. Useful
+        for tuning `threshold_k`, `min_duration_ms` and `min_gap_ms` before looking at
+        the finer onset/offset refinement (see _plot_hi_coarse_detection).
     :return: Dict keyed by condition name, each value a pandas DataFrame with one row
         per (repetition, muscle) -- see `_results_to_dataframe`.
     """
@@ -479,6 +580,11 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
 
         if show_plot:
             _plot_onsets(df, columns, condition_results, condition)
+
+        if is_isometric and show_coarse_detection_plots:
+            _plot_hi_coarse_detection(
+                df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms, condition
+            )
 
         if show_pipeline_plots:
             if not is_isometric:
@@ -682,7 +788,7 @@ def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, threshold_k, min_duration
         tkeo_rectified = np.abs(tkeo)
         envelope = _emg_envelope(raw, fs, sigma_ms)
 
-        threshold = _robust_baseline_threshold(envelope, threshold_k)
+        threshold = _robust_baseline_threshold(envelope)
         segments = _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms)
 
         muscle_results = [r for r in results if r['muscle'] == col]

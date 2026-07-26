@@ -112,7 +112,17 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
 
     return subject_data
 
-def _compute_force_derivative(force, fs, sigma_ms):
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter1d
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter1d
+
+
+def _compute_force_derivative(force, fs, sigma_ms, plot=True):
     """
     Compute a smoothed rate-of-change (derivative) signal from the force
     signal via numerical differentiation, followed by light Gaussian
@@ -122,11 +132,15 @@ def _compute_force_derivative(force, fs, sigma_ms):
     :param force: 1D array with the force signal.
     :param fs: Sampling rate (Hz).
     :param sigma_ms: Standard deviation (ms) of the Gaussian smoothing kernel.
+    :param plot: If True, plot the force signal and its derivative.
     :return: 1D array with the smoothed force derivative (same length as force).
     """
     derivative = np.gradient(force) * fs
+
     sigma_samples = (sigma_ms / 1000.0) * fs
-    return gaussian_filter1d(derivative, sigma=sigma_samples)
+    derivative_smooth = gaussian_filter1d(derivative, sigma=sigma_samples)
+
+    return derivative_smooth
 
 
 def _find_rep_peaks(derivative, fs, n_reps, min_distance_s):
@@ -279,6 +293,6 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
     handles, labels_ = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels_, loc='upper right', fontsize=8)
     axes[-1].set_xlabel('Samples')
-    fig.suptitle('Concentric and Eccentric Phases -- HD Condition (all repetitions)')
+    fig.suptitle('Concentric and Eccentric Phases - HD Condition')
     plt.tight_layout()
     plt.show()

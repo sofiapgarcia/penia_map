@@ -234,9 +234,7 @@ def _detect_emg_onsets_single_condition(df, fs, sigma_ms, window_ms, guard_ms, m
     return results
 
 
-import numpy as np
-
-def _robust_baseline_threshold(envelope, top_percentage=0.05, threshold_ratio=0.6):
+def _robust_baseline_threshold(envelope, top_percentage=0.1, threshold_ratio=0.25):
     """
     Compute a threshold based on the median of the highest envelope values.
 
@@ -250,14 +248,12 @@ def _robust_baseline_threshold(envelope, top_percentage=0.05, threshold_ratio=0.
 
     # Number of samples to keep
     n_top = max(1, int(len(envelope) * top_percentage))
-    print(n_top)
 
     # Highest values
     top_values = np.sort(envelope)[-n_top:]
 
     # Median of the highest values
     reference = np.median(top_values)
-    print(reference)
 
     return reference * threshold_ratio
 
@@ -315,7 +311,7 @@ def _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms
     return merged
 
 
-def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms, condition):
+def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms, condition):
     """
     Plot, for every muscle in an isometric condition (e.g. HI), the three stages of
     the COARSE contraction detection step (before onset/offset refinement):
@@ -324,7 +320,7 @@ def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, threshold_k, min_durati
       3. Final segments kept after merging close crossings (`min_gap_ms`) and
          discarding short ones (`min_duration_ms`).
 
-    This is meant purely for visual sanity-checking of `threshold_k`, `min_gap_ms`
+    This is meant purely for visual sanity-checking of , `min_gap_ms`
     and `min_duration_ms` -- it does NOT perform onset/offset refinement (see
     `_plot_hi_pipeline_steps` for that).
 
@@ -333,9 +329,8 @@ def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, threshold_k, min_durati
     :param fs: Sampling rate (Hz).
     :param sigma_ms: Moving-average window (ms) used to build the envelope (must
         match the value used for detection).
-    :param threshold_k: Multiplier applied to the robust baseline spread (MAD-based)
-        to set the "active" detection threshold (must match the value used for
-        detection).
+        The active threshold itself is computed by `_robust_baseline_threshold`
+        from its own top_percentage/threshold_ratio defaults.
     :param min_duration_ms: Minimum duration (ms) for a detected active segment to be
         accepted as a real contraction (must match the value used for detection).
     :param min_gap_ms: Maximum gap (ms) between two active segments for them to be
@@ -359,8 +354,6 @@ def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, threshold_k, min_durati
         axes[0].set_title(f'{condition} -- {col} -- 1. Raw signal')
 
         axes[1].plot(t, envelope, color='tab:orange', linewidth=1.2, label='envelope')
-        axes[1].axhline(threshold, color='tab:brown', linestyle=':', linewidth=1.5,
-                         label=f'threshold = median + {threshold_k}xMAD')
         for i, (s, e) in enumerate(raw_segments):
             axes[1].axvspan(t[s], t[e - 1], color='tab:red', alpha=0.15,
                              label='raw segment (unfiltered)' if i == 0 else None)
@@ -386,7 +379,7 @@ def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, threshold_k, min_durati
 
 
 def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms, min_window_ms,
-                                            columns, n_reps, threshold_k, min_duration_ms,
+                                            columns, n_reps, min_duration_ms,
                                             min_gap_ms, forward_margin_ms, offset_margin_ms=None):
     """
     Detect EMG onsets AND offsets for isometric conditions (e.g. HI), where there is
@@ -420,9 +413,6 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
         signal for a reliable onset/offset estimation.
     :param columns: Names of the EMG columns to process.
     :param n_reps: Expected number of isometric contractions (repetitions).
-    :param threshold_k: Multiplier applied to the robust baseline spread (MAD-based) to
-        set the "active" detection threshold. Increase if too many spurious segments
-        are detected; decrease if real contractions are being missed.
     :param min_duration_ms: Minimum duration (ms) for a detected active segment to be
         accepted as a real contraction (filters out brief noise spikes).
     :param min_gap_ms: Maximum gap (ms) between two active segments for them to be
@@ -461,7 +451,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
 
         if len(segments) != n_reps:
             print(f"Warning: expected {n_reps} contractions for '{col}', found {len(segments)}. "
-                  f"Adjust threshold_k / min_duration_ms / min_gap_ms if this looks wrong. "
+                  f"Adjust threshold / min_duration_ms / min_gap_ms if this looks wrong. "
                   f"Keeping the {n_reps} longest segments found, in temporal order.")
             segments = sorted(
                 sorted(segments, key=lambda se: se[1] - se[0], reverse=True)[:n_reps],
@@ -499,7 +489,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
 
 def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window_ms=100, guard_ms=10,
                        min_window_ms=100, emg_columns=None, show_plot=False,
-                       n_reps=3, threshold_k=4.0, min_duration_ms=300, min_gap_ms=300,
+                       n_reps=3, min_duration_ms=300, min_gap_ms=300,
                        forward_margin_ms=0, offset_margin_ms=None, show_pipeline_plots=False,
                        pipeline_margin_before_ms=300, pipeline_margin_after_ms=200,
                        pipeline_max_reps=None, show_coarse_detection_plots=True):
@@ -529,7 +519,6 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
     :param emg_columns: Names of the EMG columns to process. Defaults to EMG_COLUMNS.
     :param show_plot: If True, plots both EMG signals with the detected onsets/offsets, per condition.
     :param n_reps: Expected number of isometric contractions per muscle (HI only).
-    :param threshold_k: Robust threshold multiplier (HI only).
     :param min_duration_ms: Minimum contraction duration (ms) (HI only).
     :param min_gap_ms: Maximum gap (ms) to merge nearby active segments (HI only).
     :param forward_margin_ms: Margin (ms) added past the onset threshold crossing (HI only).
@@ -547,7 +536,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
     :param show_coarse_detection_plots: If True (HI only), plots the coarse contraction
         detection step per muscle -- raw signal, envelope + threshold + every raw
         crossing, and the final segments kept after merging/duration-filtering. Useful
-        for tuning `threshold_k`, `min_duration_ms` and `min_gap_ms` before looking at
+        for tuning `threshold`, `min_duration_ms` and `min_gap_ms` before looking at
         the finer onset/offset refinement (see _plot_hi_coarse_detection).
     :return: Dict keyed by condition name, each value a pandas DataFrame with one row
         per (repetition, muscle) -- see `_results_to_dataframe`.
@@ -572,7 +561,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
         else:
             condition_results = _detect_emg_onsets_isometric_condition(
                 df, fs, sigma_ms, window_ms, guard_ms, min_window_ms, columns,
-                n_reps, threshold_k, min_duration_ms, min_gap_ms, forward_margin_ms,
+                n_reps, min_duration_ms, min_gap_ms, forward_margin_ms,
                 offset_margin_ms
             )
 
@@ -583,7 +572,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
 
         if is_isometric and show_coarse_detection_plots:
             _plot_hi_coarse_detection(
-                df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms, condition
+                df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms, condition
             )
 
         if show_pipeline_plots:
@@ -596,7 +585,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
                 )
             else:
                 _plot_hi_pipeline_steps(
-                    df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms,
+                    df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms,
                     condition_results,
                     margin_before_ms=pipeline_margin_before_ms,
                     margin_after_ms=pipeline_margin_after_ms,
@@ -744,7 +733,7 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
             plt.show()
 
 
-def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms,
+def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms,
                              results, margin_before_ms=300, margin_after_ms=300,
                              reps_per_muscle=None):
     """
@@ -761,10 +750,8 @@ def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, threshold_k, min_duration
     :param fs: Sampling rate (Hz).
     :param sigma_ms: Moving-average window (ms) used to build the envelope (must
         match the value used for detection).
-    :param threshold_k: Multiplier applied to the robust baseline spread (MAD-based)
-        to set the "active" detection threshold (must match the value used for
-        detection, so the plotted threshold/segments match the actual onset_idx/
-        offset_idx values).
+        The active threshold itself is computed by `_robust_baseline_threshold`
+        from its own top_percentage/threshold_ratio defaults.
     :param min_duration_ms: Minimum duration (ms) for a detected active segment to be
         accepted as a real contraction (must match the value used for detection).
     :param min_gap_ms: Maximum gap (ms) between two active segments for them to be
@@ -874,11 +861,11 @@ def _plot_onsets(df, columns, results, condition):
                 ax.axvline(reference_idx, color='tab:blue', linestyle='--', alpha=0.6,
                            label='Reference point' if show_label else None)
             if r['onset_idx'] is not None:
-                ax.plot(r['onset_idx'], signal[r['onset_idx']], 'r^', markersize=8,
-                       label='EMG onset' if show_label else None)
+                ax.axvline(r['onset_idx'], color='tab:red', linestyle='-', alpha=0.8,
+                           label='EMG onset' if show_label else None)
             if r.get('offset_idx') is not None:
-                ax.plot(r['offset_idx'], signal[r['offset_idx']], 'gv', markersize=8,
-                       label='EMG offset' if show_label else None)
+                ax.axvline(r['offset_idx'], color='tab:green', linestyle='-', alpha=0.8,
+                           label='EMG offset' if show_label else None)
 
         ax.set_ylabel(col, fontsize=8)
 

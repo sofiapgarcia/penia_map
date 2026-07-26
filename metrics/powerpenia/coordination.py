@@ -67,10 +67,6 @@ def get_envelope_peak_delay(peak_idx_extensor, peak_idx_flexor):
     return (diff_samples / FS) * 1000
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-
 def get_peak_rate_of_force_development(
     df,
     start_idx,
@@ -115,9 +111,7 @@ def get_muscle_coordination_info(
     :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params'
     :param onset_df: DataFrame output for a condition from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column
-    :param subject_id: Subject identifier tag
     :param condition: Condition name to process (default 'HD')
-    :param FS: Sampling frequency (Hz). If None, extracted from subject_data_normalized
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of normalized extensor EMG
@@ -273,7 +267,6 @@ def get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_i
     :param offset_extensor_idx: Sample index of extensor ofFSet
     :param onset_flexor_idx: Sample index of flexor onset
     :param offset_flexor_idx: Sample index of flexor ofFSet
-    :param FS: Sampling frequency (Hz)
     :return: Total activity span in milliseconds
     """
     span_start_idx = min(onset_extensor_idx, onset_flexor_idx)

@@ -25,7 +25,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 #subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S14"]
+subjects = ["S27"]
 subjects_with_no_calibration = ["S1","S2", "S4","S8","S11","S12","S13","S14","S15","S16","S17","S18","S22","S24","S25","S84"]
 
 
@@ -121,7 +121,7 @@ for subject in subjects:
     subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=True, show_pipeline_plots=False, pipeline_max_reps=2)
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=True, show_pipeline_plots=True, pipeline_max_reps=2, show_coarse_detection_plots=True)
 
     # collect this subject's power_info row, tagged with their numeric id
     power_info = subject_data_power["power_info"].copy()

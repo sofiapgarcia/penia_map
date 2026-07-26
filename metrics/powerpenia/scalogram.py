@@ -277,7 +277,6 @@ def get_muscle_scalogram_info(
     onset_df_hd,
     onset_df_hi,
     power_info,
-    subject_data,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
     emg_extensor_column="EMG_Extensor_filt_norm",
@@ -319,7 +318,6 @@ def get_muscle_scalogram_info(
     :param onset_df_hd: DataFrame output for condition 'HD' from detect_emg_onsets
     :param onset_df_hi: DataFrame output for condition 'HI' from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column (HD only)
-    :param subject_data: Dict containing 'HI_values', used to find the HI repetition of maximum value ('rep_max')
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of the normalized (filtered) extensor EMG
@@ -341,7 +339,7 @@ def get_muscle_scalogram_info(
     :return: Tuple (df_hd, df_hi) containing scalogram DataFrames
     """
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
-    rep_at_max_hi = _get_rep_at_max_hi_value(subject_data)
+    rep_at_max_hi = _get_rep_at_max_hi_value(subject_data_normalized)
 
     scalogram_info_hd = _compute_scalogram_info_for_condition(
         subject_data_normalized["HD"]["data"],

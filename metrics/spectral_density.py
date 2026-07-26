@@ -200,7 +200,6 @@ def get_muscle_band_power_info(
     onset_df_hd,
     onset_df_hi,
     power_info,
-    subject_data,
     fs=None,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
@@ -242,7 +241,6 @@ def get_muscle_band_power_info(
     :param onset_df_hd: DataFrame output for condition 'HD' from detect_emg_onsets
     :param onset_df_hi: DataFrame output for condition 'HI' from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column (HD only)
-    :param subject_data: Dict containing 'HI_values', used to find the HI repetition of maximum value ('rep_max')
     :param fs: Sampling frequency (Hz). If None, extracted per-condition from subject_data_normalized
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
@@ -253,7 +251,7 @@ def get_muscle_band_power_info(
     :return: Tuple (df_hd, df_hi) containing tidy band-power DataFrames, one row per repetition
     """
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
-    rep_at_max_hi = _get_rep_at_max_hi_value(subject_data)
+    rep_at_max_hi = _get_rep_at_max_hi_value(subject_data_normalized)
 
     fs_hd = fs if fs is not None else subject_data_normalized["HD"]["params"]["sampling rate"]
     fs_hi = fs if fs is not None else subject_data_normalized["HI"]["params"]["sampling rate"]

@@ -34,12 +34,10 @@ def process_hd_power(subject_data, show_plot=True):
 
     power_info = _get_power_summary(df)
 
-    subject_data["power_info"] = power_info
-
     if show_plot:
         _plot_hd_power_analysis(df, power_info)
 
-    return subject_data
+    return power_info
 
 
 def _compute_velocity(displacement_cm, fs):

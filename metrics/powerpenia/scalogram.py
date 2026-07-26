@@ -3,14 +3,14 @@ import pandas as pd
 import pywt
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from constants import FS
 
 
-def compute_scalogram(signal, fs, wavelet="morl", num_scales=64, min_scale=1, max_scale=128, scale_spacing="log"):
+def compute_scalogram(signal, wavelet="morl", num_scales=64, min_scale=1, max_scale=128, scale_spacing="log"):
     """
     Compute the continuous wavelet transform (scalogram) of a 1D signal.
 
     :param signal: 1D array-like signal
-    :param fs: Sampling frequency (Hz)
     :param wavelet: Wavelet name (default 'morl', Morlet)
     :param num_scales: Number of scales to use
     :param min_scale: Minimum scale value
@@ -32,7 +32,7 @@ def compute_scalogram(signal, fs, wavelet="morl", num_scales=64, min_scale=1, ma
     else:
         scales = np.linspace(min_scale, max_scale, num_scales)
 
-    coefficients, frequencies = pywt.cwt(signal, scales, wavelet, sampling_period=1 / fs)
+    coefficients, frequencies = pywt.cwt(signal, scales, wavelet, sampling_period=1 / FS)
     power = np.abs(coefficients) ** 2
 
     return power, frequencies
@@ -76,7 +76,7 @@ def get_peak_frequency(power, frequencies):
     return float(frequencies[peak_idx])
 
 
-def get_time_to_peak_energy(power, fs):
+def get_time_to_peak_energy(power):
     """
     Time (s) between the start of the analysis window and the instant at
     which the total signal energy (power summed across all scales/
@@ -87,13 +87,12 @@ def get_time_to_peak_energy(power, fs):
     this directly gives the time-to-peak-energy relative to onset.
 
     :param power: 2D array (scales x samples) as returned by compute_scalogram
-    :param fs: Sampling frequency (Hz)
     :return: Time to peak energy, in seconds, relative to the first sample of power
     """
     energy_per_sample = power.sum(axis=0)
     peak_sample_idx = np.argmax(energy_per_sample)
 
-    return float(peak_sample_idx / fs)
+    return float(peak_sample_idx / FS)
 
 
 def get_scalogram_metrics_in_phase(
@@ -101,7 +100,6 @@ def get_scalogram_metrics_in_phase(
     phase_start_idx,
     phase_end_idx,
     signal_column,
-    fs,
     wavelet="morl",
     num_scales=64,
     min_scale=1,
@@ -117,7 +115,6 @@ def get_scalogram_metrics_in_phase(
         muscle's onset, when used via get_muscle_scalogram_info)
     :param phase_end_idx: End sample index of the phase window
     :param signal_column: Column name of the signal to analyze
-    :param fs: Sampling frequency (Hz)
     :param wavelet: Wavelet name used for the CWT (default 'morl')
     :param num_scales: Number of scales used for the CWT
     :param min_scale: Minimum scale value
@@ -129,12 +126,12 @@ def get_scalogram_metrics_in_phase(
     phase_signal = df[signal_column].iloc[phase_start_idx: phase_end_idx + 1].to_numpy()
 
     power, frequencies = compute_scalogram(
-        phase_signal, fs, wavelet=wavelet, num_scales=num_scales, min_scale=min_scale, max_scale=max_scale
+        phase_signal, wavelet=wavelet, num_scales=num_scales, min_scale=min_scale, max_scale=max_scale
     )
 
     median_freq = get_median_frequency(power, frequencies)
     peak_freq = get_peak_frequency(power, frequencies)
-    time_to_peak_energy = get_time_to_peak_energy(power, fs)
+    time_to_peak_energy = get_time_to_peak_energy(power)
 
     return median_freq, peak_freq, time_to_peak_energy
 
@@ -142,7 +139,6 @@ def get_scalogram_metrics_in_phase(
 def _compute_scalogram_info_for_condition(
     df_normalized,
     onset_df,
-    fs,
     onset_extensor_column,
     onset_flexor_column,
     emg_extensor_column,
@@ -170,7 +166,6 @@ def _compute_scalogram_info_for_condition(
 
     :param df_normalized: DataFrame containing the normalized EMG signals
     :param onset_df: DataFrame output for the condition from detect_emg_onsets
-    :param fs: Sampling frequency (Hz)
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of normalized extensor EMG
@@ -217,7 +212,6 @@ def _compute_scalogram_info_for_condition(
             int(extensor_start_idx),
             int(extensor_end_idx),
             emg_extensor_column,
-            fs,
             wavelet=wavelet,
             num_scales=num_scales,
             min_scale=min_scale,
@@ -228,7 +222,6 @@ def _compute_scalogram_info_for_condition(
             int(flexor_start_idx),
             int(flexor_end_idx),
             emg_flexor_column,
-            fs,
             wavelet=wavelet,
             num_scales=num_scales,
             min_scale=min_scale,
@@ -262,8 +255,6 @@ def get_muscle_scalogram_info(
     onset_df_hd,
     onset_df_hi,
     power_info,
-    subject_id,
-    fs=None,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
     emg_extensor_column="EMG_Extensor_filt_norm",
@@ -302,8 +293,6 @@ def get_muscle_scalogram_info(
     :param onset_df_hd: DataFrame output for condition 'HD' from detect_emg_onsets
     :param onset_df_hi: DataFrame output for condition 'HI' from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column (HD only)
-    :param subject_id: Subject identifier tag
-    :param fs: Sampling frequency (Hz). If None, extracted per-condition from subject_data_normalized
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of the normalized (filtered) extensor EMG
@@ -326,13 +315,9 @@ def get_muscle_scalogram_info(
     """
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
 
-    fs_hd = fs if fs is not None else subject_data_normalized["HD"]["params"]["sampling rate"]
-    fs_hi = fs if fs is not None else subject_data_normalized["HI"]["params"]["sampling rate"]
-
     scalogram_info_hd = _compute_scalogram_info_for_condition(
         subject_data_normalized["HD"]["data"],
         onset_df_hd,
-        fs_hd,
         onset_extensor_column,
         onset_flexor_column,
         emg_extensor_column,
@@ -349,7 +334,6 @@ def get_muscle_scalogram_info(
     scalogram_info_hi = _compute_scalogram_info_for_condition(
         subject_data_normalized["HI"]["data"],
         onset_df_hi,
-        fs_hi,
         onset_extensor_column,
         onset_flexor_column,
         emg_extensor_column,
@@ -363,8 +347,8 @@ def get_muscle_scalogram_info(
         rep_at_peak_power=None,
     )
 
-    df_hd = build_scalogram_dataframe({"HD": scalogram_info_hd}, subject_id, condition="HD")
-    df_hi = build_scalogram_dataframe({"HI": scalogram_info_hi}, subject_id, condition="HI")
+    df_hd = build_scalogram_dataframe({"HD": scalogram_info_hd}, condition="HD")
+    df_hi = build_scalogram_dataframe({"HI": scalogram_info_hi}, condition="HI")
 
     if show_scalogram_plot:
         plot_condition_muscle_scalograms(
@@ -377,7 +361,6 @@ def get_muscle_scalogram_info(
             emg_flexor_column=emg_flexor_column,
             start_idx_column="onset_idx",
             end_idx_column="concentric_end_idx",
-            fs=fs_hd,
             wavelet=wavelet,
             num_scales=num_scales,
             min_scale=min_scale,
@@ -395,7 +378,6 @@ def get_muscle_scalogram_info(
             emg_flexor_column=emg_flexor_column,
             start_idx_column="onset_idx",
             end_idx_column="offset_idx",
-            fs=fs_hi,
             wavelet=wavelet,
             num_scales=num_scales,
             min_scale=min_scale,
@@ -407,12 +389,11 @@ def get_muscle_scalogram_info(
     return df_hd, df_hi
 
 
-def build_scalogram_dataframe(scalogram_info, subject_id=None, condition="HD"):
+def build_scalogram_dataframe(scalogram_info, condition="HD"):
     """
     Flatten scalogram_info into a tidy DataFrame with one row per repetition.
 
     :param scalogram_info: Dict containing metric values per repetition key
-    :param subject_id: Optional subject identifier to prepend as first column
     :param condition: Condition key inside scalogram_info (default 'HD')
     :return: Tidy DataFrame with repetition metrics
     """
@@ -424,16 +405,12 @@ def build_scalogram_dataframe(scalogram_info, subject_id=None, condition="HD"):
 
     df = pd.DataFrame(rows)
 
-    if subject_id is not None:
-        df.insert(0, "subject_id", subject_id)
-
     return df
 
 
 def plot_signal_scalogram(
     df,
     signal_column,
-    fs,
     wavelet="morl",
     num_scales=64,
     min_scale=1,
@@ -457,7 +434,6 @@ def plot_signal_scalogram(
     :param df: DataFrame containing the signal
     :param signal_column: Column name of the signal to analyze (e.g. an
         'EMG_Extensor_filt_norm' or 'EMG_Extensor_filt' column)
-    :param fs: Sampling frequency (Hz)
     :param wavelet: Wavelet name used for the CWT (default 'morl')
     :param num_scales: Number of scales used for the CWT
     :param min_scale: Minimum scale value
@@ -495,7 +471,6 @@ def plot_signal_scalogram(
     signal = df[signal_column].to_numpy()
     power, frequencies = compute_scalogram(
         signal,
-        fs,
         wavelet=wavelet,
         num_scales=num_scales,
         min_scale=min_scale,
@@ -505,7 +480,7 @@ def plot_signal_scalogram(
 
     print(f"frequencia minima: {frequencies.min()}, frequencia maxima: {frequencies.max()}")
 
-    time = np.arange(signal.size) / fs
+    time = np.arange(signal.size) / FS
 
     if show_signal:
         fig, (ax_signal, ax_scalogram) = plt.subplots(
@@ -539,8 +514,8 @@ def plot_signal_scalogram(
         label_y = frequencies.min() + 0.95 * (y_top - frequencies.min())
 
         for rep, start_idx, end_idx in phase_windows:
-            start_t = start_idx / fs
-            end_t = end_idx / fs
+            start_t = start_idx / FS
+            end_t = end_idx / FS
 
             ax_scalogram.axvspan(start_t, end_t, color=phase_color, alpha=phase_alpha, linewidth=0, zorder=3)
             ax_scalogram.axvline(start_t, color=phase_color, linewidth=0.8, linestyle="--", zorder=4)
@@ -578,7 +553,6 @@ def plot_condition_muscle_scalograms(
     emg_flexor_column="EMG_Flexor_filt_norm",
     start_idx_column="concentric_start_idx",
     end_idx_column="concentric_end_idx",
-    fs=None,
     wavelet="morl",
     num_scales=64,
     min_scale=1,
@@ -620,7 +594,6 @@ def plot_condition_muscle_scalograms(
         ('concentric_start_idx' for HD, 'onset_idx' for HI)
     :param end_idx_column: Column in onset_df with the window end index
         ('concentric_end_idx' for HD, 'offset_idx' for HI)
-    :param fs: Sampling frequency (Hz). If None, extracted from subject_data_normalized
     :param wavelet: Wavelet name used for the CWT (default 'morl')
     :param num_scales: Number of scales used for the CWT
     :param min_scale: Minimum scale value
@@ -636,8 +609,6 @@ def plot_condition_muscle_scalograms(
         repetition number
     :return: None. Displays two plots (one per muscle).
     """
-    if fs is None:
-        fs = subject_data_normalized[condition]["params"]["sampling rate"]
 
     df = subject_data_normalized[condition]["data"]
 
@@ -661,7 +632,6 @@ def plot_condition_muscle_scalograms(
         plot_signal_scalogram(
             df,
             signal_column,
-            fs,
             wavelet=wavelet,
             num_scales=num_scales,
             min_scale=min_scale,

@@ -178,7 +178,6 @@ def get_muscle_band_power_info(
     onset_df_hd,
     onset_df_hi,
     power_info,
-    subject_id,
     fs=None,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
@@ -217,7 +216,6 @@ def get_muscle_band_power_info(
     :param onset_df_hd: DataFrame output for condition 'HD' from detect_emg_onsets
     :param onset_df_hi: DataFrame output for condition 'HI' from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column (HD only)
-    :param subject_id: Subject identifier tag
     :param fs: Sampling frequency (Hz). If None, extracted per-condition from subject_data_normalized
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
@@ -262,18 +260,17 @@ def get_muscle_band_power_info(
         rep_at_peak_power=None,
     )
 
-    df_hd = build_band_power_dataframe({"HD": band_power_info_hd}, subject_id, condition="HD")
-    df_hi = build_band_power_dataframe({"HI": band_power_info_hi}, subject_id, condition="HI")
+    df_hd = build_band_power_dataframe({"HD": band_power_info_hd}, condition="HD")
+    df_hi = build_band_power_dataframe({"HI": band_power_info_hi}, condition="HI")
 
     return df_hd, df_hi
 
 
-def build_band_power_dataframe(band_power_info, subject_id=None, condition="HD"):
+def build_band_power_dataframe(band_power_info, condition="HD"):
     """
     Flatten band_power_info into a tidy DataFrame with one row per repetition.
 
     :param band_power_info: Dict containing metric values per repetition key
-    :param subject_id: Optional subject identifier to prepend as first column
     :param condition: Condition key inside band_power_info (default 'HD')
     :return: Tidy DataFrame with one row per repetition and one column per
         "<band>Hz_<muscle>" band power
@@ -285,8 +282,5 @@ def build_band_power_dataframe(band_power_info, subject_id=None, condition="HD")
         rows.append(row)
 
     df = pd.DataFrame(rows)
-
-    if subject_id is not None:
-        df.insert(0, "subject_id", subject_id)
 
     return df

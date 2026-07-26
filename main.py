@@ -109,10 +109,10 @@ for subject in subjects:
     subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
 
     # peak power calculation
-    subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
+    power_info = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
-    subject_data_envelope = get_emg_envelope(subject_data_power, show_plot=False)
+    subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
 
     # Get MVC values
     subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
@@ -121,16 +121,13 @@ for subject in subjects:
     subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=True, show_pipeline_plots=True, pipeline_max_reps=2, show_coarse_detection_plots=True)
-
-    # collect this subject's power_info row, tagged with their numeric id
-    power_info = subject_data_power["power_info"].copy()
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
 
     info_hd , info_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
-    scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, subject_number, show_scalogram_plot=False)
+    scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, show_scalogram_plot=False)
 
-    band_power_hd , band_power_hi = get_muscle_band_power_info(subject_data_normalized,onset_hd, onset_hi,power_info,subject_number)
+    band_power_hd , band_power_hi = get_muscle_band_power_info(subject_data_normalized,onset_hd, onset_hi,power_info)
     print("oi")
     #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
     #all_power_info.append(subject_power_info)

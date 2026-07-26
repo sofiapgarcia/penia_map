@@ -88,13 +88,14 @@ def _compute_band_power_info_for_condition(
     start_idx_column,
     end_idx_column,
     rep_at_peak_power=None,
+    peak_rep_label="rep_peakpower",
 ):
     """
     Compute per-repetition band-power metrics for a single condition's onset
     DataFrame. If rep_at_peak_power is provided, the matching repetition is
-    keyed as 'rep_peakpower' (used for HD, same convention as in
-    emg_scalogram.get_muscle_scalogram_info); if None, all repetitions keep
-    their plain numeric key (used for HI, which has no peak-power repetition).
+    keyed as peak_rep_label (e.g. 'rep_peakpower' for HD, same convention as
+    in emg_scalogram.get_muscle_scalogram_info; 'rep_max' for HI); if None,
+    all repetitions keep their plain numeric key.
 
     The analysis window boundaries are read from start_idx_column/
     end_idx_column, independently for each muscle's row: the muscle's own
@@ -113,8 +114,9 @@ def _compute_band_power_info_for_condition(
     :param nperseg: See compute_band_powers
     :param start_idx_column: Column in onset_df with the window start index
     :param end_idx_column: Column in onset_df with the window end index
-    :param rep_at_peak_power: Repetition number to key as 'rep_peakpower', or None
-    :return: Dict keyed by repetition (int or 'rep_peakpower') with a metrics
+    :param rep_at_peak_power: Repetition number to key as peak_rep_label, or None
+    :param peak_rep_label: Key to use for the repetition matching rep_at_peak_power
+    :return: Dict keyed by repetition (int or peak_rep_label) with a metrics
         dict containing "<band>Hz_extensor"/"<band>Hz_flexor" power values
     """
     band_power_info = {}
@@ -158,7 +160,7 @@ def _compute_band_power_info_for_condition(
         )
 
         if rep_at_peak_power is not None and rep == rep_at_peak_power:
-            rep_key = "rep_peakpower"
+            rep_key = peak_rep_label
         else:
             rep_key = rep
 
@@ -173,11 +175,32 @@ def _compute_band_power_info_for_condition(
     return band_power_info
 
 
+def _get_rep_at_max_hi_value(subject_data):
+    """
+    Determine the HI repetition with the highest value, using the
+    'HI_values' dict inside subject_data (keys like 'H1', 'H2', ... mapping
+    to a value per repetition; the repetition number is the digits in the
+    key). This is used to flag that repetition as 'rep_max' for HI, the
+    HI-condition counterpart to HD's rep_at_peak_power.
+
+    :param subject_data: Dict containing an 'HI_values' key, itself a dict
+        of "H<rep_number>" -> value
+    :return: The repetition number (int) with the highest value in
+        subject_data["HI_values"]
+    """
+    hi_values = subject_data["HI_values"]
+    max_key = max(hi_values, key=hi_values.get)
+    rep_number = int("".join(ch for ch in max_key if ch.isdigit()))
+
+    return rep_number
+
+
 def get_muscle_band_power_info(
     subject_data_normalized,
     onset_df_hd,
     onset_df_hi,
     power_info,
+    subject_data,
     fs=None,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
@@ -209,13 +232,17 @@ def get_muscle_band_power_info(
     HD has a repetition of peak power (identified via power_info and keyed
     as 'rep_peakpower' in the output, matching the convention used in
     get_muscle_scalogram_info so the two outputs can be joined on
-    'repetition'); HI has no such repetition, so all of its repetitions keep
-    their plain numeric key.
+    'repetition'). HI has no power_info-based peak repetition; instead, its
+    repetition of maximum value is identified from
+    subject_data["HI_values"] (a dict keyed "H1", "H2", ... whose highest
+    value marks the max repetition) and keyed as 'rep_max' in the output.
+    All other HI repetitions keep their plain numeric key.
 
     :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params' for both conditions ('HD' and 'HI' keys)
     :param onset_df_hd: DataFrame output for condition 'HD' from detect_emg_onsets
     :param onset_df_hi: DataFrame output for condition 'HI' from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column (HD only)
+    :param subject_data: Dict containing 'HI_values', used to find the HI repetition of maximum value ('rep_max')
     :param fs: Sampling frequency (Hz). If None, extracted per-condition from subject_data_normalized
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
@@ -226,6 +253,7 @@ def get_muscle_band_power_info(
     :return: Tuple (df_hd, df_hi) containing tidy band-power DataFrames, one row per repetition
     """
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
+    rep_at_max_hi = _get_rep_at_max_hi_value(subject_data)
 
     fs_hd = fs if fs is not None else subject_data_normalized["HD"]["params"]["sampling rate"]
     fs_hi = fs if fs is not None else subject_data_normalized["HI"]["params"]["sampling rate"]
@@ -243,6 +271,7 @@ def get_muscle_band_power_info(
         start_idx_column="onset_idx",
         end_idx_column="concentric_end_idx",
         rep_at_peak_power=rep_at_peak_power,
+        peak_rep_label="rep_peakpower",
     )
 
     band_power_info_hi = _compute_band_power_info_for_condition(
@@ -257,7 +286,8 @@ def get_muscle_band_power_info(
         nperseg,
         start_idx_column="onset_idx",
         end_idx_column="offset_idx",
-        rep_at_peak_power=None,
+        rep_at_peak_power=rep_at_max_hi,
+        peak_rep_label="rep_max",
     )
 
     df_hd = build_band_power_dataframe({"HD": band_power_info_hd}, condition="HD")

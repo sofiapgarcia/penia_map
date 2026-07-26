@@ -13,6 +13,7 @@ from metrics.powerpenia.peak_power_calculation import process_hd_power
 from metrics.emg_normalization import get_mvc_values , normalize_emg
 from metrics.concentric_phase_detection_attempt2 import detect_concentric_eccentric_phases
 from metrics.onset_detection import detect_emg_onsets
+from metrics.powerpenia.scalogram import get_muscle_scalogram_info
 from constants import DISPLACEMENT_COLUMN
 from metrics.powerpenia.coordination import get_muscle_coordination_info, build_coordination_dataframe
 
@@ -104,7 +105,7 @@ for subject in subjects:
     #plot_subject_data(subject_data_sync)
 
     # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=True)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
 
     # peak power calculation
     subject_data_power = process_hd_power(subject_data_sync, show_plot=False)
@@ -119,12 +120,15 @@ for subject in subjects:
     subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=True)
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_pipeline_plots=False, pipeline_max_reps=2)
+
 
     # collect this subject's power_info row, tagged with their numeric id
-    subject_power_info = subject_data_power["power_info"].copy()
+    power_info = subject_data_power["power_info"].copy()
 
-    info_hd , info_hi = get_muscle_coordination_info(subject_data_normalized, onset_hd, subject_power_info, subject_id = subject_number)
+    info_hd , info_hi = get_muscle_coordination_info(subject_data_normalized, onset_hd, power_info, subject_id = subject_number)
+
+    scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, subject_number, show_scalogram_plot=True)
     print("oi")
     #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
     #all_power_info.append(subject_power_info)

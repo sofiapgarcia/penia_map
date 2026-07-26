@@ -295,21 +295,22 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
     """
     Detect EMG onsets AND offsets for isometric conditions (e.g. HI), where there is
     no 'Phase' column to mark a concentric start/end, since there's no concentric
-    phase at all.
+    (nor eccentric) phase at all -- only an activation onset and offset per repetition.
 
-    Instead, a reference point per repetition is estimated directly from the
-    envelope: each of the `n_reps` isometric contractions shows up as a period where
-    the envelope stays above a robust, data-driven threshold (a "plateau").
+    A reference point per repetition is estimated directly from the envelope: each
+    of the `n_reps` isometric contractions shows up as a period where the envelope
+    stays above a robust, data-driven threshold (a "plateau").
       - The onset is refined by searching BACKWARD from the plateau start for the
-        sample that best splits a constant baseline segment from a rising segment
-        (same as the phase-based detection).
+        sample that best splits a constant baseline segment from a rising segment.
       - The offset is refined by searching FORWARD from the plateau end for the
         sample that best splits a falling (deactivation) segment from a constant
         post-contraction baseline segment -- the mirror image of the onset search.
 
     Because the envelope is computed independently per muscle, the plateau (and
     therefore both onset and offset) can fall at slightly different sample indices
-    for each muscle.
+    for each muscle. The plateau reference point itself is only used internally to
+    anchor the search windows -- it is NOT returned, since it does not correspond
+    to any meaningful phase boundary for an isometric contraction.
 
     :param df: DataFrame containing the EMG columns to process.
     :param fs: Sampling rate (Hz).
@@ -339,8 +340,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
         if not provided.
     :return: List of dicts, one per (repetition, muscle), with the keys: 'rep',
         'muscle', 'onset_idx' (global index, or None), 'offset_idx' (global index, or
-        None), 'concentric_start_idx' (plateau-start reference point, kept for
-        backward compatibility -- NOT a true concentric phase), 'onset_to_start_ms'.
+        None).
     """
     for col in columns:
         if col not in df.columns:
@@ -380,12 +380,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
             envelope_window = envelope[window_start:reference_idx]
             local_onset = _find_onset_in_window(envelope_window, guard_samples, min_window_samples)
 
-            if local_onset is None:
-                onset_idx = None
-                onset_to_start_ms = None
-            else:
-                onset_idx = window_start + local_onset
-                onset_to_start_ms = (reference_idx - onset_idx) / fs * 1000.0
+            onset_idx = None if local_onset is None else window_start + local_onset
 
             # --- offset: search forward from just inside the plateau end ---
             offset_anchor = max(0, seg_end - offset_margin_samples)
@@ -401,8 +396,6 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
                 'muscle': col,
                 'onset_idx': onset_idx,
                 'offset_idx': offset_idx,
-                'concentric_start_idx': reference_idx,
-                'onset_to_start_ms': onset_to_start_ms,
             })
 
     return results
@@ -427,7 +420,8 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
         the concentric end from the Phase column is used directly.
       - If 'Phase' is absent (e.g. HI, isometric contractions), both onset and offset
         are estimated directly from the envelope, independently per muscle (see
-        _detect_emg_onsets_isometric_condition).
+        _detect_emg_onsets_isometric_condition). No concentric phase exists for HI,
+        so no phase-boundary or onset-to-phase-start columns are produced for it.
 
     :param subject_data: Dict as produced/consumed by detect_concentric_eccentric_phases.
     :param conditions: Iterable with the condition names to process (e.g. 'HD', 'HI').
@@ -446,10 +440,14 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
     :param offset_margin_ms: Margin (ms) subtracted from the offset threshold crossing
         (HI only). Defaults to forward_margin_ms if not provided.
     :param show_pipeline_plots: If True, additionally plots intermediate signal-processing
-        steps per repetition/muscle for visual sanity-checking.
+        steps per repetition/muscle for visual sanity-checking. For HD this shows the
+        onset search (see _plot_pipeline_steps); for HI this shows both the onset and
+        offset search plus the detected active segment (see _plot_hi_pipeline_steps).
     :param pipeline_margin_before_ms: Signal margin (ms) before the onset in pipeline plots.
     :param pipeline_margin_after_ms: Signal margin (ms) after the reference point in pipeline plots.
-    :param pipeline_max_reps: If set, limits repetitions plotted per muscle in pipeline plots.
+    :param pipeline_max_reps: How many repetitions to show in the pipeline plots, per muscle.
+        Can be None (show all), an int (same number for every muscle), or a dict
+        {muscle_column: n} to choose a different number of repetitions for each muscle.
     :return: Dict keyed by condition name, each value a pandas DataFrame with one row
         per (repetition, muscle) -- see `_results_to_dataframe`.
     """
@@ -464,7 +462,9 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
         df = subject_data[condition]['data']
         fs = subject_data[condition]['params']['sampling rate']
 
-        if 'Phase' in df.columns:
+        is_isometric = 'Phase' not in df.columns
+
+        if not is_isometric:
             condition_results = _detect_emg_onsets_single_condition(
                 df, fs, sigma_ms, window_ms, guard_ms, min_window_ms, columns
             )
@@ -481,12 +481,21 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
             _plot_onsets(df, columns, condition_results, condition)
 
         if show_pipeline_plots:
-            _plot_pipeline_steps(
-                df, columns, fs, sigma_ms, condition_results, condition,
-                margin_before_ms=pipeline_margin_before_ms,
-                margin_after_ms=pipeline_margin_after_ms,
-                max_reps=pipeline_max_reps,
-            )
+            if not is_isometric:
+                _plot_pipeline_steps(
+                    df, columns, fs, sigma_ms, condition_results, condition,
+                    margin_before_ms=pipeline_margin_before_ms,
+                    margin_after_ms=pipeline_margin_after_ms,
+                    max_reps=pipeline_max_reps,
+                )
+            else:
+                _plot_hi_pipeline_steps(
+                    df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms,
+                    condition_results,
+                    margin_before_ms=pipeline_margin_before_ms,
+                    margin_after_ms=pipeline_margin_after_ms,
+                    reps_per_muscle=pipeline_max_reps,
+                )
 
     results_dict = {condition: _results_to_dataframe(condition_results)
         for condition, condition_results in results_by_condition.items()}
@@ -508,9 +517,8 @@ def _results_to_dataframe(results):
       - HD-like conditions (with a real, shared concentric phase): 'rep',
         'muscle', 'onset_idx', 'concentric_start_idx', 'concentric_end_idx',
         'onset_to_start_ms'.
-      - HI-like conditions (isometric, per-muscle contraction window): 'rep',
-        'muscle', 'onset_idx', 'offset_idx', 'concentric_start_idx',
-        'onset_to_start_ms'.
+      - HI-like conditions (isometric, per-muscle contraction window, no
+        concentric/eccentric phase): 'rep', 'muscle', 'onset_idx', 'offset_idx'.
 
     :param results: List of result dicts for a single condition (possibly empty).
     :return: pandas.DataFrame with one row per (repetition, muscle), sorted by
@@ -522,26 +530,49 @@ def _results_to_dataframe(results):
     return df.sort_values(['rep', 'muscle']).reset_index(drop=True)
 
 
+def _reps_for_muscle(muscle_results, reps_per_muscle, muscle_column):
+    """
+    Select how many of a muscle's repetition results to keep for plotting.
+
+    :param muscle_results: List of result dicts already filtered to a single muscle.
+    :param reps_per_muscle: None (keep all), an int (same count for every muscle), or
+        a dict {muscle_column: n} (a specific count for this particular muscle).
+    :param muscle_column: Name of the muscle column being plotted, used to look up
+        its count when reps_per_muscle is a dict.
+    :return: The (possibly truncated) list of result dicts to plot.
+    """
+    if reps_per_muscle is None:
+        return muscle_results
+    if isinstance(reps_per_muscle, dict):
+        n = reps_per_muscle.get(muscle_column, len(muscle_results))
+    else:
+        n = reps_per_muscle
+    return muscle_results[:n]
+
+
 def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
                           margin_before_ms=300, margin_after_ms=300, max_reps=None):
     """
     Plot, for every repetition and muscle, the intermediate signal-processing steps
-    used to build the envelope and detect the EMG onset/offset: the raw (filtered)
-    EMG signal, the TKEO output, and the rectified TKEO (|TKEO|) overlaid with the
-    smoothed envelope -- with the reference point, onset and (when available) offset
-    marked on every panel, for visual sanity-checking of the pipeline.
+    used to build the envelope and detect the EMG onset: the raw (filtered) EMG
+    signal, the TKEO output, and the rectified TKEO (|TKEO|) overlaid with the
+    smoothed envelope -- with the reference point and onset marked on every panel,
+    for visual sanity-checking of the pipeline. Used for conditions with a real
+    concentric phase (e.g. HD); for isometric conditions (e.g. HI) use
+    `_plot_hi_pipeline_steps` instead.
 
     :param df: DataFrame containing the EMG columns to plot.
     :param columns: List of EMG column names to plot.
     :param fs: Sampling rate (Hz).
-    :param sigma_ms: Standard deviation (ms) of the Gaussian kernel used to smooth the
-        TKEO-based envelope (must match the value used for detection).
-    :param results: List of onset/offset result dicts.
+    :param window_ms: Moving-average window (ms) used to build the envelope (must
+        match the value used for detection, i.e. sigma_ms).
+    :param results: List of onset result dicts (must contain 'concentric_start_idx'
+        and 'concentric_end_idx').
     :param condition: Name of the condition being plotted (used in the plot title).
     :param margin_before_ms: How much signal (ms) to show before the onset.
-    :param margin_after_ms: How much signal (ms) to show after the reference point
-        (or after the offset, when available).
-    :param max_reps: If set, limits the number of repetitions plotted per muscle.
+    :param margin_after_ms: How much signal (ms) to show after the reference point.
+    :param max_reps: How many repetitions to plot, per muscle. None (show all), an
+        int (same count for every muscle), or a dict {muscle_column: n}.
     :return: None. Displays one figure per (muscle, repetition).
     """
     margin_before_samples = int(round((margin_before_ms / 1000.0) * fs))
@@ -551,7 +582,6 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
         raw = df[col].to_numpy()
         rectified = np.abs(raw)
         tkeo = _tkeo(rectified)
-
         tkeo_rectified = np.abs(tkeo)
 
         window_samples = max(1, int(round((window_ms / 1000.0) * fs)))
@@ -559,8 +589,7 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
         envelope = np.convolve(tkeo_rectified, kernel, mode="same")
 
         muscle_results = [r for r in results if r['muscle'] == col]
-        if max_reps is not None:
-            muscle_results = muscle_results[:max_reps]
+        muscle_results = _reps_for_muscle(muscle_results, max_reps, col)
 
         for r in muscle_results:
             ref_idx = r['concentric_start_idx']
@@ -569,6 +598,9 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
 
             if offset_idx is None:
                 offset_idx = r.get("concentric_end_idx")
+
+            if onset_idx is None or offset_idx is None:
+                continue
 
             plot_start = max(0, onset_idx - margin_before_samples)
             plot_end = min(raw.size, offset_idx + margin_after_samples)
@@ -588,7 +620,7 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
 
             axes[3].plot(t, tkeo_rectified[sl], color='tab:gray', linewidth=1.6, label='|TKEO|')
             axes[3].set_ylabel('|TKEO|', fontsize=8)
-            axes[3].plot(t,envelope[sl], color='tab:orange', linewidth=1.6, label='envelope')
+            axes[3].plot(t, envelope[sl], color='tab:orange', linewidth=1.6, label='envelope')
 
             for ax in axes:
                 ax.axvline(ref_idx, color='tab:blue', linestyle='--', alpha=0.6)
@@ -599,7 +631,109 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
             axes[-1].set_xlabel('Samples')
             fig.suptitle(
                 f"{condition} -- {col} -- Rep {r['rep']} -- pipeline steps\n"
-                f"(blue dashed = reference point, red = onset, green = offset (HI) or end of concentric phase (HD))",
+                f"(blue dashed = reference point, red = onset, green = end of concentric phase)",
+                fontsize=10,
+            )
+            plt.tight_layout()
+            plt.show()
+
+
+def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, threshold_k, min_duration_ms, min_gap_ms,
+                             results, margin_before_ms=300, margin_after_ms=300,
+                             reps_per_muscle=None):
+    """
+    Plot, for every repetition and muscle, the intermediate signal-processing steps
+    used to detect the EMG onset AND offset in isometric conditions (e.g. HI): the
+    raw (filtered) EMG signal, the rectified signal, the TKEO output, and the
+    rectified TKEO (|TKEO|) overlaid with the smoothed envelope and the robust
+    detection threshold -- with the detected active ("plateau") segment shaded and
+    the refined onset/offset marked on every panel, for visual sanity-checking of
+    the full HI pipeline (threshold-based segment detection -> onset/offset refinement).
+
+    :param df: DataFrame containing the EMG columns to plot.
+    :param columns: List of EMG column names to plot.
+    :param fs: Sampling rate (Hz).
+    :param sigma_ms: Moving-average window (ms) used to build the envelope (must
+        match the value used for detection).
+    :param threshold_k: Multiplier applied to the robust baseline spread (MAD-based)
+        to set the "active" detection threshold (must match the value used for
+        detection, so the plotted threshold/segments match the actual onset_idx/
+        offset_idx values).
+    :param min_duration_ms: Minimum duration (ms) for a detected active segment to be
+        accepted as a real contraction (must match the value used for detection).
+    :param min_gap_ms: Maximum gap (ms) between two active segments for them to be
+        merged into a single contraction (must match the value used for detection).
+    :param results: List of onset/offset result dicts for the HI condition (must
+        contain 'rep', 'muscle', 'onset_idx', 'offset_idx').
+    :param margin_before_ms: How much signal (ms) to show before the onset.
+    :param margin_after_ms: How much signal (ms) to show after the offset.
+    :param reps_per_muscle: How many repetitions to plot, per muscle. None (show
+        all), an int (same count for every muscle), or a dict {muscle_column: n} to
+        choose a different number of repetitions for each muscle.
+    :return: None. Displays one figure per (muscle, repetition).
+    """
+    margin_before_samples = int(round((margin_before_ms / 1000.0) * fs))
+    margin_after_samples = int(round((margin_after_ms / 1000.0) * fs))
+
+    for col in columns:
+        raw = df[col].to_numpy()
+        rectified = np.abs(raw)
+        tkeo = _tkeo(rectified)
+        tkeo_rectified = np.abs(tkeo)
+        envelope = _emg_envelope(raw, fs, sigma_ms)
+
+        threshold = _robust_baseline_threshold(envelope, threshold_k)
+        segments = _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms)
+
+        muscle_results = [r for r in results if r['muscle'] == col]
+        muscle_results = _reps_for_muscle(muscle_results, reps_per_muscle, col)
+
+        for r in muscle_results:
+            onset_idx = r['onset_idx']
+            offset_idx = r['offset_idx']
+
+            if onset_idx is None or offset_idx is None:
+                continue
+
+            plot_start = max(0, onset_idx - margin_before_samples)
+            plot_end = min(raw.size, offset_idx + margin_after_samples)
+            sl = slice(plot_start, plot_end)
+            t = np.arange(plot_start, plot_end)
+
+            fig, axes = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
+
+            axes[0].plot(t, raw[sl], color='black', linewidth=0.8)
+            axes[0].set_ylabel('Raw EMG\n(filtered)', fontsize=8)
+
+            axes[1].plot(t, rectified[sl], color='tab:purple', linewidth=0.8)
+            axes[1].set_ylabel('Rectified EMG', fontsize=8)
+
+            axes[2].plot(t, tkeo[sl], color='black', linewidth=0.6, alpha=0.6)
+            axes[2].set_ylabel('TKEO', fontsize=8)
+
+            axes[3].plot(t, tkeo_rectified[sl], color='tab:gray', linewidth=1.2, label='|TKEO|')
+            axes[3].plot(t, envelope[sl], color='tab:orange', linewidth=1.6, label='envelope')
+            axes[3].axhline(threshold, color='tab:brown', linestyle=':', linewidth=1.2, label='threshold')
+            axes[3].set_ylabel('|TKEO| / envelope', fontsize=8)
+            axes[3].legend(fontsize=7, loc='upper right')
+
+            # shade the detected active ("plateau") segment(s) that overlap the plotted window
+            for seg_start, seg_end in segments:
+                if seg_end < plot_start or seg_start > plot_end:
+                    continue
+                for ax in axes:
+                    ax.axvspan(max(seg_start, plot_start), min(seg_end, plot_end),
+                               color='tab:blue', alpha=0.08)
+
+            for ax in axes:
+                ax.axvline(onset_idx, color='tab:red', linestyle='-', alpha=0.8)
+                ax.axvline(offset_idx, color='tab:green', linestyle='-', alpha=0.8)
+
+            axes[-1].set_xlabel('Samples')
+            fig.suptitle(
+                f"HI -- {col} -- Rep {r['rep']} -- pipeline steps\n"
+                f"(shaded = detected active segment, dotted = threshold, "
+                f"red = onset, green = offset)",
                 fontsize=10,
             )
             plt.tight_layout()
@@ -609,7 +743,7 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
 def _plot_onsets(df, columns, results, condition):
     """
     Plot each EMG channel with the detected onsets, offsets (when available) and
-    reference-point markers.
+    reference-point markers (when available -- e.g. not for isometric conditions).
 
     :param df: DataFrame containing the EMG columns to plot.
     :param columns: List of EMG column names to plot.
@@ -629,8 +763,10 @@ def _plot_onsets(df, columns, results, condition):
         col_results = [r for r in results if r['muscle'] == col]
         for i, r in enumerate(col_results):
             show_label = i == 0
-            ax.axvline(r['concentric_start_idx'], color='tab:blue', linestyle='--', alpha=0.6,
-                       label='Reference point' if show_label else None)
+            reference_idx = r.get('concentric_start_idx')
+            if reference_idx is not None:
+                ax.axvline(reference_idx, color='tab:blue', linestyle='--', alpha=0.6,
+                           label='Reference point' if show_label else None)
             if r['onset_idx'] is not None:
                 ax.plot(r['onset_idx'], signal[r['onset_idx']], 'r^', markersize=8,
                        label='EMG onset' if show_label else None)

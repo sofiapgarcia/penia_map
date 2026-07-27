@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 # Path to the sarcopenia Excel file
-SARCOPENIA_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\tanita.xlsx")
+SARCOPENIA_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx")
 
 SARCOPENIA_METRICS = [
     "Global muscle kg",

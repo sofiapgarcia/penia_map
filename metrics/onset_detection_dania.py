@@ -602,7 +602,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), order=900, phase_si
         offset (ou do ponto de referência), nos plots do pipeline.
     :param pipeline_max_reps: se definido, limita o número de repetições
         mostradas por músculo, nos plots do pipeline.
-    :return: tuplo (info_hd, info_hi), cada um um DataFrame pandas com uma
+    :return: tuplo (coord_hd, coord_hi), cada um um DataFrame pandas com uma
         linha por (repetição, músculo) -- ver `_results_to_dataframe`.
     """
     columns = emg_columns if emg_columns is not None else EMG_COLUMNS

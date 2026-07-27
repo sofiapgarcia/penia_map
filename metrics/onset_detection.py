@@ -464,9 +464,11 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
             window_start = max(0, reference_idx - window_samples)
 
             envelope_window = envelope[window_start:reference_idx]
-            local_onset = _find_onset_in_window(envelope_window, guard_samples, min_window_samples)
-
-            onset_idx = None if local_onset is None else window_start + local_onset
+            if window_start == 0 and envelope_window.size < min_window_samples:
+                onset_idx = 0
+            else:
+                local_onset = _find_onset_in_window(envelope_window, guard_samples, min_window_samples)
+                onset_idx = None if local_onset is None else window_start + local_onset
 
             # --- offset: search forward from just inside the plateau end ---
             offset_anchor = max(0, seg_end - offset_margin_samples)
@@ -489,7 +491,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
 
 def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window_ms=100, guard_ms=10,
                        min_window_ms=100, emg_columns=None, show_plot=False,
-                       n_reps=3, min_duration_ms=300, min_gap_ms=300,
+                       n_reps=3, min_duration_ms=300, min_gap_ms=500,
                        forward_margin_ms=0, offset_margin_ms=None, show_pipeline_plots=False,
                        pipeline_margin_before_ms=300, pipeline_margin_after_ms=200,
                        pipeline_max_reps=None, show_coarse_detection_plots=True):

@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 # Path to the osteopenia Excel file
-OSTEOPENIA_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\tanita.xlsx")
+OSTEOPENIA_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx")
 
 
 

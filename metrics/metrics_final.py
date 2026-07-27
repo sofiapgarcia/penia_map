@@ -5,10 +5,13 @@ from osteopenia.osteopenia_metrics import add_estimated_bone_mass
 
 import pandas as pd
 
-path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\tanita.xlsx"
-output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\final_dataframe.xlsx"
+path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
+output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
 
+# ---------------------------------------------------------------------
 # Read the anthropometric data
+# ---------------------------------------------------------------------
+
 df_ant = pd.read_excel(path_tanita)
 
 # Keep only the required columns
@@ -20,31 +23,80 @@ df_ant = df_ant[[
     "Estimated metabolic age",
 ]]
 
-dyna = add_max_column_from_excel()
+# ---------------------------------------------------------------------
+# Compute feature dataframes
+# ---------------------------------------------------------------------
+
 sarco = add_almi()
 power = add_normalized_peak_power_columns(df_ant)
 osteo = add_estimated_bone_mass()
 
-# Merge all DataFrames using the subject ID
+# ---------------------------------------------------------------------
+# Check that every subject in power exists in the remaining dataframes
+# ---------------------------------------------------------------------
+
+power_subjects = set(power[id_column])
+
+print("\n" + "=" * 80)
+print("CHECKING SUBJECT CONSISTENCY")
+print("=" * 80)
+
+for name, df in [
+    ("sarco", sarco),
+    ("osteo", osteo),
+    ("df_ant", df_ant),
+]:
+    missing = sorted(power_subjects - set(df[id_column]))
+
+    if missing:
+        print(f"\nERROR: Subjects present in power but missing from {name}:")
+        print(missing)
+    else:
+        print(f"\n{name}: OK")
+
+# ---------------------------------------------------------------------
+# Merge all dataframes using POWER as the reference dataframe
+# ---------------------------------------------------------------------
+
 merged_df = (
-    dyna
-    .merge(sarco, on=id_column, how="outer")
-    .merge(power, on=id_column, how="outer")
-    .merge(osteo, on=id_column, how="outer")
+    power
+    .merge(sarco, on=id_column, how="left")
+    .merge(osteo, on=id_column, how="left")
+    .merge(
+        df_ant[[id_column, "Estimated metabolic age"]],
+        on=id_column,
+        how="left",
+    )
 )
 
-# Add the estimated metabolic age
-merged_df = merged_df.merge(
-    df_ant[[id_column, "Estimated metabolic age"]],
-    on=id_column,
-    how="left",
-)
+# ---------------------------------------------------------------------
+# Check whether any power subjects are missing information
+# ---------------------------------------------------------------------
 
-# Exclude subjects with incomplete/invalid data
-excluded_ids = [107, 53, 39]
-merged_df = merged_df[~merged_df[id_column].isin(excluded_ids)]
+rows_with_missing = merged_df[merged_df.isna().any(axis=1)]
 
-# Save the merged DataFrame
+print("\n" + "=" * 80)
+print("FINAL CHECK")
+print("=" * 80)
+
+print(f"Subjects in power: {len(power)}")
+print(f"Subjects in final dataframe: {len(merged_df)}")
+
+if rows_with_missing.empty:
+    print("\nAll power subjects have complete information.")
+else:
+    print("\nWARNING: The following power subjects have missing information:")
+    print(rows_with_missing[id_column].tolist())
+
+    print("\nMissing columns per subject:")
+    for _, row in rows_with_missing.iterrows():
+        missing_cols = row[row.isna()].index.tolist()
+        print(f"Subject {row[id_column]}: {missing_cols}")
+
+# ---------------------------------------------------------------------
+# Save the merged dataframe
+# ---------------------------------------------------------------------
+
 merged_df.to_excel(output_path, index=False)
 
-
+print(f"\nSaved to:\n{output_path}")

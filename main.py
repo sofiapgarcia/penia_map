@@ -17,6 +17,7 @@ from metrics.powerpenia.scalogram import get_muscle_scalogram_info
 from constants import DISPLACEMENT_COLUMN
 from metrics.powerpenia.coordination import get_muscle_coordination_metrics
 from metrics.spectral_density import get_muscle_band_power_info
+from utils import build_subject_feature_row
 
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
@@ -24,19 +25,19 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
-#subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S27"]
-subjects_with_no_calibration = ["S1","S2", "S4","S8","S11","S12","S13","S14","S15","S16","S17","S18","S22","S24","S25","S84"]
+subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
+#subjects = ["S11"]
+subjects_with_no_calibration = ["S2", "S4","S11","S12","S13","S14","S16","S17","S18","S22","S24","S25","S84"]
 
 
 # collects one power_info row (with subject id) per subject, for the final Excel export
-all_power_info = []
+features = []
 
 for subject in subjects:
 
     subject_number = int(subject.replace("S", ""))
 
-    if subject in ["S107","S53","S39","129","S130"]:
+    if subject in ["S107","S53","S39","129","S130","S25","S84"]:
         continue
     #if subject in subjects_with_no_calibration:
         #continue
@@ -123,22 +124,26 @@ for subject in subjects:
     # Onset information
     onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
 
-    info_hd , info_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
+    coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
     scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, show_scalogram_plot=False)
 
     band_power_hd , band_power_hi = get_muscle_band_power_info(subject_data_normalized,onset_hd, onset_hi,power_info)
-    print("oi")
-    #subject_power_info.insert(0, "subject_id", int(subject.replace("S", "")))
-    #all_power_info.append(subject_power_info)
 
-"""
-# build the final table (one row per subject) and export it to Excel
-power_summary = pd.concat(all_power_info, ignore_index=True)
-power_summary_path = os.path.join(path, "power_domain_results.xlsx")
-power_summary.to_excel(power_summary_path, index=False)
-print(f"\nSaved power summary for {len(power_summary)} subject(s) to {power_summary_path}")
-"""
+    hi_values = subject_data_normalized.get("HI_values")
+
+    subject_row = build_subject_feature_row(subject_number, power_info, coord_hd, coord_hi,scalogram_hd, scalogram_hi, band_power_hd, band_power_hi, hi_values)
+
+    features.append(subject_row)
+    print("oi")
+
+final_df = pd.concat(features, ignore_index=True)
+final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
+
+
+
+
 
 
 

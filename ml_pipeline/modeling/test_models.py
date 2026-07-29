@@ -23,8 +23,10 @@ _build_pipeline(...): Builds pipeline with optional scaler.
 import pandas as pd
 import numpy as np
 from typing import List, Dict
+
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-from sklearn import linear_model
+from sklearn import linear_model, clone
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
@@ -98,16 +100,67 @@ def run_training_pipeline(
 
     return results_summary
 
+# Pipelines (assumindo que já tens scaler + modelo definidos)
+knn_pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    (KNN, KNeighborsRegressor())
+])
+
+svm_pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    (SVM, SVR())
+])
+
+lr_pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    (LR, LinearRegression())
+])
+
+# Dicionário com os modelos disponíveis
+model_dict = {
+    KNN: {
+        ESTIMATOR: knn_pipeline,
+        PARAM_GRID: [{
+            f'{KNN}__n_neighbors': list(range(1, 20)),
+            f'{KNN}__weights': ['uniform', 'distance'],
+        }]
+    },
+    SVM: {
+        ESTIMATOR: svm_pipeline,
+        PARAM_GRID: [{
+            f'{SVM}__C': [0.1, 1, 10, 100],
+            f'{SVM}__kernel': ['linear', 'rbf'],
+        }]
+    },
+    RF: {
+        ESTIMATOR: RandomForestRegressor(random_state=RANDOM_SEED),
+        PARAM_GRID: [{
+            "n_estimators": [50, 100, 200],
+            "max_depth": [None, 5, 10, 20],
+            "min_samples_split": [2, 5, 10],
+            "min_samples_leaf": [1, 2, 4],
+        }]
+    },
+    LR: {
+        ESTIMATOR: lr_pipeline,
+        PARAM_GRID: [{}]  # No hyperparameters for linear regression
+    }
+}
+
 def evaluate_production_model_simple(train_df: pd.DataFrame,
-                              test_df: pd.DataFrame,
-                              target_column: str = "Estimated metabolic age",
-                              cv_splits: int = 5) -> None:
+                                      test_df: pd.DataFrame,
+                                      model_dict: Dict,
+                                      model_name: str,
+                                      target_column: str = "Estimated metabolic age",
+                                      cv_splits: int = 5) -> None:
     """
-    Performs a final hyperparameter tuning on the production regression model and evaluates it on the test data.
-    Prints common regression metrics such as R², MAE and RMSE for both training and test sets.
+    Performs a final hyperparameter tuning on the chosen production regression model
+    and evaluates it on the test data. Prints common regression metrics such as
+    R², MAE and RMSE for both training and test sets.
 
     :param train_df: pandas.DataFrame containing the training data (features + target)
     :param test_df: pandas.DataFrame containing the test data (features + target)
+    :param model_name: key identifying which model to use (e.g. KNN, SVM, RF, LR)
     :param target_column: name of the target column
     :param cv_splits: the number of cross-validation splits for the grid search. Default: 5
     :return: None
@@ -121,16 +174,35 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
     X_test = test_df.drop(columns=[target_column])
     y_test = test_df[target_column]
 
-    # Define regression estimator and hyperparameters
-    estimator = RandomForestRegressor(random_state=RANDOM_SEED)
+    # Get the base estimator from model_dict
+    if model_name not in model_dict:
+        raise ValueError(f"Model '{model_name}' not found. Available models: {list(model_dict.keys())}")
 
-    param_grid = {
-        "n_estimators": [50, 75, 100, 200, 500],
-        "max_depth": [3, 5, 7, 10, None],
-        "min_samples_leaf": [1, 3, 5, 10],
-        "min_samples_split": [2, 5, 10],
-        "max_features": ["sqrt", "log2", None]
+    estimator = model_dict[model_name][ESTIMATOR]
+
+    # Define more complete param grids for final tuning (independent of model_dict's grids)
+    complete_param_grids = {
+        KNN: {
+            f'{KNN}__n_neighbors': list(range(1, 30)),
+            f'{KNN}__weights': ['uniform', 'distance'],
+            f'{KNN}__p': [1, 2]
+        },
+        SVM: {
+            f'{SVM}__C': [0.01, 0.1, 1, 10, 100],
+            f'{SVM}__kernel': ['linear', 'rbf', 'poly'],
+            f'{SVM}__gamma': ['scale', 'auto']
+        },
+        RF: {
+            "n_estimators": [50, 75, 100, 200, 500],
+            "max_depth": [3, 5, 7, 10, None],
+            "min_samples_leaf": [1, 3, 5, 10],
+            "min_samples_split": [2, 5, 10],
+            "max_features": ["sqrt", "log2", None]
+        },
+        LR: {}  # No hyperparameters for linear regression
     }
+
+    param_grid = complete_param_grids[model_name]
 
     # Perform hyperparameter tuning on training data only (to avoid data leakage)
     model = tune_production_model(
@@ -146,9 +218,9 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
     y_test_pred = model.predict(X_test)
 
     # Compute metrics for training set
-    r2_train = r2_score(y_train, y_train_pred)  # coefficient of determination
-    mae_train = mean_absolute_error(y_train, y_train_pred)  # mean absolute error
-    rmse_train = np.sqrt(mean_squared_error(y_train, y_train_pred))  # root mean squared error
+    r2_train = r2_score(y_train, y_train_pred)
+    mae_train = mean_absolute_error(y_train, y_train_pred)
+    rmse_train = np.sqrt(mean_squared_error(y_train, y_train_pred))
 
     # Compute metrics for test set (unseen data)
     r2_test = r2_score(y_test, y_test_pred)
@@ -156,7 +228,7 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
     rmse_test = np.sqrt(mean_squared_error(y_test, y_test_pred))
 
     # Print results
-    print("\nResults on production model evaluation (Regression):")
+    print(f"\nResults on production model evaluation (Regression) - Model: {model_name}")
 
     print("\nTrain set:")
     print(f"R2 score: {r2_train:.4f}")
@@ -170,23 +242,27 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
 
 
 def evaluate_production_model_k_fold(df: pd.DataFrame,
-                               target_column: str = "Estimated metabolic age",
-                               n_splits: int = 5,
-                               param_grid: Dict = None,
-                               inner_cv_splits: int = 5,
-                               n_strat_bins: int = 5,
-                               plot_distribution: bool = True) -> pd.DataFrame:
+                                      model_name: str,
+                                      model_dict: Dict,
+                                      target_column: str = "Estimated metabolic age",
+                                      n_splits: int = 5,
+                                      param_grid: Dict = None,
+                                      inner_cv_splits: int = 5,
+                                      n_strat_bins: int = 5,
+                                      plot_distribution: bool = True) -> pd.DataFrame:
     """
-    Evaluates the production model using k-fold cross-validation over the full
+    Evaluates the chosen production model using k-fold cross-validation over the full
     dataset, with folds stratified by the target variable (binned into
     quantile-based groups) to ensure a similar target distribution across
     folds. Hyperparameter tuning is performed independently within each fold's
     training data only, to avoid data leakage into the validation fold.
 
     :param df: full DataFrame (features + target), e.g. df_reduced
+    :param model_name: key identifying which model to use (e.g. KNN, SVM, RF, LR)
     :param target_column: name of the target column
     :param n_splits: number of outer k-fold splits (used for evaluation)
-    :param param_grid: hyperparameter grid for the Random Forest
+    :param param_grid: hyperparameter grid to use. If None, a default complete
+        grid is used based on the chosen model_name
     :param inner_cv_splits: number of CV splits used for hyperparameter tuning
         within each outer fold's training data
     :param n_strat_bins: number of quantile bins used to stratify the
@@ -195,15 +271,40 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
     :return: DataFrame containing the metrics and best hyperparameters for each fold
     """
 
+    if model_name not in model_dict:
+        raise ValueError(f"Model '{model_name}' not found. Available models: {list(model_dict.keys())}")
+
     X = df.drop(columns=[target_column])
     y = df[target_column]
 
+    base_estimator = model_dict[model_name][ESTIMATOR]
+
+    # Default, more complete param grids per model (used when param_grid is not provided)
     if param_grid is None:
-        param_grid = {
-            "n_estimators": [100, 200],
-            "max_depth": [3, 5, 7, None],
-            "min_samples_leaf": [3, 5, 10],
+        complete_param_grids = {
+            KNN: {
+                f'{KNN}__n_neighbors': list(range(1, 30)),
+                f'{KNN}__weights': ['uniform', 'distance'],
+                f'{KNN}__p': [1, 2]
+            },
+            SVM: {
+                f'{SVM}__C': [0.01, 0.1, 1, 10, 100],
+                f'{SVM}__kernel': ['linear', 'rbf', 'poly'],
+                f'{SVM}__gamma': ['scale', 'auto']
+            },
+            RF: {
+                "n_estimators": [50, 75, 100, 200, 500],
+                "max_depth": [3, 5, 7, 10, None],
+                "min_samples_leaf": [1, 3, 5, 10],
+                "min_samples_split": [2, 5, 10],
+                "max_features": ["sqrt", "log2", None]
+            },
+            LR: {}  # No hyperparameters for linear regression
         }
+        param_grid = complete_param_grids[model_name]
+
+    # Extract the parameter names being tuned (used later to log/store best params generically)
+    tuned_param_names = list(param_grid.keys()) if isinstance(param_grid, dict) else list(param_grid[0].keys())
 
     y_binned = pd.qcut(y, q=n_strat_bins, labels=False, duplicates="drop")
 
@@ -222,7 +323,9 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
             "val_values": y_val.values,
         })
 
-        estimator = RandomForestRegressor(random_state=RANDOM_SEED)
+        # Clone the base estimator so each fold starts from a fresh, unfitted model
+        estimator = clone(base_estimator)
+
         best_model = tune_production_model(
             X=X_train, y=y_train, estimator=estimator,
             param_grid=param_grid, cv_splits=inner_cv_splits
@@ -239,29 +342,31 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
         mae_val = mean_absolute_error(y_val, y_val_pred)
         rmse_val = np.sqrt(mean_squared_error(y_val, y_val_pred))
 
-        print(f"\n--- Fold {fold_num}/{n_splits} ---")
+        # Grab only the hyperparameters that were actually tuned, generically
+        model_params = best_model.get_params()
+        best_params = {p: model_params.get(p) for p in tuned_param_names}
+
+        print(f"\n--- Fold {fold_num}/{n_splits} ({model_name}) ---")
         print(f"Train target range: [{y_train.min():.1f}, {y_train.max():.1f}] "
               f"(mean={y_train.mean():.1f})")
         print(f"Val target range:   [{y_val.min():.1f}, {y_val.max():.1f}] "
               f"(mean={y_val.mean():.1f})")
-        print(f"Best params: n_estimators={best_model.get_params()['n_estimators']}, "
-              f"max_depth={best_model.get_params()['max_depth']}, "
-              f"min_samples_leaf={best_model.get_params()['min_samples_leaf']}")
+        if best_params:
+            params_str = ", ".join(f"{k}={v}" for k, v in best_params.items())
+            print(f"Best params: {params_str}")
         print(f"Train  -> R²: {r2_train:.4f} | MAE: {mae_train:.4f} | RMSE: {rmse_train:.4f}")
         print(f"Val    -> R²: {r2_val:.4f} | MAE: {mae_val:.4f} | RMSE: {rmse_val:.4f}")
 
         fold_results.append({
             "fold": fold_num,
-            "n_estimators": best_model.get_params()["n_estimators"],
-            "max_depth": best_model.get_params()["max_depth"],
-            "min_samples_leaf": best_model.get_params()["min_samples_leaf"],
+            **best_params,
             "r2_train": r2_train, "mae_train": mae_train, "rmse_train": rmse_train,
             "r2_val": r2_val, "mae_val": mae_val, "rmse_val": rmse_val,
         })
 
     results_df = pd.DataFrame(fold_results)
 
-    print("\n=== Average k-fold results (validation) ===")
+    print(f"\n=== Average k-fold results ({model_name}, validation) ===")
     print(f"R²:   {results_df['r2_val'].mean():.4f} +/- {results_df['r2_val'].std():.4f}")
     print(f"MAE:  {results_df['mae_val'].mean():.4f} +/- {results_df['mae_val'].std():.4f}")
     print(f"RMSE: {results_df['rmse_val'].mean():.4f} +/- {results_df['rmse_val'].std():.4f}")
@@ -277,7 +382,7 @@ def split_train_test_df(
         target_col: str = "Estimated metabolic age",
         test_size: float = 0.2,
         random_state: int = RANDOM_SEED,
-        n_bins: int = 5
+        n_bins: int = 4
 ) -> tuple:
     """
     Splits a DataFrame into training and testing sets, preserving the

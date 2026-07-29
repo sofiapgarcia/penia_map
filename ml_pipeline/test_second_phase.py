@@ -22,20 +22,20 @@ df_features = df.drop(columns=["ID"], errors="ignore")
 #corr_penia = correlation_by_groups(df_features)
 
 # reduce the number of features based on correlation by group
-df_reduced = select_features_by_group(df_features,selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia"],n_features_per_group=4 , verbose=True)
+df_reduced = select_features_by_group(df_features, selected_groups=["Osteopenia", "Powerpenia", "Dynapenia", "Sarcopenia"] , n_features_per_group=3 , verbose=True)
 
 
-df_train , df_test = split_train_test_df(df_reduced, test_size=0.15 , random_state = RANDOM_SEED)
+df_train , df_test = split_train_test_df(df_reduced, test_size=0.05 , random_state = 3)
 
 # apply data augmentation
 # Gaussian Copula + SMOGN
-df_augmented = apply_data_augmentation(df_reduced, n_samples = 20)
+df_train = apply_data_augmentation(df_reduced, n_samples = 20)
 
 # analyse the new distribution of target
 #plot_distribution(df_augmented, "Estimated metabolic age", bin_width=1)
 
 # Model selection
-results_summary = run_training_pipeline(df_augmented, splits_inner=3, splits_outer=5)
+results_summary = run_training_pipeline(df_train, splits_inner=3, splits_outer=5)
 
 
 filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_summary_second_phase.xlsx"

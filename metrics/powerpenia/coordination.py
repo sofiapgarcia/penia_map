@@ -94,6 +94,41 @@ def get_peak_rate_of_force_development(
 
     return float(peak_rfd)
 
+
+def get_emg_overlap_area(df_normalized, start_idx, end_idx, emg_extensor_column, emg_flexor_column):
+    """
+    Overlap (common) area between the extensor and flexor normalized EMG
+    envelopes within a given sample window: sum, sample by sample, of the
+    smaller of the two normalized signals at each instant
+    (i.e. sum of min(EMG_extensor_norm, EMG_flexor_norm)).
+
+    This quantifies how much both muscles were simultaneously active and at
+    which relative magnitude -- a common "EMG overlap area" / co-contraction
+    common-area index. Must always be computed on the normalized EMG signal.
+
+    Callers typically also report a normalized version of this value,
+    dividing it by the relevant phase duration (concentric phase duration
+    for HD, full activity span for HI) to make it comparable across
+    repetitions/subjects with different phase durations.
+
+    If end_idx <= start_idx (no valid window / no overlap), returns 0.0.
+
+    :param df_normalized: DataFrame containing normalized EMG signals
+    :param start_idx: Start sample index of the window
+    :param end_idx: End sample index of the window
+    :param emg_extensor_column: Column name of normalized extensor EMG
+    :param emg_flexor_column: Column name of normalized flexor EMG
+    :return: Overlap area value (sum of the point-wise minimum) in the window
+    """
+    if end_idx <= start_idx:
+        return 0.0
+
+    ext_signal = df_normalized[emg_extensor_column].iloc[start_idx : end_idx + 1].to_numpy()
+    flex_signal = df_normalized[emg_flexor_column].iloc[start_idx : end_idx + 1].to_numpy()
+    overlap_signal = np.minimum(ext_signal, flex_signal)
+    return float(np.sum(overlap_signal))
+
+
 def get_muscle_coordination_info(
     subject_data_normalized,
     onset_df,
@@ -145,6 +180,8 @@ def get_muscle_coordination_info(
         onset_diff_ms = get_onset_difference(onset_extensor_idx, onset_flexor_idx)
         onset_diff_ms_abs = abs(onset_diff_ms)
 
+        last_onset_idx = max(onset_extensor_idx, onset_flexor_idx)
+
         cocontraction_ms = get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_idx)
         cocontraction_normalized = cocontraction_ms / concentric_duration_ms
 
@@ -171,6 +208,19 @@ def get_muscle_coordination_info(
             FORCE_COLUMN,
         )
 
+        # EMG overlap area (normalized signal): from the last onset to the
+        # end of the concentric phase
+        emg_overlap_area = get_emg_overlap_area(
+            df_normalized,
+            last_onset_idx,
+            concentric_end_idx,
+            emg_extensor_column,
+            emg_flexor_column,
+        )
+        emg_overlap_area_normalized = (
+            emg_overlap_area / concentric_duration_ms if concentric_duration_ms else np.nan
+        )
+
         rep_key = "rep_peakpower" if rep == rep_at_peak_power else rep
 
         coordination_info[rep_key] = {
@@ -186,6 +236,8 @@ def get_muscle_coordination_info(
             "normalized_envelope_peak_delay": normalized_envelope_peak_delay,
             "normalized_envelope_peak_delay_abs": normalized_envelope_peak_delay_abs,
             "peak_rfd": peak_rfd,
+            "emg_overlap_area": emg_overlap_area,
+            "emg_overlap_area_normalized": emg_overlap_area_normalized,
         }
 
     df_hd = build_coordination_dataframe({condition: coordination_info},condition=condition)
@@ -366,6 +418,23 @@ def get_muscle_coordination_info_hi(
         mean_emg_extensor = get_emg_mean(df_normalized, onset_extensor_idx, offset_extensor_idx, emg_extensor_column)
         mean_emg_flexor = get_emg_mean(df_normalized, onset_flexor_idx, offset_flexor_idx, emg_flexor_column)
 
+        # EMG overlap area (normalized signal): from the last onset to the
+        # earliest offset among the two muscles (i.e. the actual window
+        # where both muscles are simultaneously active). 0.0 if there is no
+        # overlap at all.
+        overlap_start_idx = max(onset_extensor_idx, onset_flexor_idx)
+        overlap_end_idx = min(offset_extensor_idx, offset_flexor_idx)
+        emg_overlap_area = get_emg_overlap_area(
+            df_normalized,
+            overlap_start_idx,
+            overlap_end_idx,
+            emg_extensor_column,
+            emg_flexor_column,
+        )
+        emg_overlap_area_normalized = (
+            emg_overlap_area / activity_span_ms if activity_span_ms else np.nan
+        )
+
         rep_key = "rep_max" if rep == rep_max else rep
 
         coordination_info[rep_key] = {
@@ -382,6 +451,8 @@ def get_muscle_coordination_info_hi(
             "iemg_flexor": iemg_flexor,
             "mean_emg_extensor": mean_emg_extensor,
             "mean_emg_flexor": mean_emg_flexor,
+            "emg_overlap_area": emg_overlap_area,
+            "emg_overlap_area_normalized": emg_overlap_area_normalized,
         }
 
     df_hi = build_coordination_dataframe({condition: coordination_info}, condition=condition)

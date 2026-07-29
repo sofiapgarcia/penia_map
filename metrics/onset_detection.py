@@ -491,7 +491,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
 
 def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window_ms=100, guard_ms=10,
                        min_window_ms=100, emg_columns=None, show_plot=False,
-                       n_reps=3, min_duration_ms=300, min_gap_ms=500,
+                       n_reps=3, min_duration_ms=300, min_gap_ms=400,
                        forward_margin_ms=0, offset_margin_ms=None, show_pipeline_plots=False,
                        pipeline_margin_before_ms=300, pipeline_margin_after_ms=200,
                        pipeline_max_reps=None, show_coarse_detection_plots=True):

@@ -15,9 +15,11 @@ output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_data
 df_ant = pd.read_excel(path_tanita)
 
 # Keep only the required columns
+
 id_column = df_ant.columns[0]
 df_ant = df_ant[[
     id_column,
+    "Gender",
     "Body mass(kg)",
     "Height(cm)",
     "Estimated metabolic age",
@@ -63,7 +65,7 @@ merged_df = (
     .merge(sarco, on=id_column, how="left")
     .merge(osteo, on=id_column, how="left")
     .merge(
-        df_ant[[id_column, "Estimated metabolic age"]],
+        df_ant[[id_column, "Gender", "Estimated metabolic age"]],
         on=id_column,
         how="left",
     )
@@ -94,9 +96,31 @@ else:
         print(f"Subject {row[id_column]}: {missing_cols}")
 
 # ---------------------------------------------------------------------
-# Save the merged dataframe
+# Create male and female dataframes
 # ---------------------------------------------------------------------
 
-merged_df.to_excel(output_path, index=False)
+male_df = merged_df[merged_df["Gender"] == 1].drop(columns="Gender")
+female_df = merged_df[merged_df["Gender"] == 2].drop(columns="Gender")
 
-print(f"\nSaved to:\n{output_path}")
+# Remove Gender from the complete dataframe
+merged_df = merged_df.drop(columns="Gender")
+
+# ---------------------------------------------------------------------
+# Save the dataframes
+# ---------------------------------------------------------------------
+
+output_path_male = output_path.replace(".xlsx", "_male.xlsx")
+output_path_female = output_path.replace(".xlsx", "_female.xlsx")
+
+merged_df.to_excel(output_path, index=False)
+male_df.to_excel(output_path_male, index=False)
+female_df.to_excel(output_path_female, index=False)
+
+print(f"\nSaved complete dataframe to:\n{output_path}")
+print(f"Subjects: {len(merged_df)}")
+
+print(f"\nSaved male dataframe to:\n{output_path_male}")
+print(f"Subjects: {len(male_df)}")
+
+print(f"\nSaved female dataframe to:\n{output_path_female}")
+print(f"Subjects: {len(female_df)}")

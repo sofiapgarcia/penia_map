@@ -18,6 +18,7 @@ from constants import DISPLACEMENT_COLUMN
 from metrics.powerpenia.coordination import get_muscle_coordination_metrics
 from metrics.spectral_density import get_muscle_band_power_info
 from utils import build_subject_feature_row
+from metrics.validate_onsets import validate_onsets
 
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
@@ -26,11 +27,10 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-#subjects = ["S11"]
-subjects_with_no_calibration = ["S2", "S4","S11","S12","S13","S14","S16","S17","S18","S22","S24","S25","S84"]
+#subjects = ["S128"]
+subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 
 
-# collects one power_info row (with subject id) per subject, for the final Excel export
 features = []
 
 for subject in subjects:
@@ -107,7 +107,7 @@ for subject in subjects:
     #plot_subject_data(subject_data_sync)
 
     # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync,show_plot=False)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
 
     # peak power calculation
     power_info = process_hd_power(subject_data_sync, show_plot=False)
@@ -122,7 +122,11 @@ for subject in subjects:
     subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
+
     onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+
+    onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
+
 
     coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
@@ -140,6 +144,8 @@ for subject in subjects:
 final_df = pd.concat(features, ignore_index=True)
 final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
 print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
+
+
 
 
 

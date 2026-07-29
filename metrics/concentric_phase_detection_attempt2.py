@@ -1,12 +1,13 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 
+
 from constants import FORCE_COLUMN, DISPLACEMENT_COLUMN , EMG_Extensor_filt , EMG_Flexor_filt
 
 FORCE_DERIVATIVE = "Force_derivative"
-
 DEFAULT_PLOT_COLUMNS = [EMG_Extensor_filt, EMG_Flexor_filt, DISPLACEMENT_COLUMN, FORCE_COLUMN, FORCE_DERIVATIVE]
 
 def detect_concentric_eccentric_phases(subject_data, show_plot=True,
@@ -112,14 +113,6 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
 
     return subject_data
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
 
 
 def _compute_force_derivative(force, fs, sigma_ms, plot=True):
@@ -143,23 +136,30 @@ def _compute_force_derivative(force, fs, sigma_ms, plot=True):
     return derivative_smooth
 
 
-def _find_rep_peaks(derivative, fs, n_reps, min_distance_s):
+def _find_rep_peaks(derivative, fs, n_reps, min_distance_s, min_height_fraction=0.3):
     """
     Find the n_reps most prominent positive peaks in the force derivative,
     each corresponding approximately to the onset of a repetition's concentric
-    phase. If more than n_reps peaks satisfy the minimum-distance constraint,
-    only the n_reps peaks with the largest prominence are kept.
+    phase. A minimum height (a fraction of the signal's overall maximum) is
+    enforced so a small spurious bump can't be picked over a genuine (but
+    slightly less prominent) repetition peak. If more than n_reps peaks
+    satisfy both constraints, only the n_reps with the largest prominence
+    are kept.
 
     :param derivative: 1D array with the force derivative signal.
     :param fs: Sampling rate (Hz).
     :param n_reps: Expected number of repetitions (peaks) to keep.
     :param min_distance_s: Minimum distance (s) required between neighboring peaks.
+    :param min_height_fraction: Minimum peak height required, as a fraction
+        of the signal's overall maximum (e.g. 0.3 = discard peaks under 30%
+        of the highest value in the derivative).
     :return: Sorted (temporal order) 1D array of peak sample indices, length <= n_reps.
     """
     min_distance_samples = max(1, int(round(min_distance_s * fs)))
+    height_threshold = min_height_fraction * derivative.max()
 
     peak_indices, properties = find_peaks(derivative, distance=min_distance_samples,
-                                           prominence=0)
+                                           prominence=0, height=height_threshold)
 
     if peak_indices.size == 0:
         return peak_indices
@@ -254,6 +254,7 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
     repetition's peak and its local +/- threshold.
     """
     n = len(plot_columns)
+    matplotlib.rcParams['toolbar'] = 'toolbar2'
     fig, axes = plt.subplots(n, 1, figsize=(14, 2.8 * n), sharex=True)
     if n == 1:
         axes = [axes]

@@ -653,10 +653,10 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), order=900, phase_si
 
 def _results_to_dataframe(results):
     """
-    Converte uma lista de dicts de resultados por (repetição, músculo) num
+    Converte uma lista de dicts de results por (repetição, músculo) num
     DataFrame pandas organizado.
 
-    :param results: lista de dicts de resultados para uma única condição
+    :param results: lista de dicts de results para uma única condição
         (possivelmente vazia).
     :return: pandas.DataFrame com uma linha por (repetição, músculo),
         ordenado por 'rep' e depois 'muscle'. DataFrame vazio se `results`
@@ -684,7 +684,7 @@ def _plot_pipeline_steps_bp(df, columns, fs, phase_sigma, imag_sigma, smooth_win
     :param phase_sigma: ver `detect_onset_bp`.
     :param imag_sigma: ver `detect_onset_bp`.
     :param smooth_window: ver `detect_onset_bp`.
-    :param results: lista de dicts de resultados de onset/offset.
+    :param results: lista de dicts de results de onset/offset.
     :param condition: nome da condição (usado no título do gráfico).
     :param margin_before_ms: quanto sinal (ms) mostrar antes do onset.
     :param margin_after_ms: quanto sinal (ms) mostrar depois do offset (ou do
@@ -762,7 +762,7 @@ def _plot_onsets(df, columns, results, condition):
 
     :param df: DataFrame com as colunas de EMG a plotar.
     :param columns: lista de nomes das colunas de EMG.
-    :param results: lista de dicts de resultados de onset/offset.
+    :param results: lista de dicts de results de onset/offset.
     :param condition: nome da condição (usado no título do gráfico).
     :return: None. Mostra o gráfico.
     """

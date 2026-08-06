@@ -16,9 +16,10 @@ from metrics.onset_detection import detect_emg_onsets
 from metrics.powerpenia.scalogram import get_muscle_scalogram_info
 from constants import DISPLACEMENT_COLUMN
 from metrics.powerpenia.coordination import get_muscle_coordination_metrics
-from metrics.spectral_density import get_muscle_band_power_info
+from metrics.spectral_density import get_muscle_power_spectral_density_info
 from utils import build_subject_feature_row
 from metrics.validate_onsets import validate_onsets
+from data_acquisition.data_visualizer import plot_interpolated_signal
 
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
@@ -27,7 +28,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-#subjects = ["S128"]
+subjects = ["S21"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 
 
@@ -39,8 +40,8 @@ for subject in subjects:
 
     if subject in ["S107","S53","S39","129","S130","S25","S84"]:
         continue
-    #if subject in subjects_with_no_calibration:
-        #continue
+    if subject in subjects_with_no_calibration:
+        continue
 
     print(f"\n{'='*60}")
     print(f"Processing {subject}")
@@ -78,6 +79,10 @@ for subject in subjects:
         # Interpolate
         df_interpolated, info, mask = interpolate_signal(df_transferred)
 
+        # plot the interpolated signal
+        for column in df_interpolated.columns:
+            plot_interpolated_signal(df_interpolated, mask, column)
+
         # Process emg signal
         df_processed = process_emg(df_interpolated, fs)
 
@@ -87,14 +92,11 @@ for subject in subjects:
         # Update dictionary
         subject_data[condition]["data"] = df_processed
 
-        # plot the interpolated signal
-        #for column in df_interpolated.columns:
-            #plot_interpolated_signal(df_interpolated, mask, column)
-
         #if condition=="HD":
             #plot_sensors_over_time(params, df_processed)
             #plot_column_over_time(params, df_processed, DISPLACEMENT_COLUMN)
 
+    """
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
     subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
@@ -105,6 +107,7 @@ for subject in subjects:
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
     subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
+
 
     # concentric phase detection
     subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
@@ -127,23 +130,22 @@ for subject in subjects:
 
     onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
 
-
     coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
-    scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, show_scalogram_plot=False)
+    #scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, show_scalogram_plot=False)
 
-    band_power_hd , band_power_hi = get_muscle_band_power_info(subject_data_normalized,onset_hd, onset_hi,power_info)
+    band_power_hd , band_power_hi = get_muscle_power_spectral_density_info(subject_data_normalized, onset_hd, onset_hi, power_info)
 
     hi_values = subject_data_normalized.get("HI_values")
 
-    subject_row = build_subject_feature_row(subject_number, power_info, coord_hd, coord_hi,scalogram_hd, scalogram_hi, band_power_hd, band_power_hi, hi_values)
+    subject_row = build_subject_feature_row(subject_number, power_info, coord_hd, coord_hi, band_power_hd, band_power_hi, hi_values)
 
     features.append(subject_row)
-    print("oi")
 
 final_df = pd.concat(features, ignore_index=True)
 final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
 print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
+"""
 
 
 

@@ -20,9 +20,10 @@ id_column = df_ant.columns[0]
 df_ant = df_ant[[
     id_column,
     "Gender",
+    "Age (y)",
     "Body mass(kg)",
     "Height(cm)",
-    "Estimated metabolic age",
+    "Estimated metabolic age","Body mass index (BMI)","Activity level"
 ]]
 
 # ---------------------------------------------------------------------
@@ -65,7 +66,7 @@ merged_df = (
     .merge(sarco, on=id_column, how="left")
     .merge(osteo, on=id_column, how="left")
     .merge(
-        df_ant[[id_column, "Gender", "Estimated metabolic age"]],
+        df_ant[[id_column,"Age (y)", "Height(cm)","Gender", "Estimated metabolic age" , "Body mass index (BMI)", "Body mass(kg)","Activity level"]],
         on=id_column,
         how="left",
     )
@@ -103,7 +104,7 @@ male_df = merged_df[merged_df["Gender"] == 1].drop(columns="Gender")
 female_df = merged_df[merged_df["Gender"] == 2].drop(columns="Gender")
 
 # Remove Gender from the complete dataframe
-merged_df = merged_df.drop(columns="Gender")
+#merged_df = merged_df.drop(columns="Gender")
 
 # ---------------------------------------------------------------------
 # Save the dataframes

@@ -130,7 +130,8 @@ def normalize_emg(subject_data, show_plot=True):
             filt_col = f"{channel}_filt"
             mvc_key = _MVC_KEY_BY_CHANNEL.get(channel)
 
-            if envelope_col not in df.columns or mvc_key is None or mvc_key not in mvc_values:
+            if envelope_col not in df.columns or mvc_key is None or mvc_key not in mvc_values or filt_col not in df.columns:
+                print("The EMG was not normalized.")
                 continue
 
             mvc_reference = mvc_values[mvc_key]
@@ -143,17 +144,14 @@ def normalize_emg(subject_data, show_plot=True):
             envelope_signals[channel] = envelope
             env_normalized_signals[channel] = env_normalized
 
-            if filt_col in df.columns:
-                filt = df[filt_col].values
-                filt_normalized = (filt / mvc_reference) * 100
-                df[f"{channel}_filt_norm"] = filt_normalized
+            filt = df[filt_col].values
+            filt_normalized = (filt / mvc_reference) * 100
+            df[f"{channel}_filt_norm"] = filt_normalized
 
-                filt_normalized_signals[channel] = filt_normalized
+            filt_normalized_signals[channel] = filt_normalized
 
         if show_plot and env_normalized_signals:
-            _plot_emg_normalized(
-                condition, envelope_signals, env_normalized_signals, filt_normalized_signals
-            )
+            _plot_emg_normalized(condition, envelope_signals, env_normalized_signals, filt_normalized_signals)
 
     return subject_data
 

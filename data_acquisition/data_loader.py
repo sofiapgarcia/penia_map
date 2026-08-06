@@ -90,18 +90,14 @@ def load_subject_data(base_path, subject):
 
     return subject_data
 
-def analyze_sequence(sequence):
+def analyze_sequence(sequence, fs=1000):
     """
     Analyze nSeq sequence integrity by detecting wraps, missing samples,
-    invalid jumps, and computing signal loss percentage.
+    invalid jumps, and computing signal loss and gap continuity metrics.
 
     :param sequence: pandas Series containing nSeq values from OpenSignals data
-    :return: Dictionary with:
-             - wraps: number of detected counter wraps
-             - missing_samples: estimated number of missing samples due to gaps
-             - expected_samples: total expected samples in the sequence
-             - loss_percentage: percentage of missing samples
-             - invalid_jumps: Series with abnormal jumps in nSeq
+    :param fs: Sampling frequency in Hz
+    :return: Dictionary with sequence integrity and gap continuity metrics
     """
 
     # Compute difference between consecutive samples
@@ -110,8 +106,26 @@ def analyze_sequence(sequence):
     # Detect valid counter wraps
     wraps = (diff == -32767).sum()
 
-    # Estimate missing samples from sequence gaps
-    missing_samples = (diff[diff > 1] - 1).sum()
+    # Identify gaps between consecutive samples
+    gap_sizes = diff[diff > 1] - 1
+
+    # Total number of missing samples
+    missing_samples = gap_sizes.sum()
+
+    # Number of distinct gaps
+    number_of_gaps = len(gap_sizes)
+
+    # Gap statistics
+    if number_of_gaps > 0:
+        max_consecutive_missing = gap_sizes.max()
+        mean_gap_length = gap_sizes.mean()
+        median_gap_length = gap_sizes.median()
+        longest_gap_duration_s = max_consecutive_missing / fs
+    else:
+        max_consecutive_missing = 0
+        mean_gap_length = 0
+        median_gap_length = 0
+        longest_gap_duration_s = 0
 
     # Estimate total expected number of samples
     expected_samples = wraps * 32768 + sequence.iloc[-1] + 1
@@ -122,6 +136,13 @@ def analyze_sequence(sequence):
         if expected_samples > 0 else 0
     )
 
+    # Percentage of expected samples corresponding to the longest gap
+    max_gap_percentage = (
+        max_consecutive_missing / expected_samples * 100
+        if expected_samples > 0 else 0
+    )
+
+    # Flag file as invalid if more than 10% of samples are missing
     invalid_file = loss_percentage > 10
 
     # Identify invalid jumps
@@ -137,6 +158,16 @@ def analyze_sequence(sequence):
         "expected_samples": int(expected_samples),
         "acquired_samples": int(len(sequence)),
         "loss_percentage": round(loss_percentage, 2),
+
+        # Gap continuity metrics
+        "number_of_gaps": int(number_of_gaps),
+        "max_consecutive_missing": int(max_consecutive_missing),
+        "mean_gap_length": round(mean_gap_length, 2),
+        "median_gap_length": round(median_gap_length, 2),
+        "longest_gap_duration_s": round(longest_gap_duration_s, 3),
+        "max_gap_percentage": round(max_gap_percentage, 2),
+
+        # Invalid jumps
         "invalid_jumps": invalid_jumps,
         "invalid_file": invalid_file
     }

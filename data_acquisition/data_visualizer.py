@@ -9,7 +9,7 @@ plot_sensors_over_time(...): Plot all sensor channels over acquisition time.
 [Private]
 
 """
-
+import matplotlib
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -151,7 +151,7 @@ def plot_interpolated_signal(df, mask, column, time_column="nSeq", title=None):
 
     if column == time_column:
         return
-
+    matplotlib.rcParams['toolbar'] = 'toolbar2'
     plt.figure(figsize=(12, 4))
 
     plt.plot(

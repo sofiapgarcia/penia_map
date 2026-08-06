@@ -17,7 +17,7 @@ def get_onset_difference(onset_extensor_idx, onset_flexor_idx):
     return (diff_samples / FS) * 1000
 
 
-def get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_idx):
+def get_cocontraction_time(last_onset_idx, concentric_end_idx):
     """
     Time (ms) between the onset of whichever muscle activated LAST and the
     end of the concentric phase.
@@ -28,7 +28,6 @@ def get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_
     :param FS: Sampling frequency (Hz)
     :return: Co-contraction duration in milliseconds
     """
-    last_onset_idx = max(onset_extensor_idx, onset_flexor_idx)
     cocontraction_samples = concentric_end_idx - last_onset_idx
     return (cocontraction_samples / FS) * 1000
 
@@ -94,6 +93,43 @@ def get_peak_rate_of_force_development(
 
     return float(peak_rfd)
 
+def get_peak_rate_of_force_development_window(
+    df,
+    start_idx,
+    end_idx,
+    force_column,
+):
+    """
+    Compute the Peak Rate of Force Development (Peak RFD) during a given phase.
+
+    The Peak RFD is defined as the maximum average rate of force increase
+    calculated over a sliding 20 ms window within the specified interval.
+
+    :param df: DataFrame containing the force signal.
+    :param start_idx: Start index of the phase.
+    :param end_idx: End index of the phase.
+    :param force_column: Name of the force column.
+    :return: Peak Rate of Force Development (N/s).
+    """
+    force = df.loc[start_idx:end_idx, force_column].to_numpy()
+
+    # Convert the 20 ms window into a number of samples
+    window_samples = int(round(0.020 * FS))
+
+    if len(force) <= window_samples:
+        raise ValueError(
+            "The selected phase is shorter than the 20 ms RFD window."
+        )
+
+    # Compute the average rate of force development over a sliding 20 ms window
+    derivative = (
+        force[window_samples:] - force[:-window_samples]
+    ) / (window_samples / FS)
+
+    peak_rfd = np.max(derivative)
+
+    return float(peak_rfd)
+
 
 def get_emg_overlap_area(df_normalized, start_idx, end_idx, emg_extensor_column, emg_flexor_column):
     """
@@ -129,11 +165,10 @@ def get_emg_overlap_area(df_normalized, start_idx, end_idx, emg_extensor_column,
     return float(np.sum(overlap_signal))
 
 
-def get_muscle_coordination_info(
+def get_muscle_coordination_info_hd(
     subject_data_normalized,
     onset_df,
     power_info,
-    condition="HD",
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
     emg_extensor_column="EMG_Extensor_norm",
@@ -154,7 +189,7 @@ def get_muscle_coordination_info(
     :return: Tuple (df_hd, df_hi) containing coordination DataFrames
     """
 
-    df_normalized = subject_data_normalized[condition]["data"]
+    df_normalized = subject_data_normalized["HD"]["data"]
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
 
     coordination_info = {}
@@ -182,7 +217,7 @@ def get_muscle_coordination_info(
 
         last_onset_idx = max(onset_extensor_idx, onset_flexor_idx)
 
-        cocontraction_ms = get_cocontraction_time(onset_extensor_idx, onset_flexor_idx, concentric_end_idx)
+        cocontraction_ms = get_cocontraction_time(last_onset_idx, concentric_end_idx)
         cocontraction_normalized = cocontraction_ms / concentric_duration_ms
 
         # EMG peak for both muscles
@@ -207,6 +242,14 @@ def get_muscle_coordination_info(
             concentric_end_idx,
             FORCE_COLUMN,
         )
+        #print("Pico de rfd sem janelas: ", peak_rfd)
+        peak_rfd_window = get_peak_rate_of_force_development_window(
+            df_normalized,
+            concentric_start_idx,
+            concentric_end_idx,
+            FORCE_COLUMN,
+        )
+        #print("Pico de rfd com janelas: ", peak_rfd_window)
 
         # EMG overlap area (normalized signal): from the last onset to the
         # end of the concentric phase
@@ -217,9 +260,7 @@ def get_muscle_coordination_info(
             emg_extensor_column,
             emg_flexor_column,
         )
-        emg_overlap_area_normalized = (
-            emg_overlap_area / concentric_duration_ms if concentric_duration_ms else np.nan
-        )
+        emg_overlap_area_normalized = emg_overlap_area / concentric_duration_ms
 
         rep_key = "rep_peakpower" if rep == rep_at_peak_power else rep
 
@@ -235,12 +276,12 @@ def get_muscle_coordination_info(
             "envelope_peak_delay_ms_abs": envelope_peak_delay_ms_abs,
             "normalized_envelope_peak_delay": normalized_envelope_peak_delay,
             "normalized_envelope_peak_delay_abs": normalized_envelope_peak_delay_abs,
-            "peak_rfd": peak_rfd,
+            "peak_rfd": peak_rfd_window,
             "emg_overlap_area": emg_overlap_area,
             "emg_overlap_area_normalized": emg_overlap_area_normalized,
         }
 
-    df_hd = build_coordination_dataframe({condition: coordination_info},condition=condition)
+    df_hd = build_coordination_dataframe({"HD": coordination_info},condition="HD")
 
     return df_hd
 
@@ -287,7 +328,7 @@ def get_emg_mean(df_normalized, start_idx, end_idx, emg_column):
     :return: Mean envelope value in the window
     """
     signal = df_normalized[emg_column].iloc[start_idx : end_idx + 1].to_numpy()
-    return float(np.mean(signal))
+    return float(np.mean(np.abs(signal)))
 
 
 def get_cocontraction_overlap_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx):
@@ -330,19 +371,17 @@ def get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_i
 def get_max_repetition_hi(subject_data_normalized, hi_values_key="HI_values"):
     """
     Identify which repetition corresponds to the maximum value in the HI
-    condition, based on subject_data_normalized[condition][hi_values_key],
-    a mapping such as {"H1": val1, "H2": val2, "H3": val3}. The repetition
-    number is taken from the trailing digit of the key holding the max value.
+    condition.
 
-    :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params'
-    :param condition: Condition name to process (default 'HI')
-    :param hi_values_key: Key inside subject_data_normalized[condition] holding the H1/H2/H3 values
-    :return: Repetition number (int) corresponding to the max HI value
+    :param subject_data_normalized: Dict containing the HI values.
+    :param hi_values_key: Key containing the H1/H2/H3 values.
+    :return: Repetition number (int) corresponding to the max HI value.
     """
     hi_values = subject_data_normalized[hi_values_key]
-    max_key = max(hi_values, key=lambda key: hi_values[key])
-    rep_max = int("".join(filter(str.isdigit, max_key)))
-    return rep_max
+
+    values = [hi_values["H1"], hi_values["H2"], hi_values["H3"]]
+
+    return values.index(max(values)) + 1
 
 
 def get_muscle_coordination_info_hi(
@@ -397,7 +436,7 @@ def get_muscle_coordination_info_hi(
 
         cocontraction_ms = get_cocontraction_overlap_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx)
         activity_span_ms = get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx)
-        cocontraction_normalized = cocontraction_ms / activity_span_ms if activity_span_ms else np.nan
+        cocontraction_normalized = cocontraction_ms / activity_span_ms
 
         # EMG peak for both muscles, each within its own onset->ofFSet window
         _, emg_peak_extensor = get_emg_peak_in_phase(
@@ -408,7 +447,7 @@ def get_muscle_coordination_info_hi(
         )
         emg_peak_ratio = emg_peak_extensor / emg_peak_flexor
 
-        # RMS, integral (IEMG) and mean, each within its own onset->ofFSet window
+        # RMS, integral (IEMG) and mean, each within its own onset->offset window
         rms_extensor = get_emg_rms(df_normalized, onset_extensor_idx, offset_extensor_idx, emg_extensor_column)
         rms_flexor = get_emg_rms(df_normalized, onset_flexor_idx, offset_flexor_idx, emg_flexor_column)
 
@@ -431,9 +470,7 @@ def get_muscle_coordination_info_hi(
             emg_extensor_column,
             emg_flexor_column,
         )
-        emg_overlap_area_normalized = (
-            emg_overlap_area / activity_span_ms if activity_span_ms else np.nan
-        )
+        emg_overlap_area_normalized = emg_overlap_area / activity_span_ms
 
         rep_key = "rep_max" if rep == rep_max else rep
 
@@ -509,21 +546,15 @@ def get_muscle_coordination_metrics(
     :param hi_values_key: Key inside subject_data_normalized["HI"] holding the H1/H2/H3 values
     :return: Tuple (df_hd, df_hi) with one row per repetition each
     """
-    df_hd = get_muscle_coordination_info(
-        subject_data_normalized,
-        onset_df_hd,
-        power_info,
-        condition="HD",
-        onset_extensor_column=onset_extensor_column,
-        onset_flexor_column=onset_flexor_column,
-        emg_extensor_column=emg_extensor_column,
-        emg_flexor_column=emg_flexor_column,
-    )
+    df_hd = get_muscle_coordination_info_hd(subject_data_normalized, onset_df_hd, power_info,
+                                            onset_extensor_column=onset_extensor_column,
+                                            onset_flexor_column=onset_flexor_column,
+                                            emg_extensor_column=emg_extensor_column,
+                                            emg_flexor_column=emg_flexor_column)
 
     df_hi = get_muscle_coordination_info_hi(
         subject_data_normalized,
         onset_df_hi,
-        condition="HI",
         onset_extensor_column=onset_extensor_column,
         onset_flexor_column=onset_flexor_column,
         emg_extensor_column=emg_extensor_column,

@@ -32,7 +32,7 @@ df_train , df_test = split_train_test_df(df_features, test_size=0.15 , random_st
 
 results = run_for_multiple_targets(
     df_train,
-    feature_cols=list(df_features.columns),
+    feature_cols=list(df_train.columns),
     target_cols=["Age (y)", "Estimated metabolic age", "Estimated bone mass kg", "peak_power","peak_power_mass","peak_power_height_squared"],
     criterion="pvalue",
     vif_threshold=5.0,

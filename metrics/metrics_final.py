@@ -1,7 +1,7 @@
 from dynapenia.dynapenia_metrics import add_max_column_from_excel
 from sarcopenia.sarcopenia_metrics import add_almi
 from powerpenia.powerpenia_metrics import add_normalized_peak_power_columns
-from osteopenia.osteopenia_metrics import add_estimated_bone_mass
+from osteopenia.osteopenia_metrics import add_bone_variables
 
 import pandas as pd
 
@@ -23,8 +23,11 @@ df_ant = df_ant[[
     "Age (y)",
     "Body mass(kg)",
     "Height(cm)",
-    "Estimated metabolic age","Body mass index (BMI)","Activity level"
+    "Estimated metabolic age","Body mass index (BMI)","Activity level",
 ]]
+
+# Recode Gender: male = 1, female = 0
+df_ant["Gender"] = df_ant["Gender"].replace({2: 0})
 
 # ---------------------------------------------------------------------
 # Compute feature dataframes
@@ -32,7 +35,7 @@ df_ant = df_ant[[
 
 sarco = add_almi()
 power = add_normalized_peak_power_columns(df_ant)
-osteo = add_estimated_bone_mass()
+osteo = add_bone_variables()
 
 # ---------------------------------------------------------------------
 # Check that every subject in power exists in the remaining dataframes
@@ -101,7 +104,7 @@ else:
 # ---------------------------------------------------------------------
 
 male_df = merged_df[merged_df["Gender"] == 1].drop(columns="Gender")
-female_df = merged_df[merged_df["Gender"] == 2].drop(columns="Gender")
+female_df = merged_df[merged_df["Gender"] == 0].drop(columns="Gender")
 
 # Remove Gender from the complete dataframe
 #merged_df = merged_df.drop(columns="Gender")

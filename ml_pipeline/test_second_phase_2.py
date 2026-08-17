@@ -16,13 +16,14 @@ df_features = df.drop(columns=["ID"], errors="ignore")
 resultados = run_for_multiple_targets(
     df_features,
     feature_cols=list(df_features.columns),
-    target_cols=["Age (y)", "Estimated metabolic age", "Estimated bone mass kg", "peak_power"],
+    target_cols=["Age (y)", "Estimated metabolic age", "Bone Mineral Density", "peak_power"],
     criterion="pvalue",
     vif_threshold=5.0,
     vif_target_aware=True,
     max_features_ratio=0.3,
     exclude_features={
-        "peak_power": ["velocity_at_peak_power","force_at_peak_power", "peak_power_mass","peak_power_height_squared"]
+        "peak_power": ["velocity_at_peak_power","force_at_peak_power", "peak_power_mass","peak_power_height_squared"],
+        "Bone Mineral Density": ["Estimated Bone Mass kg"]
     },
     verbose=False,
 )

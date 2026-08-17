@@ -295,7 +295,7 @@ def stepwise_selection(X, y, threshold_in=0.15, threshold_out=0.25, verbose=True
 
 print("\nRunning stepwise selection...\n")
 selected_features = stepwise_selection(X_reduced, y)
-
+""
 print("\nSelected variables:")
 print(selected_features)
 

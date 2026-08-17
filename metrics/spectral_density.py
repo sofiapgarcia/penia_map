@@ -31,7 +31,7 @@ def compute_band_powers(signal, fs, band_edges=None, nperseg=None):
     signal = np.asarray(signal, dtype=float)
 
     if band_edges is None:
-        band_edges = np.arange(0, 550, 50)
+        band_edges = np.arange(0, 500, 50)
 
     if nperseg is None:
         nperseg = min(150, len(signal))
@@ -323,10 +323,10 @@ def _compute_band_power_info_for_condition(
         metrics["Peak_Frequency_extensor"] = extensor_spectral_metrics["Peak_Frequency"]
         metrics["Peak_Frequency_flexor"] = flexor_spectral_metrics["Peak_Frequency"]
 
-        metrics["Median_Frequency_ratio_flexor_extensor"] = _safe_ratio(
+        metrics["Median_Frequency_ratio"] = _safe_ratio(
             flexor_spectral_metrics["Median_Frequency"], extensor_spectral_metrics["Median_Frequency"]
         )
-        metrics["Peak_Frequency_ratio_flexor_extensor"] = _safe_ratio(
+        metrics["Peak_Frequency_ratio"] = _safe_ratio(
             flexor_spectral_metrics["Peak_Frequency"], extensor_spectral_metrics["Peak_Frequency"]
         )
 

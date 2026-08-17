@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 from constants import FORCE_COLUMN
 
 
-def process_force(df, fs, window_ms=50, show_plot=False):
+def process_force(df, fs, window_ms=20, show_plot=False):
     """
     Centers the force column of a DataFrame on zero, then smooths it with a
     simple moving average, to remove sample-level noise before further processing
@@ -104,22 +104,27 @@ def process_force(df, fs, window_ms=50, show_plot=False):
 
 def _plot_smoothing_check(raw, smoothed, window_ms):
     """
-    Plots the raw and smoothed signal on top of each other, so it's easy to check
-    whether the smoothing window is removing noise without blurring away real
-    movement detail.
+    Plots the raw signal on top and the smoothed signal below, sharing the same
+    time (samples) axis, so it's easy to check whether the smoothing window is
+    removing noise without blurring away real movement detail.
 
     :param raw: 1D array with the original (unsmoothed) signal.
     :param smoothed: 1D array with the smoothed signal, same length as raw.
     :param window_ms: smoothing window length used, in milliseconds (shown in title).
     :return: None
     """
-    fig, ax = plt.subplots(figsize=(14, 4))
-    ax.plot(raw, color='gray', alpha=0.6, linewidth=0.8, label='Raw')
-    ax.plot(smoothed, color='tab:blue', linewidth=1.4, label='Smoothed')
-    ax.set_xlabel('Samples')
-    ax.set_ylabel('Force')
-    ax.set_title(f'Force smoothing check (window = {window_ms} ms)')
-    ax.legend()
+    fig, (ax_raw, ax_smooth) = plt.subplots(2, 1, figsize=(14, 6), sharex=True)
+
+    ax_raw.plot(raw, color='gray', linewidth=0.8, label='Raw')
+    ax_raw.set_ylabel('Force')
+    ax_raw.set_title(f'Force smoothing check (window = {window_ms} ms)')
+    ax_raw.legend()
+
+    ax_smooth.plot(smoothed, color='tab:blue', linewidth=1.4, label='Smoothed')
+    ax_smooth.set_xlabel('Samples')
+    ax_smooth.set_ylabel('Force')
+    ax_smooth.legend()
+
     plt.tight_layout()
     plt.show()
 

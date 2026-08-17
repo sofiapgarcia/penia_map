@@ -132,7 +132,7 @@ def _interpolate_missing_values(df):
     # Apply cubic spline to accelerometer
     if acc_columns:
 
-        df_filled = _fill_acc_nan_spline(df_filled, acc_columns)
+        df_filled = _fill_nan_linear(df_filled, acc_columns)
 
     # Apply linear interpolation to all other signals
     if other_columns:

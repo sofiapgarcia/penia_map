@@ -14,16 +14,25 @@ SARCOPENIA_METRICS = [
     "Torso muscle kg",
 ]
 
+APPENDICULAR_METRICS = [
+    "Arm muscle (right) kg",
+    "Arm muscle (left) kg",
+    "Leg muscle (right) kg",
+    "Leg muscle (left) kg",
+]
+
 
 def add_almi() -> pd.DataFrame:
     """
     Read the sarcopenia Excel file, extract the required muscle metrics,
     and compute the Appendicular Lean Mass Index (ALMI).
 
-    ```
+    ALM (Appendicular Lean Mass) is defined as the sum of the lean
+    (muscle) mass from both arms and both legs. ALMI is obtained by
+    normalizing ALM to height squared (ALM / height_m^2).
+
     :return: DataFrame containing the selected sarcopenia metrics and the
              ALMI column
-    ```
     """
 
     # Read the sarcopenia Excel file
@@ -38,8 +47,11 @@ def add_almi() -> pd.DataFrame:
     # Convert height from centimeters to meters
     height_m = df["Height(cm)"] / 100
 
-    # Compute ALMI = global muscle mass / height²
-    df["ALMI"] = df["Global muscle kg"] / (height_m**2)
+    # Compute ALM = sum of arm and leg muscle mass (appendicular lean mass)
+    alm = df[APPENDICULAR_METRICS].sum(axis=1)
+
+    # Compute ALMI = ALM / height²
+    df["ALMI"] = alm / (height_m**2)
 
     # Remove the temporary height column
     df = df.drop(columns=["Height(cm)"])

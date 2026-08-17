@@ -103,7 +103,7 @@ def process_acc(df, fs):
 
 def _transfer_acc_hd(data, n=16):
     """
-    Convert raw HD accelerometer ADC values into physical units (g).
+    Convert raw HD accelerometer ADC values into physical units (g). This function belongs to the cardioBAN Datasheet.
 
     :param data: Raw ADC signal
     :param n: Number of ADC bits (default = 16)

@@ -154,7 +154,7 @@ def _rep_numbers_from_phase(phase_col):
     return sorted(reps)
 
 
-def _detect_emg_onsets_single_condition(df, fs, sigma_ms, window_ms, guard_ms, min_window_ms, columns):
+def _detect_emg_onsets_single_condition(df, fs, moving_ms, window_ms, guard_ms, min_window_ms, columns):
     """
     Detect the EMG onset for both muscles, for every repetition, within a single
     condition that has a 'Phase' column (e.g. HD, where concentric/eccentric phases
@@ -162,7 +162,7 @@ def _detect_emg_onsets_single_condition(df, fs, sigma_ms, window_ms, guard_ms, m
 
     :param df: DataFrame containing the 'Phase' column and the EMG columns to process.
     :param fs: Sampling rate (Hz).
-    :param sigma_ms: Standard deviation (ms) of the Gaussian kernel used to smooth the
+    :param moving_ms: Standard deviation (ms) of the Gaussian kernel used to smooth the
         TKEO-based envelope.
     :param window_ms: Backward analysis window (ms) before each concentric start in
         which the EMG onset is searched.
@@ -192,7 +192,7 @@ def _detect_emg_onsets_single_condition(df, fs, sigma_ms, window_ms, guard_ms, m
         raise ValueError("No repetitions ('C1', 'C2', ...) found in the 'Phase' column.")
 
     envelopes = {
-        col: _emg_envelope(df[col].to_numpy(), fs, sigma_ms)
+        col: _emg_envelope(df[col].to_numpy(), fs, moving_ms)
         for col in columns
     }
 
@@ -557,9 +557,8 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
         is_isometric = 'Phase' not in df.columns
 
         if not is_isometric:
-            condition_results = _detect_emg_onsets_single_condition(
-                df, fs, sigma_ms, window_ms, guard_ms, min_window_ms, columns
-            )
+            condition_results = _detect_emg_onsets_single_condition(df, fs, sigma_ms, window_ms, guard_ms,
+                                                                    min_window_ms, columns)
         else:
             condition_results = _detect_emg_onsets_isometric_condition(
                 df, fs, sigma_ms, window_ms, guard_ms, min_window_ms, columns,

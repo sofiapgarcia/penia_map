@@ -29,7 +29,9 @@ non_condition_keys = {"handgrip_position", "handgrip_position_source","calibrati
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
 subjects = ["S21"]
+subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
+subjects_with_signals_bad_quality = ["S21"]
 
 
 features = []
@@ -80,14 +82,14 @@ for subject in subjects:
         df_interpolated, info, mask = interpolate_signal(df_transferred)
 
         # plot the interpolated signal
-        for column in df_interpolated.columns:
-            plot_interpolated_signal(df_interpolated, mask, column)
+        #for column in df_interpolated.columns:
+            #plot_interpolated_signal(df_interpolated, mask, column)
 
         # Process emg signal
         df_processed = process_emg(df_interpolated, fs)
 
         # Process force signal
-        df_processed = process_force(df_processed, fs)
+        df_processed = process_force(df_processed, fs, show_plot=False)
 
         # Update dictionary
         subject_data[condition]["data"] = df_processed
@@ -96,7 +98,7 @@ for subject in subjects:
             #plot_sensors_over_time(params, df_processed)
             #plot_column_over_time(params, df_processed, DISPLACEMENT_COLUMN)
 
-    """
+
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="y",subject_folder=os.path.join(path, subject))
     subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
@@ -113,7 +115,7 @@ for subject in subjects:
     subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
 
     # peak power calculation
-    power_info = process_hd_power(subject_data_sync, show_plot=False)
+    power_info = process_hd_power(subject_data_sync, show_plot=True)
 
     # calculate envelope
     subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
@@ -142,10 +144,10 @@ for subject in subjects:
 
     features.append(subject_row)
 
-final_df = pd.concat(features, ignore_index=True)
-final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
-print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
-"""
+#final_df = pd.concat(features, ignore_index=True)
+#final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+#print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
+
 
 
 

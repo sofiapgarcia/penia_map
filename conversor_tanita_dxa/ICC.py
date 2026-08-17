@@ -12,7 +12,7 @@ DXA_VARS_IN_GRAMS = {
 }
 
 
-def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = "ICC3", alpha: float = 0.05) -> pd.DataFrame:
+def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = "ICC2") -> pd.DataFrame:
     """
     Compute Intraclass Correlation Coefficient (ICC) for each pair of variables
     defined in variable_mapping, comparing measurements obtained from two equipments (DXA vs TANITA).

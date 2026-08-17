@@ -90,7 +90,7 @@ def synchronize_hd_acquisitions(subject_data,
                                 target_bpm=90,
                                 fs=FS,
                                 max_lag_seconds=None,
-                                anchor_margin_seconds=10.0,
+                                anchor_margin_seconds=3.0,
                                 local_window_seconds=6.0):
     """
     Synchronize HD and HD_EMG acquisitions, correcting not just a constant
@@ -290,7 +290,7 @@ def _find_longest_consistent_run(peaks, fs, target_bpm, tolerance):
     return best_run if best_run else None
 
 
-def _initial_sync_peaks(signal, fs, target_bpm, tolerance=0.15, prominence_factor=2.0):
+def _initial_sync_peaks(signal, fs, target_bpm, tolerance=0.15, prominence_factor=4.0):
     """
     Get the initial guess of peaks belonging to the rhythmic sync
     movement: among all prominent peaks in the signal, keep only the

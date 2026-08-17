@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Disable the default navigation toolbar: we implement our own zoom/pan so
 # that left-click (drag) and scroll are always free for navigation, and the
 # right mouse button is always free to confirm a position.
-matplotlib.rcParams['toolbar'] = 'None'
+#matplotlib.rcParams['toolbar'] = 'None'
 
 EMG_COLUMNS = ['EMG_Extensor_filt', 'EMG_Flexor_filt']
 DEFAULT_VALIDATION_FILENAME = "onsets_validated.xlsx"

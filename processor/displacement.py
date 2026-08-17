@@ -25,73 +25,6 @@ X_MAX= 29
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def convert_displacement_2(df, x0 , hp_source, low_level, high_level, xmax = X_MAX):
-    """
-    Convert displacement signal from bits to millimeters.
-
-    Uses linear calibration:
-        x = a * N + b
-
-    where:
-        a = (xmax - x0) / (Nmax - N0)
-        b = x0 - a * N0
-
-    :param df: Input DataFrame containing displacement column
-    :param x0: position of the open handgrip
-    :param hp_source: source of the measurement of the handgrip
-    :param xmax: position of the closed handgrip
-    :return: DataFrame with converted displacement values
-    """
-
-    df_converted = df.copy()
-
-    if DISPLACEMENT_COLUMN not in df_converted.columns:
-        return df_converted
-
-    if hp_source == "potentiometer":
-
-        # Convert x0 to the correct physical reference
-        x0 = _convert_x0(x0)
-
-        # Calculate N0 from x0 using regression
-        N0 = _calculate_N0(x0)
-
-        Nmax = 13867
-
-    elif hp_source == "handle":
-
-        # xo in mm
-        x0 = x0 * 10
-
-        # N0 of the calibration file
-        N0 = high_level
-
-        # Nmax of the calibration file
-        Nmax = low_level
-
-    # Extract raw sensor signal and ensure numeric type
-    N = df_converted[DISPLACEMENT_COLUMN].astype(float)
-
-    # Compute linear calibration coefficients
-    a = (x0 - xmax) / (Nmax - N0)
-    b = - a * N0
-
-    L = x0 - xmax
-    print("Curso total (L): ", L)
-
-
-    # Apply linear transformation to full signal
-    absolute_position = a * N + b
-
-    if hp_source == "potentiometer":
-        # N0 estimated from regression can be slightly off, producing
-        # negative displacement values; rescale to the physical range
-        absolute_position = _correct_displacement(absolute_position, xmax_physical_mm=L)
-
-    df_converted[DISPLACEMENT_COLUMN] = absolute_position
-
-    return df_converted
-
 def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX):
     """
     Convert displacement signal from bits to millimeters.
@@ -116,6 +49,7 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
         return df_converted
 
     if hp_source == "potentiometer":
+        print("Attention: This subject is using an aproximation for the displacement conversion")
 
         # Convert x0 to the correct physical reference
         print("x0_pega", x0)
@@ -146,22 +80,9 @@ def convert_displacement(df, x0 , hp_source, low_level, high_level, xmax = X_MAX
     a = (x0 - xmax) / (Nmax - N0)
     b = - a * N0
 
-    L = x0 - xmax
-    #print("Curso total (L): ", L)
-
 
     # Apply linear transformation to full signal
     absolute_position = a * N + b
-
-    max_displacement = absolute_position.max()
-
-    if hp_source == "handle":
-        tolerance = 0.5  # mm
-
-        #if max_displacement >= L - tolerance:
-            #print(f"✓ O valor máximo foi atingido ({max_displacement:.4f} mm).")
-        #else:
-            #print(f"✗ O valor máximo não foi atingido. Deslocamento máximo: {max_displacement:.4f} mm (esperado: {L:.2f} mm).")
 
     df_converted[DISPLACEMENT_COLUMN] = absolute_position
 

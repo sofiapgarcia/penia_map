@@ -438,7 +438,7 @@ def get_muscle_coordination_info_hi(
         activity_span_ms = get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx)
         cocontraction_normalized = cocontraction_ms / activity_span_ms
 
-        # EMG peak for both muscles, each within its own onset->ofFSet window
+        # EMG peak for both muscles, each within its own onset->offset window
         _, emg_peak_extensor = get_emg_peak_in_phase(
             df_normalized, onset_extensor_idx, offset_extensor_idx, emg_extensor_column
         )

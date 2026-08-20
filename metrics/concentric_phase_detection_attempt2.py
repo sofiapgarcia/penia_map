@@ -158,7 +158,7 @@ def _find_rep_peaks(derivative, fs, n_reps, min_distance_s, min_height_fraction=
     min_distance_samples = max(1, int(round(min_distance_s * fs)))
     height_threshold = min_height_fraction * derivative.max()
 
-    peak_indices, properties = find_peaks(derivative, distance=min_distance_samples, height=height_threshold)
+    peak_indices, properties = find_peaks(derivative, distance=min_distance_samples, height=height_threshold, prominence=0)
 
     if peak_indices.size == 0:
         return peak_indices

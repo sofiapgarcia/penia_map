@@ -22,6 +22,7 @@ resultados = run_for_multiple_targets(
     vif_target_aware=True,
     max_features_ratio=0.3,
     exclude_features={
+        "Estimated metabolic age": ["Age (y)"],
         "peak_power": ["velocity_at_peak_power","force_at_peak_power", "peak_power_mass","peak_power_height_squared"],
         "Bone Mineral Density": ["Estimated Bone Mass kg"]
     },

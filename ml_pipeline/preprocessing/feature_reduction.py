@@ -18,11 +18,12 @@ Available Functions
 [Public]
 select_features_by_group(...): Selects top N features per group based on correlation with the target and applies intra- and inter-group collinearity removal.
 correlation_by_groups(...): Computes correlation between features and target grouped by predefined feature sets.
-adaptive_correlation_matrix(...): Computes a full pairwise adaptive correlation matrix across numeric variables.
+adaptive_correlation_matrix(...): Computes a full pairwise adaptive correlation matrix (and matching p-value matrix) across numeric variables.
+top_correlations_per_target(...): For each target, returns the top N variables most correlated with it, restricted to statistically significant relationships (p-value < alpha).
 
 [Private]
 _compute_normality_map(...): Computes normality status of numeric variables using the Shapiro-Wilk test.
-_compute_correlation(...): Computes adaptive correlation between two variables
+_compute_correlation(...): Computes adaptive correlation (value, p-value, method) between two variables
 _remove_collinear_features(...): Removes highly correlated features while keeping the most relevant ones based on correlation with the target variable.
 """
 
@@ -113,12 +114,12 @@ def select_features_by_group(
 
         for feature in filtered_features:
 
-            corr_value, method = _compute_correlation(df, feature, target_col, normality_map)
+            corr_value, p_value, method = _compute_correlation(df, feature, target_col, normality_map)
 
             scored_features.append((feature, corr_value))
 
             if verbose:
-                print(f"{feature} -> {corr_value:.4f} ({method})")
+                print(f"{feature} -> {corr_value:.4f} (p={p_value:.4g}, {method})")
 
         # Step 5: Rank features and select top N per group
         scored_features.sort(key=lambda x: abs(x[1]), reverse=True)
@@ -202,17 +203,19 @@ def correlation_by_groups(
                 continue
 
             # Compute adaptive correlation using existing pipeline logic
-            corr_value, method = _compute_correlation(df, feature, target_col, normality_map)
+            corr_value, p_value, method = _compute_correlation(df, feature, target_col, normality_map)
 
             # Store detailed results for inspection
             results.append({
                 "feature": feature,
-                "correlation": corr_value
+                "correlation": corr_value,
+                "p_value": p_value,
+                "method": method
             })
 
             # Optional verbose logging for debugging
             if verbose:
-                print(f"{feature} -> {corr_value:.4f} ({method})")
+                print(f"{feature} -> {corr_value:.4f} (p={p_value:.4g}, {method})")
 
         # Convert results list into a DataFrame
         group_df = pd.DataFrame(results)
@@ -246,16 +249,19 @@ def adaptive_correlation_matrix(df, alpha=0.05):
     - Computes normality of each numeric variable using the Shapiro-Wilk test
     - Applies an adaptive correlation strategy (Pearson or Spearman)
       depending on the distribution of each variable pair
-    - Returns both the correlation matrix and the method used per pair
+    - Returns the correlation matrix, the matching p-value matrix, and the
+      method used per pair
 
     The resulting matrices allow full inspection of:
     - Correlation strength between variables
+    - Statistical significance (p-value) of each pairwise correlation
     - Which statistical method was applied for each pair
 
     :param df: Input DataFrame
     :param alpha: Significance level for normality test
     :return:
         - corr_matrix: DataFrame with correlation values
+        - pval_matrix: DataFrame with p-values for each pairwise correlation
         - method_matrix: DataFrame with correlation methods used (pearson/spearman)
     """
 
@@ -268,6 +274,7 @@ def adaptive_correlation_matrix(df, alpha=0.05):
     # Initialize matrices to store results
     cols = numeric_df.columns
     corr_matrix = pd.DataFrame(index=cols, columns=cols, dtype=float)
+    pval_matrix = pd.DataFrame(index=cols, columns=cols, dtype=float)
     method_matrix = pd.DataFrame(index=cols, columns=cols, dtype=object)
 
     # Iterate over all variable pairs
@@ -278,7 +285,7 @@ def adaptive_correlation_matrix(df, alpha=0.05):
             # and mirror results to avoid redundant computation
             if i <= j:
 
-                corr_value, method = _compute_correlation(
+                corr_value, p_value, method = _compute_correlation(
                     numeric_df, col1, col2, normality_map
                 )
 
@@ -286,16 +293,20 @@ def adaptive_correlation_matrix(df, alpha=0.05):
                 corr_matrix.loc[col1, col2] = corr_value
                 corr_matrix.loc[col2, col1] = corr_value
 
+                # Store p-values symmetrically
+                pval_matrix.loc[col1, col2] = p_value
+                pval_matrix.loc[col2, col1] = p_value
+
                 # Store method used symmetrically
                 method_matrix.loc[col1, col2] = method
                 method_matrix.loc[col2, col1] = method
 
-    return corr_matrix, method_matrix
+    return corr_matrix, pval_matrix, method_matrix
 
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# public functions
+# private functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -328,7 +339,8 @@ def _compute_normality_map(df, alpha=0.05):
 
 def _compute_correlation(df, col1, col2, normality_map):
     """
-    Compute correlation between a feature and the target variable using an adaptive method.
+    Compute correlation between two variables using an adaptive method, along
+    with the p-value of that correlation.
 
     Pearson correlation is used if both variables are normally distributed;
     otherwise, Spearman correlation is applied.
@@ -337,7 +349,7 @@ def _compute_correlation(df, col1, col2, normality_map):
     :param col1: Name of the first column to compute correlation
     :param col2: Name of the second column to compute correlation
     :param normality_map: Dictionary indicating normality of each variable
-    :return: Tuple (correlation value, correlation method used)
+    :return: Tuple (correlation value, p_value, correlation method used)
     """
 
     # Select correlation method based on normality assumptions
@@ -346,10 +358,23 @@ def _compute_correlation(df, col1, col2, normality_map):
     else:
         method = "spearman"
 
-    # Compute correlation
-    corr_value = df[[col1, col2]].corr(method=method).iloc[0, 1]
+    # Correlation of a variable with itself (diagonal of the matrix).
+    # Handled separately because df[[col1, col2]] with col1 == col2 would
+    # return a DataFrame with two duplicated columns instead of a Series,
+    # which breaks pearsonr/spearmanr.
+    if col1 == col2:
+        return 1.0, 0.0, method
 
-    return corr_value, method
+    # Drop rows where either variable is missing, otherwise pearsonr/spearmanr will fail
+    valid = df[[col1, col2]].dropna()
+
+    # Compute correlation and p-value
+    if method == "pearson":
+        corr_value, p_value = stats.pearsonr(valid[col1], valid[col2])
+    else:
+        corr_value, p_value = stats.spearmanr(valid[col1], valid[col2])
+
+    return corr_value, p_value, method
 
 def _remove_collinear_features(features, df, normality_map, target_col="Estimated metabolic age", threshold=0.85, verbose=False):
     """
@@ -375,7 +400,7 @@ def _remove_collinear_features(features, df, normality_map, target_col="Estimate
 
     # Compute adaptive correlation matrix
     # Then restrict it only to the selected features
-    corr_matrix_full, _ = adaptive_correlation_matrix(df[features])
+    corr_matrix_full, _, _ = adaptive_correlation_matrix(df[features])
     corr_matrix = corr_matrix_full.abs()
 
     # Upper triangle (avoid duplicate comparisons)
@@ -491,5 +516,86 @@ def apply_pca(df, n_components, target_col="Estimated metabolic age"):
     return pca, X_pca_df, loadings
 
 
+def top_correlations_per_target(
+    targets: dict[str, list[str]],
+    corr_df: pd.DataFrame,
+    pval_df: pd.DataFrame,
+    top_n: int = 10,
+    sort_by: str = "abs_corr",
+    alpha: float = 0.05,
+    excel_path: str = "top_correlations.xlsx",
+) -> pd.DataFrame:
+    """
+    Identify the top N variables most correlated with each target, restricted
+    to statistically significant relationships (p-value < alpha).
 
+    :param targets: Dict mapping each target (its keys are used as the
+        list of targets) to the list of variables that must be excluded
+        from that target's analysis
+    :param corr_df: Correlation matrix (index and columns = variable names)
+    :param pval_df: P-value matrix, with the same shape/index/columns as corr_df
+    :param top_n: Number of most related variables to return per target
+        (after filtering out non-significant ones)
+    :param sort_by: "abs_corr" sorts by absolute correlation value (strongest
+        relationship, positive or negative); "corr" sorts by the raw
+        correlation value (highest to lowest)
+    :param alpha: Significance threshold; only relationships with p-value < alpha
+        are kept
+    :param excel_path: Path of the Excel file to generate
+    :return: DataFrame with columns Target, Variable, Correlation, P-value,
+        Rank, also exported to Excel with one sheet per target
+    """
 
+    target_names = list(targets.keys())
+    results = []
+
+    for target in target_names:
+        if target not in corr_df.columns:
+            raise ValueError(f"Target '{target}' not found in corr_df columns.")
+
+        # Variables to drop: the target itself + its excluded variables
+        vars_to_drop = set(targets[target]) | {target}
+
+        # Correlations and p-values of the target with all other variables
+        target_corr = corr_df[target].drop(index=vars_to_drop, errors="ignore")
+        target_pval = pval_df[target].drop(index=vars_to_drop, errors="ignore")
+
+        # Combine everything into a single helper dataframe
+        aux_df = pd.DataFrame({
+            "Variable": target_corr.index,
+            "Correlation": target_corr.values,
+            "P-value": target_pval.reindex(target_corr.index).values,
+        })
+
+        # Keep only statistically significant relationships
+        aux_df = aux_df[aux_df["P-value"] < alpha]
+
+        # Sorting criterion
+        if sort_by == "abs_corr":
+            aux_df["_sort_key"] = aux_df["Correlation"].abs()
+        elif sort_by == "corr":
+            aux_df["_sort_key"] = aux_df["Correlation"]
+        else:
+            raise ValueError("sort_by must be 'abs_corr' or 'corr'.")
+
+        aux_df = aux_df.sort_values("_sort_key", ascending=False).head(top_n)
+        aux_df = aux_df.drop(columns="_sort_key")
+        aux_df.insert(0, "Target", target)
+        aux_df["Rank"] = range(1, len(aux_df) + 1)
+
+        results.append(aux_df)
+
+    final_result = pd.concat(results, ignore_index=True)
+
+    # Export to Excel: one "All" sheet + one sheet per target
+    with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+        final_result.to_excel(writer, sheet_name="All", index=False)
+        for target in target_names:
+            sub = final_result[final_result["Target"] == target].drop(columns="Target")
+            # Excel sheet names are limited to 31 characters
+            sheet_name = target[:31]
+            sub.to_excel(writer, sheet_name=sheet_name, index=False)
+
+    print(f"Excel exported to: {excel_path}")
+
+    return final_result

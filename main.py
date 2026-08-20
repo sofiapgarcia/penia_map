@@ -28,7 +28,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S21"]
+#subjects = ["S21"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 subjects_with_signals_bad_quality = ["S21"]
@@ -115,7 +115,7 @@ for subject in subjects:
     subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
 
     # peak power calculation
-    power_info = process_hd_power(subject_data_sync, show_plot=True)
+    power_info = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
     subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
@@ -144,9 +144,9 @@ for subject in subjects:
 
     features.append(subject_row)
 
-#final_df = pd.concat(features, ignore_index=True)
-#final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
-#print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
+final_df = pd.concat(features, ignore_index=True)
+final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
 
 
 

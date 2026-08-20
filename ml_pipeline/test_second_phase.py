@@ -1,5 +1,5 @@
 from ml_pipeline.preprocessing.data_augmentation import *
-from ml_pipeline.preprocessing.feature_reduction import select_features_by_group , adaptive_correlation_matrix
+from ml_pipeline.preprocessing.feature_reduction import select_features_by_group , adaptive_correlation_matrix , top_correlations_per_target
 from ml_pipeline.preprocessing.linear_regression_feature_reduction import run_for_multiple_targets , summarize_results , get_selected_features_dict , results_to_dataframe
 from ml_pipeline.modeling.test_models import run_training_pipeline , split_train_test_df , evaluate_production_model_simple , evaluate_production_model_k_fold
 from constants import RANDOM_SEED
@@ -20,8 +20,16 @@ df_encoded = encode_categorical_columns(df)
 # remove participant column ID
 df_features = df.drop(columns=["ID"], errors="ignore")
 
-cor_matrix , _ = adaptive_correlation_matrix(df_features)
+cor_matrix , corr_pvalues , corr_coef = adaptive_correlation_matrix(df_features)
 
+targets = {"Estimated metabolic age": ["Age (y)"],
+"peak_power": ["velocity_at_peak_power", "force_at_peak_power", "peak_power_mass", "peak_power_height_squared"],
+"Bone Mineral Density": ["Estimated bone mass kg"]
+}
+corr_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\correlations.xlsx"
+
+result_df = top_correlations_per_target(targets=targets,corr_df=cor_matrix,pval_df=corr_pvalues,top_n=10,excel_path=corr_path)
+"""
 # get correlation by each dimension of the penia map
 #corr_penia = correlation_by_groups(df_features)
 
@@ -62,9 +70,9 @@ df_train = df_train[features]
 # Model selection
 results_summary = run_training_pipeline(df_train, splits_inner=3, splits_outer=5, target_column=y)
 
-
-filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_summary_second_phase.xlsx"
-
+"""
+#filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_summary_second_phase.xlsx"
+"""
 results_summary.to_excel(filepath3, index=False)
 
 # Evaluation of production model
@@ -76,3 +84,4 @@ results_summary.to_excel(filepath3, index=False)
 
 # plot distribution of one variable
 #plot_distribution(df_features, "Estimated metabolic age")
+"""

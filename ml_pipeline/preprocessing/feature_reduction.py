@@ -445,9 +445,6 @@ def inspect_pca_variance(df, target_col="Estimated metabolic age"):
     :return: fitted PCA object, cumulative explained variance array
     """
 
-    # Drop target column if present
-    X = df.drop(columns=[target_col], errors='ignore')
-
     # Select numeric features only
     X = X.select_dtypes(include='number')
 
@@ -485,11 +482,8 @@ def apply_pca(df, n_components, target_col="Estimated metabolic age"):
     :return: fitted PCA object, transformed DataFrame, loadings DataFrame
     """
 
-    # Drop target column if present
-    X = df.drop(columns=[target_col], errors='ignore')
-
     # Select numeric features
-    X = X.select_dtypes(include='number')
+    X = df.select_dtypes(include='number')
 
     # Standardize features
     scaler = StandardScaler()

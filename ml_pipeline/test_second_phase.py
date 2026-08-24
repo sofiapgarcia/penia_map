@@ -23,10 +23,10 @@ df_features = df.drop(columns=["ID"], errors="ignore")
 
 cor_matrix , corr_pvalues , corr_coef = adaptive_correlation_matrix(df_features)
 
-targets = {"Estimated metabolic age": ["Age (target)"],
+targets = {"Estimated metabolic age": ["Age (y)"],
 "peak_power": ["velocity_at_peak_power", "force_at_peak_power", "peak_power_mass", "peak_power_height_squared", "max_force", "max_velocity","rep_pp_hd_peak_rfd","mean_hd_peak_rfd"],
 "Bone Mineral Density": ["Estimated bone mass kg"],
-           "Age (target)":["Estimated metabolic age"]
+           "Age (y)":["Estimated metabolic age"]
 }
 
 #corr_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\correlations.xlsx"

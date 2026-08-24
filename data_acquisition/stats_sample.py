@@ -14,8 +14,8 @@ n_men = (df["Gender"] == 1).sum()
 n_total = len(df)
 
 # Age range
-age_min = df["Age (y)"].min()
-age_max = df["Age (y)"].max()
+age_min = df["Age (target)"].min()
+age_max = df["Age (target)"].max()
 
 
 # ---------------------------------------------------------
@@ -78,7 +78,7 @@ table = pd.DataFrame(
 for group_name, group in groups.items():
 
     table.loc["Age (years)", group_name] = mean_sd(
-        group["Age (y)"]
+        group["Age (target)"]
     )
 
     table.loc["Weight (kg)", group_name] = mean_sd(

@@ -75,7 +75,7 @@ def run_training_pipeline(
     :return: Dictionary with results
     """
 
-    # Separate features (X) and target (y) from the full DataFrame
+    # Separate features (X) and target (target) from the full DataFrame
     X_train = train_df.drop(columns=[target_column])
     y_train = train_df[target_column]
 
@@ -149,9 +149,10 @@ model_dict = {
 
 def evaluate_production_model_simple(train_df: pd.DataFrame,
                                       test_df: pd.DataFrame,
-                                      model_dict: Dict,
                                       model_name: str,
-                                      target_column: str = "Estimated metabolic age",
+                                      target_column: str,
+                                      normalization: str,
+                                      model_dict: Dict = model_dict,
                                       cv_splits: int = 5) -> None:
     """
     Performs a final hyperparameter tuning on the chosen production regression model
@@ -166,11 +167,11 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
     :return: None
     """
 
-    # Separate features (X) and target (y) from training data
+    # Separate features (X) and target (target) from training data
     X_train = train_df.drop(columns=[target_column])
     y_train = train_df[target_column]
 
-    # Separate features (X) and target (y) from test data
+    # Separate features (X) and target (target) from test data
     X_test = test_df.drop(columns=[target_column])
     y_test = test_df[target_column]
 
@@ -178,7 +179,7 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
     if model_name not in model_dict:
         raise ValueError(f"Model '{model_name}' not found. Available models: {list(model_dict.keys())}")
 
-    estimator = model_dict[model_name][ESTIMATOR]
+    estimator = _get_estimator_for_model(model_name, normalization)
 
     # Define more complete param grids for final tuning (independent of model_dict's grids)
     complete_param_grids = {
@@ -243,13 +244,14 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
 
 def evaluate_production_model_k_fold(df: pd.DataFrame,
                                       model_name: str,
-                                      model_dict: Dict,
+                                      normalization: str,
+                                      model_dict: Dict = model_dict,
                                       target_column: str = "Estimated metabolic age",
-                                      n_splits: int = 5,
+                                      n_splits: int = 4,
                                       param_grid: Dict = None,
-                                      inner_cv_splits: int = 5,
-                                      n_strat_bins: int = 5,
-                                      plot_distribution: bool = True) -> pd.DataFrame:
+                                      inner_cv_splits: int = 4,
+                                      n_strat_bins: int = 4,
+                                      plot_distribution: bool = False) -> pd.DataFrame:
     """
     Evaluates the chosen production model using k-fold cross-validation over the full
     dataset, with folds stratified by the target variable (binned into
@@ -277,15 +279,13 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
     X = df.drop(columns=[target_column])
     y = df[target_column]
 
-    base_estimator = model_dict[model_name][ESTIMATOR]
 
     # Default, more complete param grids per model (used when param_grid is not provided)
     if param_grid is None:
         complete_param_grids = {
             KNN: {
-                f'{KNN}__n_neighbors': list(range(1, 30)),
+                f'{KNN}__n_neighbors': list(range(1, 20)),
                 f'{KNN}__weights': ['uniform', 'distance'],
-                f'{KNN}__p': [1, 2]
             },
             SVM: {
                 f'{SVM}__C': [0.01, 0.1, 1, 10, 100],
@@ -293,11 +293,10 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
                 f'{SVM}__gamma': ['scale', 'auto']
             },
             RF: {
-                "n_estimators": [50, 75, 100, 200, 500],
-                "max_depth": [3, 5, 7, 10, None],
-                "min_samples_leaf": [1, 3, 5, 10],
+                "n_estimators": [50, 100, 200],
+                "max_depth": [None, 5, 10, 20],
                 "min_samples_split": [2, 5, 10],
-                "max_features": ["sqrt", "log2", None]
+                "min_samples_leaf": [1, 2, 4],
             },
             LR: {}  # No hyperparameters for linear regression
         }
@@ -324,7 +323,7 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
         })
 
         # Clone the base estimator so each fold starts from a fresh, unfitted model
-        estimator = clone(base_estimator)
+        estimator = _get_estimator_for_model(model_name, normalization)
 
         best_model = tune_production_model(
             X=X_train, y=y_train, estimator=estimator,
@@ -379,7 +378,7 @@ def evaluate_production_model_k_fold(df: pd.DataFrame,
 
 def split_train_test_df(
         df: pd.DataFrame,
-        target_col: str = "Estimated metabolic age",
+        target_col: str,
         test_size: float = 0.2,
         random_state: int = RANDOM_SEED,
         n_bins: int = 4
@@ -689,7 +688,7 @@ def _plot_target_distribution_by_fold(fold_target_data: List[Dict], target_colum
 
     :param fold_target_data: list of dicts, each containing 'fold', 'train_values'
         and 'val_values' (arrays of target values for that fold)
-    :param target_column: name of the target column (used for the y-axis label)
+    :param target_column: name of the target column (used for the target-axis label)
     :return: None
     """
 
@@ -721,7 +720,51 @@ def _plot_target_distribution_by_fold(fold_target_data: List[Dict], target_colum
 
     ax.set_ylabel(target_column)
     ax.set_title(f"{target_column} distribution across folds (Train vs Validation)")
-    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    ax.grid(axis="both", linestyle="--", alpha=0.4)
 
     plt.tight_layout()
     plt.show()
+
+def _get_estimator_for_model(model_name: str, normalization: str):
+    """
+    Builds a fresh, unfitted estimator (with the chosen scaler, if applicable)
+    for the given model name.
+
+    :param model_name: key identifying which model to use (e.g. KNN, SVM, RF, LR)
+    :param normalization: normalization method to apply before the model.
+        One of 'standard', 'minmax', 'robust', or 'none' (no scaling).
+    :return: sklearn Pipeline (or bare estimator for models that don't need scaling)
+    """
+    scaler_dict = {
+        'standard': StandardScaler(),
+        'minmax': MinMaxScaler(),
+        'robust': RobustScaler(),
+        'none': None
+    }
+
+    if normalization not in scaler_dict:
+        raise ValueError(
+            f"Normalization method '{normalization}' not recognized. "
+            f"Choose from: {list(scaler_dict.keys())}"
+        )
+
+    scaler = scaler_dict[normalization]
+
+    raw_estimators = {
+        KNN: KNeighborsRegressor(),
+        SVM: SVR(),
+        LR: LinearRegression(),
+        RF: RandomForestRegressor(random_state=RANDOM_SEED),
+    }
+
+    if model_name not in raw_estimators:
+        raise ValueError(f"Model '{model_name}' not found. Available models: {list(raw_estimators.keys())}")
+
+    base_model = raw_estimators[model_name]
+
+    # Random Forest doesn't need feature scaling, so it's returned as-is
+    # regardless of the chosen normalization method
+    if model_name == RF:
+        return clone(base_model)
+
+    return _build_pipeline(base_model, model_name, scaler)

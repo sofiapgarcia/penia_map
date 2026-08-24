@@ -48,12 +48,12 @@ def _window_bounds(signal_size, center_idx, margin_samples):
 
 def _autoscale_y(ax, ydata, pad_frac=0.08):
     """
-    Rescale the y-axis to fit the data currently visible in the x-range,
+    Rescale the target-axis to fit the data currently visible in the x-range,
     with a small padding. Called after every zoom/pan so the signal always
     fills the plot nicely.
 
     :param ax: Matplotlib Axes to rescale.
-    :param ydata: Full 1D array with the y data plotted on ax.
+    :param ydata: Full 1D array with the target data plotted on ax.
     :param pad_frac: Fraction of the visible data range added as padding.
     :return: None.
     """

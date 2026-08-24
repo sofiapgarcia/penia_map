@@ -160,7 +160,8 @@ PENIA_MAP_GROUPS = {
 ],
 
     "Osteopenia": [
-        "Estimated bone mass kg"
+        "Estimated bone mass kg",
+        "Bone Mineral Density"
 
     ],
 
@@ -226,8 +227,8 @@ PENIA_MAP_GROUPS = {
 
 RANDOM_SEED = 42
 
-ACC_COLUMNS = ["x", "y", "z","gACCx", "gACCy", "gACCz"]
-ACC_COLUMNS_HUB = ["x", "y", "z"]
+ACC_COLUMNS = ["x", "target", "z","gACCx", "gACCy", "gACCz"]
+ACC_COLUMNS_HUB = ["x", "target", "z"]
 ACC_COLUMNS_HD = ["gACCx", "gACCy", "gACCz"]
 FORCE_COLUMN = "FORCE"
 DISPLACEMENT_COLUMN = "DISPLACEMENT"
@@ -271,7 +272,7 @@ Available Functions
 -------------------
 [Public]
 nested_cross_val(...): Performs nested cross-validation using GroupKFold to evaluate a machine learning model with hyperparameter tuning.
-tune_production_model(...): Performs hyperparameter tuning using GroupKFold, X and y.
+tune_production_model(...): Performs hyperparameter tuning using GroupKFold, X and target.
 ------------------
 [Private]
 None
@@ -300,3 +301,48 @@ EMG_Flexor_filt = "EMG_Flexor_filt"
 EMG_Extensor = "EMG_Extensor"
 EMG_Flexor = "EMG_Flexor"
 EMG_CHANNELS = [EMG_Extensor, EMG_Flexor]
+
+best_models_penia_map = {
+    "Estimated metabolic age": [
+        "mean_hd_cocontraction_ms",
+        "peak_power_mass",
+        "Gender"
+    ],
+    "peak_power": [
+        "Gender",
+        "hi_values_max",
+        "Arm muscle (right) kg"
+    ],
+    "Bone Mineral Density": [
+        "ALMI",
+        "Gender"
+    ],
+    "Age (y)": [
+        "mean_hd_cocontraction_ms",
+        "Gender",
+        "mean_hi_Median_Frequency_flexor"
+    ]
+}
+
+
+best_models_all_variables = {
+    "Estimated metabolic age": [
+        "Body mass index (BMI)",
+        "mean_hd_cocontraction_ms"
+    ],
+    "peak_power": [
+        "Gender",
+        "hi_values_max",
+        "Arm muscle (right) kg"
+    ],
+    "Bone Mineral Density": [
+        "Global muscle kg",
+        "ALMI",
+        "Body mass(kg)"
+    ],
+    "Age (y)": [
+        "mean_hd_cocontraction_ms",
+        "Gender",
+        "Height(cm)"
+    ]
+}

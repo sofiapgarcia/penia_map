@@ -41,7 +41,7 @@ def _prune_by_correlation(
 
     :param X: DataFrame with the features
     :param y: Target Series (optional). Used to decide which feature of a
-        correlated pair to keep (the one more correlated with y)
+        correlated pair to keep (the one more correlated with target)
     :param corr_threshold: absolute correlation above which a pair is
         considered redundant
     :param max_features: optional cap on the number of features to keep
@@ -67,10 +67,10 @@ def _prune_by_correlation(
             if y is not None:
                 corr_with_y = X[remaining].corrwith(y).abs()
                 worst = corr_with_y.idxmin()
-                reason = f"cut for max_features (corr. with y={corr_with_y[worst]:.3f})"
+                reason = f"cut for max_features (corr. with target={corr_with_y[worst]:.3f})"
             else:
                 worst = remaining[-1]
-                reason = "cut for max_features (arbitrary, no y given)"
+                reason = "cut for max_features (arbitrary, no target given)"
             remaining.remove(worst)
             dropped.append((worst, None, reason))
             if verbose:
@@ -110,7 +110,7 @@ def filter_by_vif(
 
     :param X: DataFrame with the features
     :param y: Target Series (optional). If given, activates target-aware
-        mode: at each step the feature with the lowest correlation with y
+        mode: at each step the feature with the lowest correlation with target
         is removed (recommended); otherwise the highest-VIF feature is
     :param threshold: maximum acceptable VIF
     :param corr_prescreen: correlation threshold for the fast pruning
@@ -147,7 +147,7 @@ def filter_by_vif(
                 corr_with_y = X[candidates.index].corrwith(y).abs()
                 worst = corr_with_y.idxmin()
                 worst_vif = candidates[worst]
-                reason = f"lowest corr. with y ({corr_with_y[worst]:.3f})"
+                reason = f"lowest corr. with target ({corr_with_y[worst]:.3f})"
 
             remaining.remove(worst)
             dropped.append((worst, worst_vif, reason))
@@ -332,7 +332,7 @@ def _auto_max_features(n_samples: int, n_features: int, max_features_ratio: floa
     print(
         f"[AUTO] Target '{target}': {n_features} features for {n_samples} samples. "
         f"Cutting to at most {cap} (max_features_ratio={max_features_ratio}) before "
-        f"VIF/stepwise, keeping those most correlated with y. Set 'max_features_before_vif' "
+        f"VIF/stepwise, keeping those most correlated with target. Set 'max_features_before_vif' "
         f"manually for a different value."
     )
     return cap
@@ -359,7 +359,7 @@ def run_for_multiple_targets(
     Run stepwise_selection for each target in target_cols, with an
     optional VIF collinearity filter beforehand.
 
-    :param vif_target_aware: if True, VIF filtering uses this target's y
+    :param vif_target_aware: if True, VIF filtering uses this target's target
         to break ties (recommended); if False, uses global VIF only
     :param max_features_before_vif: manual cap on features entering VIF
         (needed when features >= samples); if None, derived automatically

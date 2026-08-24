@@ -291,9 +291,9 @@ def plot_subject_data(subject_data):
     single DataFrame) is displayed with one subplot per signal, except
     that each raw signal is plotted together with its filtered
     counterpart (columns ending in "_filt") in the same subplot, using
-    different colors. If both gACCy and y columns are present, an
+    different colors. If both gACCy and target columns are present, an
     additional subplot overlays them (centered and normalized) for
-    comparison, and the individual gACCy/y subplots are skipped since
+    comparison, and the individual gACCy/target subplots are skipped since
     they are already shown in that overlay. The accelerometer channels
     x, z, gACCx and gACCz are excluded from all plots. All other
     acquisitions follow the same one-subplot-per-signal rule, with
@@ -323,13 +323,13 @@ def plot_subject_data(subject_data):
 
         hd = subject_data["HD"]["data"]
 
-        comparison_available = "gACCy" in hd.columns and "y" in hd.columns
+        comparison_available = "gACCy" in hd.columns and "target" in hd.columns
 
         # Always exclude nSeq and the unwanted accelerometer channels;
-        # skip gACCy/y individually if the comparison overlay covers them
+        # skip gACCy/target individually if the comparison overlay covers them
         excluded = set(ALWAYS_EXCLUDED_COLUMNS)
         if comparison_available:
-            excluded |= {"gACCy", "y"}
+            excluded |= {"gACCy", "target"}
 
         hd_columns = [column for column in hd.columns if column not in excluded]
         groups = _group_signal_columns(hd_columns)
@@ -351,7 +351,7 @@ def plot_subject_data(subject_data):
             # ---------------- Comparison (overlaid) ----------------
             if comparison_available:
                 gaccy_norm = _center_and_normalize(-hd["gACCy"])
-                y_norm = _center_and_normalize(hd["y"])
+                y_norm = _center_and_normalize(hd["target"])
 
                 axes[idx].plot(
                     gaccy_norm,
@@ -361,11 +361,11 @@ def plot_subject_data(subject_data):
 
                 axes[idx].plot(
                     y_norm,
-                    label="HD_EMG y (z-scored)",
+                    label="HD_EMG target (z-scored)",
                     linewidth=1.2
                 )
 
-                axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)", fontsize=10, pad=8)
+                axes[idx].set_title("HD gACCy vs HD_EMG target (z-scored)", fontsize=10, pad=8)
                 axes[idx].legend(loc="upper right")
 
             plt.show()

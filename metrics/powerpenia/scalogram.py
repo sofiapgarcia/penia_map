@@ -473,7 +473,7 @@ def plot_signal_scalogram(
         EMG signal itself, sharing the time axis
     :param cmap: Matplotlib colormap used for the scalogram heatmap
     :param title: Optional custom title. Defaults to a title built from signal_column
-    :param freq_max: Upper limit (Hz) for the y-axis. EMG spectral content is
+    :param freq_max: Upper limit (Hz) for the target-axis. EMG spectral content is
         essentially all below ~450-500 Hz, so plotting up to the Nyquist
         frequency just wastes most of the plot on an empty region and makes
         the low-frequency band look compressed. Set to None to show the full
@@ -629,7 +629,7 @@ def plot_condition_muscle_scalograms(
     :param scale_spacing: 'log' (default) or 'linear', see compute_scalogram
     :param show_signal: If True, adds a panel above each scalogram with the raw EMG signal
     :param cmap: Matplotlib colormap used for the scalogram heatmaps
-    :param freq_max: Upper y-axis limit (Hz), see plot_signal_scalogram
+    :param freq_max: Upper target-axis limit (Hz), see plot_signal_scalogram
     :param color_scale: 'log' (default) or 'linear' color mapping, see plot_signal_scalogram
     :param phase_color: Shading/line color used for the contraction window
     :param phase_alpha: Alpha (opacity) of the shaded contraction window

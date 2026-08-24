@@ -567,7 +567,7 @@ def top_correlations_per_target(
             "P-value": target_pval.reindex(target_corr.index).values,
         })
 
-        # Keep only statistically significant relationships
+        # Keep only statistically significant correlations
         aux_df = aux_df[aux_df["P-value"] < alpha]
 
         # Sorting criterion
@@ -580,22 +580,22 @@ def top_correlations_per_target(
 
         aux_df = aux_df.sort_values("_sort_key", ascending=False).head(top_n)
         aux_df = aux_df.drop(columns="_sort_key")
+
+        # Round correlation for final output
+        aux_df["Correlation"] = aux_df["Correlation"].round(2)
+
+        aux_df["P-value"] = aux_df["P-value"].apply(lambda p: "<0.001" if p < 0.001 else round(p, 3))
+
         aux_df.insert(0, "Target", target)
-        aux_df["Rank"] = range(1, len(aux_df) + 1)
 
         results.append(aux_df)
 
     final_result = pd.concat(results, ignore_index=True)
 
-    # Export to Excel: one "All" sheet + one sheet per target
-    with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
-        final_result.to_excel(writer, sheet_name="All", index=False)
-        for target in target_names:
-            sub = final_result[final_result["Target"] == target].drop(columns="Target")
-            # Excel sheet names are limited to 31 characters
-            sheet_name = target[:31]
-            sub.to_excel(writer, sheet_name=sheet_name, index=False)
+    # Export to Excel
+    if excel_path is not None:
+        final_result.to_excel(excel_path, index=False)
 
-    print(f"Excel exported to: {excel_path}")
+        print(f"Excel exported to: {excel_path}")
 
     return final_result

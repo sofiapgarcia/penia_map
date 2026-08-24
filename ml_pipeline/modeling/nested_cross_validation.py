@@ -5,7 +5,7 @@ Available Functions
 -------------------
 [Public]
 nested_cross_val(...): Performs nested cross-validation using GroupKFold to evaluate a machine learning model with hyperparameter tuning.
-tune_production_model(...): Performs hyperparameter tuning using GroupKFold, X and y.
+tune_production_model(...): Performs hyperparameter tuning using GroupKFold, X and target.
 ------------------
 [Private]
 None
@@ -62,7 +62,7 @@ def nested_cross_val(X: pd.DataFrame, y: pd.Series, estimator: RegressorMixin,
     fold_mae_scores = []
     fold_info = []
 
-    # Bin the target (y) to allow stratification
+    # Bin the target (target) to allow stratification
     y_bins = pd.qcut(y, q=n_bins, duplicates="drop")
     y_bins_codes = y_bins.cat.codes.values
 
@@ -75,7 +75,7 @@ def nested_cross_val(X: pd.DataFrame, y: pd.Series, estimator: RegressorMixin,
     # run outer loop — split() receives X and the target bins, not the raw target
     for fold_num, (train_idx, valid_idx) in enumerate(outer_cv.split(X, y_bins_codes), start=1):
 
-        # get the corresponding X, y for this outer fold
+        # get the corresponding X, target for this outer fold
         X_train = X.iloc[train_idx]
         X_val = X.iloc[valid_idx]
         y_train = y.iloc[train_idx]
@@ -158,7 +158,7 @@ def tune_production_model(X: pd.DataFrame, y: pd.Series, estimator: RegressorMix
                           param_grid: Union[List[Dict[str, Any]], Dict[str, Any]],
                           cv_splits: int = 5):
     """
-    Performs hyperparameter tuning using KFold and X, y. This function can be used to train the production model
+    Performs hyperparameter tuning using KFold and X, target. This function can be used to train the production model
     on the entire training set.
     :param X: pandas.DataFrame containing the feature matrix
     :param y: pandas.Series containing the target values

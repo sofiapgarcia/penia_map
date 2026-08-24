@@ -103,7 +103,7 @@ def _interpolate_missing_values(df):
     """
     Interpolate missing values according to signal type.
 
-    Accelerometer channels (x, y, z) are interpolated using cubic spline,
+    Accelerometer channels (x, target, z) are interpolated using cubic spline,
     while all remaining signal channels are interpolated using linear interpolation.
 
     :param df: Input DataFrame containing sensor signals
@@ -113,7 +113,7 @@ def _interpolate_missing_values(df):
     df_filled = df.copy()
 
     # Accelerometer channels
-    ACC_COLUMNS = ["x", "y", "z", "gACCx", "gACCy", "gACCz"]
+    ACC_COLUMNS = ["x", "target", "z", "gACCx", "gACCy", "gACCz"]
 
     acc_columns = [
         column

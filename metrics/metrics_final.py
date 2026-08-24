@@ -20,7 +20,7 @@ id_column = df_ant.columns[0]
 df_ant = df_ant[[
     id_column,
     "Gender",
-    "Age (y)",
+    "Age (target)",
     "Body mass(kg)",
     "Height(cm)",
     "Estimated metabolic age","Body mass index (BMI)","Activity level",
@@ -69,7 +69,7 @@ merged_df = (
     .merge(sarco, on=id_column, how="left")
     .merge(osteo, on=id_column, how="left")
     .merge(
-        df_ant[[id_column,"Age (y)", "Height(cm)","Gender", "Estimated metabolic age" , "Body mass index (BMI)", "Body mass(kg)","Activity level"]],
+        df_ant[[id_column,"Age (target)", "Height(cm)","Gender", "Estimated metabolic age" , "Body mass index (BMI)", "Body mass(kg)","Activity level"]],
         on=id_column,
         how="left",
     )

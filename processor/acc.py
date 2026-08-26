@@ -139,7 +139,7 @@ def _getAccCalibration(axis:str):
     if axis == 'x':
         C_min = min(calib_file[:, 2])
         C_max = max(calib_file[:, 2])
-    if axis == 'target':
+    if axis == 'y':
         C_min = min(calib_file[:, 3])
         C_max = max(calib_file[:, 3])
     if axis == 'z':

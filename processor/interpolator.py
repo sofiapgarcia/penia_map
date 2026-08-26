@@ -113,7 +113,7 @@ def _interpolate_missing_values(df):
     df_filled = df.copy()
 
     # Accelerometer channels
-    ACC_COLUMNS = ["x", "target", "z", "gACCx", "gACCy", "gACCz"]
+    ACC_COLUMNS = ["x", "y", "z", "gACCx", "gACCy", "gACCz"]
 
     acc_columns = [
         column

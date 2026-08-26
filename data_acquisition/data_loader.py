@@ -233,7 +233,7 @@ def extract_data_from_file(file_path):
 
         # Rename accelerometer channels
         if len(df.columns) >= 3:
-            df.columns.values[-3:] = ["x", "target", "z"]
+            df.columns.values[-3:] = ["x", "y", "z"]
 
     elif condition == "HD":
 

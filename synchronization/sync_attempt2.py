@@ -76,7 +76,7 @@ def apply_saved_sync_indices(subject_data, subject_folder,
     print(f"Loaded existing synchronization parameters from: {sync_path}")
 
     if show_plot:
-        _plot_validation(df_merged, column_hd="gACCy", column_hd_emg="target")
+        _plot_validation(df_merged, column_hd="gACCy", column_hd_emg="y")
 
     return subject_data
 

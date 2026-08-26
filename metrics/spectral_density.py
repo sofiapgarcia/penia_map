@@ -3,13 +3,14 @@ import pandas as pd
 from scipy.signal import welch
 from constants import FS
 from metrics.powerpenia.coordination import get_max_repetition_hi
+import matplotlib.pyplot as plt
 
 # np.trapezoid replaced the deprecated np.trapz in newer NumPy releases; fall
 # back to np.trapz on older versions that don't have it yet.
 _integrate = getattr(np, "trapezoid", None) or np.trapz
 
 
-def compute_band_powers(signal, fs, band_edges=None, nperseg=None):
+def compute_band_powers(signal, fs, band_edges=None, nperseg=None, plot=False):
     """
     Compute the power spectral density (Welch's method) of a 1D signal and
     integrate it into a set of frequency bands.
@@ -31,10 +32,10 @@ def compute_band_powers(signal, fs, band_edges=None, nperseg=None):
     signal = np.asarray(signal, dtype=float)
 
     if band_edges is None:
-        band_edges = np.arange(0, 500, 50)
+        band_edges = np.arange(20, 500, 50)
 
     if nperseg is None:
-        nperseg = min(150, len(signal))
+        nperseg = len(signal)//3
 
     freqs, psd = welch(signal, fs=fs, nperseg=nperseg)
 
@@ -43,6 +44,18 @@ def compute_band_powers(signal, fs, band_edges=None, nperseg=None):
         mask = (freqs >= low) & (freqs < high)
         band_label = f"{low}-{high}Hz"
         band_powers[band_label] = float(_integrate(psd[mask], freqs[mask])) if mask.any() else 0.0
+
+    if plot:
+        plt.figure(figsize=(8, 4))
+        plt.semilogy(freqs, psd)
+        for edge in band_edges:
+            plt.axvline(edge, color="gray", linestyle="--", linewidth=0.5)
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Power Spectral Density")
+        plt.title("Power Spectrum")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
 
     return band_powers, freqs, psd
 
@@ -108,7 +121,7 @@ def compute_spectral_frequency_metrics(signal, fs, nperseg=None):
     signal = np.asarray(signal, dtype=float)
 
     if nperseg is None:
-        nperseg = min(150, len(signal))
+        nperseg = len(signal)//3
 
     freqs, psd = welch(signal, fs=fs, nperseg=nperseg)
 

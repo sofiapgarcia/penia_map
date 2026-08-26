@@ -358,10 +358,7 @@ def _compute_correlation(df, col1, col2, normality_map):
     else:
         method = "spearman"
 
-    # Correlation of a variable with itself (diagonal of the matrix).
-    # Handled separately because df[[col1, col2]] with col1 == col2 would
-    # return a DataFrame with two duplicated columns instead of a Series,
-    # which breaks pearsonr/spearmanr.
+    # Correlation of a variable with itself (diagonal of the matrix)
     if col1 == col2:
         return 1.0, 0.0, method
 
@@ -514,6 +511,7 @@ def top_correlations_per_target(
     targets: dict[str, list[str]],
     corr_df: pd.DataFrame,
     pval_df: pd.DataFrame,
+    method_df: pd.DataFrame = None,
     top_n: int = 10,
     sort_by: str = "abs_corr",
     alpha: float = 0.05,
@@ -528,6 +526,9 @@ def top_correlations_per_target(
         from that target's analysis
     :param corr_df: Correlation matrix (index and columns = variable names)
     :param pval_df: P-value matrix, with the same shape/index/columns as corr_df
+    :param method_df: Optional matrix (same shape/index/columns as corr_df)
+        indicating the correlation method used per pair (pearson/spearman).
+        If provided, a "Method" column is added to the output.
     :param top_n: Number of most related variables to return per target
         (after filtering out non-significant ones)
     :param sort_by: "abs_corr" sorts by absolute correlation value (strongest
@@ -537,7 +538,8 @@ def top_correlations_per_target(
         are kept
     :param excel_path: Path of the Excel file to generate
     :return: DataFrame with columns Target, Variable, Correlation, P-value,
-        Rank, also exported to Excel with one sheet per target
+        (Method, if method_df provided), Rank, also exported to Excel with one
+        sheet per target
     """
 
     target_names = list(targets.keys())
@@ -560,6 +562,11 @@ def top_correlations_per_target(
             "Correlation": target_corr.values,
             "P-value": target_pval.reindex(target_corr.index).values,
         })
+
+        # Optionally attach the correlation method per variable
+        if method_df is not None:
+            target_method = method_df[target].reindex(target_corr.index)
+            aux_df["Method"] = target_method.values
 
         # Keep only statistically significant correlations
         aux_df = aux_df[aux_df["P-value"] < alpha]

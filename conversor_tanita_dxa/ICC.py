@@ -113,7 +113,7 @@ def _compute_single_icc(df: pd.DataFrame, dxa_col: str, tanita_col: str, icc_typ
         "n": n,
         "ICC": round(row["ICC"], 3),
         "CI95%": ci_value,
-        "p-value": round(row["pval"], 4),
+        "p-value": "<0.001" if row["pval"] < 0.001 else round(row["pval"], 4),
         "interpretation": _interpret_icc(row["ICC"]),
         "note": None
     }

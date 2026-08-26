@@ -10,18 +10,11 @@ filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_datafra
 # read the data
 df = pd.read_excel(filepath)
 
-"""
-# identify missing values, duplicates and outliers
-#df = analyze_excel_file(filepath)
-
-# encode categorical columns
-df_encoded = encode_categorical_columns(df)
-"""
 # remove participant column ID
-df_features = df.drop(columns=["ID"], errors="ignore")
+df_features = df.drop(columns=["ID","Torso muscle kg"], errors="ignore")
 
 
-cor_matrix , corr_pvalues , corr_coef = adaptive_correlation_matrix(df_features)
+cor_matrix , corr_pvalues , method_matrix = adaptive_correlation_matrix(df_features)
 
 targets = {"Estimated metabolic age": ["Age (y)"],
 "peak_power": ["velocity_at_peak_power", "force_at_peak_power", "peak_power_mass", "peak_power_height_squared", "max_force", "max_velocity","rep_pp_hd_peak_rfd","mean_hd_peak_rfd"],
@@ -29,11 +22,11 @@ targets = {"Estimated metabolic age": ["Age (y)"],
            "Age (y)":["Estimated metabolic age"]
 }
 
-#corr_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\correlations.xlsx"
+corr_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\correlations.xlsx"
 
-#result_df = top_correlations_per_target(targets=targets,corr_df=cor_matrix,pval_df=corr_pvalues,top_n=10,excel_path=corr_path)
+result_df = top_correlations_per_target(targets=targets,corr_df=cor_matrix,pval_df=corr_pvalues,method_df=method_matrix,top_n=10,excel_path=corr_path)
 
-
+"""
 # get correlation by each dimension of the penia map
 #corr_penia = correlation_by_groups(df_features)
 
@@ -58,7 +51,7 @@ results_df = results_to_dataframe(results)
 #summarize_results(results)
 features_por_target = get_selected_features_dict(results)
 
-#target = "Age (target)"
+#target = "Age (y)"
 #target = "Estimated metabolic age"
 #target = "Estimated bone mass kg"
 target = "peak_power"
@@ -74,10 +67,10 @@ df_train = df_train[features]
 # Model selection
 results_summary = run_training_pipeline(df_train, splits_inner=3, splits_outer=5, target_column=target)
 
+"""
+#filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_summary_second_phase.xlsx"
 
-filepath3 = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_summary_second_phase.xlsx"
-
-results_summary.to_excel(filepath3, index=False)
+#results_summary.to_excel(filepath3, index=False)
 
 # Evaluation of production model
 #evaluate_production_model_simple(df_train, df_test)

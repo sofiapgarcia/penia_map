@@ -323,13 +323,13 @@ def plot_subject_data(subject_data):
 
         hd = subject_data["HD"]["data"]
 
-        comparison_available = "gACCy" in hd.columns and "target" in hd.columns
+        comparison_available = "gACCy" in hd.columns and "y" in hd.columns
 
         # Always exclude nSeq and the unwanted accelerometer channels;
         # skip gACCy/target individually if the comparison overlay covers them
         excluded = set(ALWAYS_EXCLUDED_COLUMNS)
         if comparison_available:
-            excluded |= {"gACCy", "target"}
+            excluded |= {"gACCy", "y"}
 
         hd_columns = [column for column in hd.columns if column not in excluded]
         groups = _group_signal_columns(hd_columns)
@@ -351,7 +351,7 @@ def plot_subject_data(subject_data):
             # ---------------- Comparison (overlaid) ----------------
             if comparison_available:
                 gaccy_norm = _center_and_normalize(-hd["gACCy"])
-                y_norm = _center_and_normalize(hd["target"])
+                y_norm = _center_and_normalize(hd["y"])
 
                 axes[idx].plot(
                     gaccy_norm,
@@ -361,11 +361,11 @@ def plot_subject_data(subject_data):
 
                 axes[idx].plot(
                     y_norm,
-                    label="HD_EMG target (z-scored)",
+                    label="HD_EMG y (z-scored)",
                     linewidth=1.2
                 )
 
-                axes[idx].set_title("HD gACCy vs HD_EMG target (z-scored)", fontsize=10, pad=8)
+                axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)", fontsize=10, pad=8)
                 axes[idx].legend(loc="upper right")
 
             plt.show()

@@ -99,6 +99,7 @@ for subject in subjects:
             #plot_column_over_time(params, df_processed, DISPLACEMENT_COLUMN)
 
 
+
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="target",subject_folder=os.path.join(path, subject))
     subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)

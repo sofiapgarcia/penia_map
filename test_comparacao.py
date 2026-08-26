@@ -32,14 +32,14 @@ for coluna in df.columns:
 
     dados = pd.DataFrame({
         "x": x,
-        "target": y
+        "y": y
     }).dropna()
 
     if len(dados) < 2:
         continue
 
     X = dados["x"].values.reshape(-1, 1)
-    Y = dados["target"].values
+    Y = dados["y"].values
 
     # Regressão Linear
     modelo = LinearRegression()
@@ -76,7 +76,7 @@ for coluna in df.columns:
     plt.title(coluna)
 
     texto = (
-        f"target = {slope:.4f}x + {intercept:.4f}\n"
+        f"y = {slope:.4f}x + {intercept:.4f}\n"
         f"R² = {r2:.4f}"
     )
 

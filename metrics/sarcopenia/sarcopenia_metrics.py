@@ -10,8 +10,7 @@ SARCOPENIA_METRICS = [
     "Arm muscle (right) kg",
     "Arm muscle (left) kg",
     "Leg muscle (right) kg",
-    "Leg muscle (left) kg",
-    "Torso muscle kg",
+    "Leg muscle (left) kg"
 ]
 
 APPENDICULAR_METRICS = [

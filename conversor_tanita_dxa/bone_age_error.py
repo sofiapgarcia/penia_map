@@ -24,7 +24,7 @@ NEW_EXCEL_OUTPUT_PATH = NEW_EXCEL_PATH.with_name(
 # Nomes das colunas no Excel novo (ajustar se forem diferentes)
 COL_GENDER = "Gender"
 COL_BONE_MASS_KG = "Estimated bone mass kg"
-COL_CHRON_AGE = "Age (target)"
+COL_CHRON_AGE = "Age (y)"
 COL_NEW_AGE = "age_bone_mass"
 
 # Intervalo de idades para o qual as equações são válidas.

@@ -35,4 +35,4 @@ results_icc = compute_icc_pairs(df, VARIABLE_MAPPING, icc_type="ICC2")
 print(results_icc.to_string(index=False))
 
 # Plot the Bland Altman graphs with mapped variables
-plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=True)
+#plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=True)

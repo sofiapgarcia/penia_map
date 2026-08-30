@@ -11,6 +11,9 @@ import pandas as pd
 FILE_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
 
 TARGET = "Age (y)"
+#TARGET = "Estimated metabolic age"
+#TARGET = "Bone Mineral Density"
+#TARGET = "peak_power"
 
 TOP_N = 10
 

@@ -20,7 +20,9 @@ import pandas as pd
 # CONFIGURATION — change your file path here if you prefer
 # ---------------------------------------------------------------------------
 FILE_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
+#AGE_COLUMN_NAME = "Age (y)"
 AGE_COLUMN_NAME = "Estimated metabolic age"
+#GROUP_COLUMN_NAME = "Age Group"
 GROUP_COLUMN_NAME = "Metabolic Age Group"
 SHEET_NAME = 0  # sheet index or name to read; 0 = first sheet
 
@@ -51,7 +53,8 @@ def process_file(input_path):
     df[GROUP_COLUMN_NAME] = df[AGE_COLUMN_NAME].apply(classify_age)
 
     # Define output path (by default, appends "_classified" to the original name)
-    output_path = input_path[:-5] + "_age_groups_metabolic.xlsx"
+    output_path = input_path[:-5] + "metabolic_age_groups.xlsx"
+    #output_path = input_path[:-5] + "_age_groups.xlsx"
 
     df.to_excel(output_path, index=False)
     print(f"File successfully saved to: {output_path}")

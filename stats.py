@@ -24,4 +24,4 @@ targets = {"Estimated metabolic age": ["Age (y)"],
 
 corr_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\correlations.xlsx"
 
-result_df = top_correlations_per_target(targets=targets,corr_df=cor_matrix,pval_df=corr_pvalues,method_df=method_matrix,top_n=10,excel_path=corr_path)
+result_df = top_correlations_per_target(targets=targets,corr_df=cor_matrix,pval_df=corr_pvalues,method_df=method_matrix,top_n=30,excel_path=corr_path)

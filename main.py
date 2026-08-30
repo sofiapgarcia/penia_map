@@ -28,7 +28,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-#subjects = ["S21"]
+#subjects = ["S36"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 subjects_with_signals_bad_quality = ["S21"]
@@ -102,7 +102,7 @@ for subject in subjects:
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="target",subject_folder=os.path.join(path, subject))
-    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
+    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=True)
     #plot_subject_data(subject_data_sync)
 
     # Trim data

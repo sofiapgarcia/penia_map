@@ -149,7 +149,7 @@ print("CORRELATION MATRIX")
 print("=" * 78)
 
 # The function already returns the DataFrame with all correlations
-corr_matrix , _ = adaptive_correlation_matrix(df_model)
+corr_matrix , _ , _ = adaptive_correlation_matrix(df_model)
 
 print("\nCorrelation matrix:")
 print(corr_matrix)

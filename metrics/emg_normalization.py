@@ -37,14 +37,22 @@ def get_mvc_values(subject_data, show_plot=True):
     extensor_mvc = np.max(extensor_envelope)
     flexor_mvc = np.max(flexor_envelope)
 
-    subject_data["MVC_values"] = {
-        "extensor": extensor_mvc,
-        "flexor": flexor_mvc,
+    extensor_filt = extensor_df["EMG_Extensor_filt"].values
+    flexor_filt = flexor_df["EMG_Flexor_filt"].values
+
+    extensor_mvc_filt = np.max(extensor_filt)
+    flexor_mvc_filt = np.max(flexor_filt)
+
+
+    subject_data["MVC_values"] = {"env":{"extensor": extensor_mvc,"flexor": flexor_mvc},
+        "filt":{"extensor": extensor_mvc_filt,"flexor": flexor_mvc_filt}
     }
 
     if show_plot:
-        _plot_mvc_peak("Extensor MVC (HI condition)", extensor_envelope, extensor_mvc)
-        _plot_mvc_peak("Flexor MVC (MVC condition)", flexor_envelope, flexor_mvc)
+        _plot_mvc_peak("Extensor Envelope MVC (HI condition)", extensor_envelope, extensor_mvc)
+        _plot_mvc_peak("Flexor Envelope MVC (MVC condition)", flexor_envelope, flexor_mvc)
+        _plot_mvc_peak("Extensor Filt MVC (HI condition)", extensor_filt, extensor_mvc_filt)
+        _plot_mvc_peak("Flexor Filt MVC (MVC condition)", flexor_filt, flexor_mvc_filt)
 
     return subject_data
 
@@ -130,14 +138,15 @@ def normalize_emg(subject_data, show_plot=True):
             filt_col = f"{channel}_filt"
             mvc_key = _MVC_KEY_BY_CHANNEL.get(channel)
 
-            if envelope_col not in df.columns or mvc_key is None or mvc_key not in mvc_values or filt_col not in df.columns:
+            if envelope_col not in df.columns or mvc_key is None or filt_col not in df.columns:
                 print("The EMG was not normalized.")
                 continue
 
-            mvc_reference = mvc_values[mvc_key]
+            mvc_reference_env = mvc_values["env"][mvc_key]
+            mvc_reference_filt = mvc_values["filt"][mvc_key]
 
             envelope = df[envelope_col].values
-            env_normalized = (envelope / mvc_reference) * 100
+            env_normalized = (envelope / mvc_reference_env) * 100
 
             df[f"{channel}_norm"] = env_normalized
 
@@ -145,7 +154,7 @@ def normalize_emg(subject_data, show_plot=True):
             env_normalized_signals[channel] = env_normalized
 
             filt = df[filt_col].values
-            filt_normalized = (filt / mvc_reference) * 100
+            filt_normalized = (filt / mvc_reference_filt) * 100
             df[f"{channel}_filt_norm"] = filt_normalized
 
             filt_normalized_signals[channel] = filt_normalized

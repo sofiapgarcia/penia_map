@@ -122,6 +122,12 @@ model_vars = [
     "LegMuscleRKg", "LegMuscleLKg",
     "BoneMassKg",
 ]
+model_vars = [
+    "BoneDensity", "Gender", "Height", "BodyMass", "BMI",
+    "GlobalMuscleKg", "ArmMuscleRKg", "ArmMuscleLKg",
+    "LegMuscleRKg", "LegMuscleLKg",
+    "BoneMassKg",
+]
 model_vars = [v for v in model_vars if v in df.columns]
 
 df_model = df[model_vars].dropna().reset_index(drop=True)
@@ -244,7 +250,7 @@ print(list(X_reduced.columns))
 # 11. STEPWISE REGRESSION
 # ------------------------------------------------------------------
 
-def stepwise_selection(X, y, threshold_in=0.15, threshold_out=0.25, verbose=True):
+def stepwise_selection(X, y, threshold_in=0.05, threshold_out=0.10, verbose=True):
     """
     Bidirectional stepwise selection based on p-values.
 

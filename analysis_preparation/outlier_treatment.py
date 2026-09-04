@@ -12,11 +12,13 @@ origin variable(s) were flagged as outliers, using DEPENDENCY_MAP.
 
 import numpy as np
 import pandas as pd
+import os
+import matplotlib.pyplot as plt
 
 from dependency_map import DEPENDENCY_MAP
 
 
-def detect_outliers_iqr(df, non_numeric_columns=None, factor=1.5):
+def detect_outliers_iqr(df, non_numeric_columns=None, factor=2.5):
     """
     Detect outliers in numeric columns using the IQR method and
     replace them with NaN.
@@ -202,6 +204,68 @@ def get_outlier_counts_per_id(df, non_numeric_columns, id_column):
     return counts_per_id
 
 
+
+def plot_boxplots_iqr(df, non_numeric_columns=None, factor=2.5,
+                       only_with_outliers=True, save_dir=None, show=True):
+    """
+    Plot one boxplot per numeric column (one figure per column), with
+    whiskers set at the same IQR factor used for outlier detection.
+
+    :param df: Input DataFrame
+    :param non_numeric_columns: Columns to exclude from plotting
+    :param factor: Multiplier applied to the IQR to define the whiskers
+        (should match the factor used in detect_outliers_iqr)
+    :param only_with_outliers: If True (default), only plot columns
+        that actually have at least one outlier under this factor
+    :param save_dir: If given, directory where each column's figure is
+        saved as "<column_name>_boxplot.png"
+    :param show: Whether to call plt.show() after each figure
+    :return: dict {column_name: Figure}
+    """
+    non_numeric_columns = non_numeric_columns or []
+
+    # Reuse the same detection logic so "has outliers" matches the report
+    # produced by detect_outliers_iqr exactly (same factor, same bounds).
+    _, outlier_report = detect_outliers_iqr(df, non_numeric_columns=non_numeric_columns, factor=factor)
+
+    if only_with_outliers:
+        columns_to_plot = [col for col, info in outlier_report.items() if info["outlier_count"] > 0]
+    else:
+        columns_to_plot = list(outlier_report.keys())
+
+    if not columns_to_plot:
+        print("No columns with outliers to plot.")
+        return {}
+
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
+
+    figures = {}
+
+    for col in columns_to_plot:
+        data = df[col].dropna()
+        info = outlier_report[col]
+
+        fig, ax = plt.subplots(figsize=(4, 6))
+        ax.boxplot(data, whis=factor, vert=True)
+        ax.set_title(f"{col}\n({info['outlier_count']} outlier(s), factor = {factor})", fontsize=11)
+        ax.set_ylabel(col)
+        fig.tight_layout()
+
+        if save_dir:
+            file_path = os.path.join(save_dir, f"{col}_boxplot.png")
+            fig.savefig(file_path, dpi=150)
+            print(f"Figure saved to '{file_path}'")
+
+        if show:
+            plt.show()
+
+        figures[col] = fig
+
+    return figures
+
+
+
 if __name__ == "__main__":
     # ---- Configuration ----
     input_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"      # path to the Excel file to read
@@ -237,3 +301,9 @@ if __name__ == "__main__":
     # ---- Save cleaned DataFrame ----
     cleaned_df.to_excel(output_path, index=False)
     print(f"\nCleaned data saved to '{output_path}'")
+
+
+    plot_boxplots_iqr(df, non_numeric_columns=non_numeric_columns, factor=2.5,save_dir=None)
+
+
+

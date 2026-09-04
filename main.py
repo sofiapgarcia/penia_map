@@ -28,10 +28,11 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-#subjects = ["S36"]
+#subjects = ["S121"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 subjects_with_signals_bad_quality = ["S21"]
+subjects_with_strange_noise = ["S1","S82","S109","S11","S121","S126","S128","S133","S37","S45"]
 
 
 features = []
@@ -94,15 +95,17 @@ for subject in subjects:
         # Update dictionary
         subject_data[condition]["data"] = df_processed
 
-        #if condition=="HD":
+
+        #if condition!="HD":
             #plot_sensors_over_time(params, df_processed)
-            #plot_column_over_time(params, df_processed, DISPLACEMENT_COLUMN)
+            #plot_column_over_time(params, df_processed, "EMG_Extensor_filt")
+            #plot_column_over_time(params, df_processed, "EMG_Flexor_filt")
 
 
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="target",subject_folder=os.path.join(path, subject))
-    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=True)
+    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # Trim data

@@ -204,21 +204,12 @@ def _prune_by_correlation(
     while len(remaining) > 1:
 
         # Get the correlations between the remaining features
-        corr = corr_matrix.loc[remaining, remaining].abs().copy()
-        np.fill_diagonal(corr.values, 0.0)
-
-        # Find the highest remaining correlation
-        max_corr = corr.to_numpy().max()
-
-        # Stop when there are no more highly correlated pairs
+        corr_arr = corr_matrix.loc[remaining, remaining].abs().to_numpy(copy=True)
+        np.fill_diagonal(corr_arr, 0.0)
+        max_corr = corr_arr.max()
         if max_corr <= corr_threshold:
             break
-
-        # Get the most highly correlated pair
-        i, j = np.unravel_index(
-            corr.to_numpy().argmax(),
-            corr.shape
-        )
+        i, j = np.unravel_index(corr_arr.argmax(), corr_arr.shape)
         f1, f2 = remaining[i], remaining[j]
 
         # Get the correlation of each feature with the target
@@ -404,6 +395,7 @@ def best_subset_selection(
     pool, dropped = _prune_by_correlation(
         X, corr_matrix, y=y, corr_threshold=corr_prescreen, verbose=verbose,
     )
+
     group_lookup = _build_group_lookup(pool, EXCLUSIVE_GROUPS) if EXCLUSIVE_GROUPS else {}
 
     n = len(y)

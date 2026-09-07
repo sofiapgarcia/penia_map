@@ -16,7 +16,7 @@ df = pd.read_excel(filepath)
 df = df.drop(columns=["ID","Height(cm)","Body mass index (BMI)","Body mass(kg)","Activity level"])
 # 2. Definir as colunas de features (as 180) e os targets
 target_cols = ["Age (y)","Estimated metabolic age","Bone Mineral Density","peak_power"]   # ajusta aos teus targets
-target_cols = ["Age (y)"]
+target_cols = ["peak_power"]
 feature_cols = [c for c in df.columns if c not in target_cols]
 
 # 3. Correr com best subset exaustivo
@@ -25,7 +25,7 @@ results = run_for_multiple_targets(
     criterion="r2_adj",          # ou "aic" / "r2_adj"
     k_max=5,
     corr_prescreen=0.85,      # aperta se der erro de max_combinations
-    max_combinations=40_000_000,
+    max_combinations=100_000_000,
     exclude_features={
         "Age (y)":["Estimated metabolic age"],
         "Estimated metabolic age":["Age (y)"],
@@ -39,7 +39,7 @@ results = run_for_multiple_targets(
     n_candidates_to_check=10000,
     verbose=True,
 )
-export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_best_subset_semfeaturesestranhas_ma_penia_map.xlsx")
+export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_peak_power_again.xlsx")
 
 
 fim = time.time()

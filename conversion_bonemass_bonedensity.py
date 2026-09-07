@@ -124,10 +124,13 @@ model_vars = [
 ]
 model_vars = [
     "BoneDensity", "Gender", "Height", "BodyMass", "BMI",
-    "GlobalMuscleKg", "ArmMuscleRKg", "ArmMuscleLKg",
-    "LegMuscleRKg", "LegMuscleLKg",
-    "BoneMassKg",
+    "GlobalMuscleKg","BoneMassKg",
 ]
+model_vars = [
+    "BoneDensity", "Height", "BodyMass", "BMI",
+    "GlobalMuscleKg","BoneMassKg",
+]
+
 model_vars = [v for v in model_vars if v in df.columns]
 
 df_model = df[model_vars].dropna().reset_index(drop=True)

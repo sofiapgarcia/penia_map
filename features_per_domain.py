@@ -8,10 +8,10 @@ import pandas as pd
 # Configuration
 # ============================================================
 
-FILE_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
+FILE_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered.xlsx"
 
-TARGET = "Age (y)"
-#TARGET = "Estimated metabolic age"
+#TARGET = "Age (y)"
+TARGET = "Estimated metabolic age"
 #TARGET = "Bone Mineral Density"
 #TARGET = "peak_power"
 
@@ -131,7 +131,7 @@ for domain, features in PENIA_MAP_GROUPS.items():
 
         print(
             f"{feature}: "
-            f"r = {correlation:.3f}, "
+            f"r = {correlation:.4f}, "
             f"p = {p_value:.4g}, "
             f"method = {method}"
         )

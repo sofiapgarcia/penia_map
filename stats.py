@@ -1,11 +1,11 @@
 from ml_pipeline.preprocessing.data_augmentation import *
 from ml_pipeline.preprocessing.feature_reduction import select_features_by_group , adaptive_correlation_matrix , top_correlations_per_target
-from ml_pipeline.preprocessing.linear_regression_feature_reduction import run_for_multiple_targets , summarize_results , get_selected_features_dict , results_to_dataframe
+from ml_pipeline.preprocessing.linear_regression_feature_reduction import run_for_multiple_targets ,  results_to_dataframe
 from ml_pipeline.modeling.test_models import run_training_pipeline , split_train_test_df , evaluate_production_model_simple , evaluate_production_model_k_fold
 from constants import RANDOM_SEED , best_models_all_variables , best_models_penia_map
 import pandas as pd
 
-filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
+filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered.xlsx"
 
 # read the data
 df = pd.read_excel(filepath)

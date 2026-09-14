@@ -20,7 +20,9 @@ EXCLUSIVE_GROUPS = [
         "peak_power_mass",
         "peak_power_height_squared",
         "force_at_peak_power",
-        "velocity_at_peak_power"
+        "velocity_at_peak_power",
+        "max_force",
+        "max_velocity"
     ],
 
     # Cocontraction HD
@@ -120,6 +122,22 @@ FORBIDDEN_COOCCURRENCES = [
         {"mean_hi_emg_peak_ratio"},
         {"mean_hi_emg_peak_extensor", "mean_hi_emg_peak_flexor"},
     ],
+    [
+        {"rep_pp_hd_Median_Frequency_extensor","rep_pp_hd_Median_Frequency_flexor"},
+        {"rep_pp_hd_Median_Frequency_ratio"}
+    ],
+    [
+        {"rep_pp_hd_Peak_Frequency_extensor", "rep_pp_hd_Peak_Frequency_flexor"},
+        {"rep_pp_hd_Peak_Frequency_ratio"}
+    ],
+    [
+        {"rep_max_hi_Peak_Frequency_ratio"},
+        {"rep_max_hi_Peak_Frequency_flexor","rep_max_hi_Peak_Frequency_extensor"},
+    ],
+    [
+        {"rep_max_hi_Median_Frequency_ratio"},
+        {"rep_max_hi_Median_Frequency_flexor","rep_max_hi_Median_Frequency_extensor"},
+        ],
 ]
 
 

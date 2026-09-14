@@ -28,7 +28,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S122","S133","S21","S36","S49"]
+subjects = ["S12"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 subjects_with_signals_bad_quality = ["S21"]
@@ -83,9 +83,11 @@ for subject in subjects:
         df_interpolated, info, mask = interpolate_signal(df_transferred)
 
         # plot the interpolated signal
+        """
         for column in df_interpolated.columns:
             if condition == "HD":
                 plot_interpolated_signal(df_interpolated, mask, column)
+        """
 
         # Process emg signal
         df_processed = process_emg(df_interpolated, fs)
@@ -103,7 +105,7 @@ for subject in subjects:
             #plot_column_over_time(params, df_processed, "EMG_Flexor_filt")
 
 
-    """
+
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="target",subject_folder=os.path.join(path, subject))
     subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
@@ -117,10 +119,10 @@ for subject in subjects:
 
 
     # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=True)
 
     # peak power calculation
-    power_info = process_hd_power(subject_data_sync, show_plot=False)
+    power_info = process_hd_power(subject_data_sync, show_plot=True)
 
     # calculate envelope
     subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
@@ -133,7 +135,7 @@ for subject in subjects:
 
     # Onset information
 
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=True, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
 
     onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
 
@@ -152,7 +154,7 @@ for subject in subjects:
 final_df = pd.concat(features, ignore_index=True)
 #final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
 print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
-"""
+
 
 
 

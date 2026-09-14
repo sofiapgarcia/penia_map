@@ -124,7 +124,7 @@ def _get_power_summary(df):
     return pd.DataFrame([summary])
 
 
-def _plot_hd_power_analysis(df, power_info):
+def _plot_hd_power_analysis_with_velocity_raw(df, power_info):
     """
     Plot the HD force, raw velocity, smoothed velocity and power signals in
     four separate subplots (sharing the x-axis), annotating:
@@ -187,5 +187,66 @@ def _plot_hd_power_analysis(df, power_info):
     ax_power.legend(fontsize=8, loc="upper right")
 
     fig.suptitle("HD - Force, Velocity (raw/filtered) and Power (concentric phase)")
+    plt.tight_layout()
+    plt.show()
+
+
+def _plot_hd_power_analysis(df, power_info):
+    """
+    Plot the HD force, raw velocity, smoothed velocity and power signals in
+    four separate subplots (sharing the x-axis), annotating:
+        - Force subplot: force at peak power, and max force (concentric only)
+        - Raw velocity subplot: unfiltered velocity signal
+        - Smoothed velocity subplot: velocity at peak power and max velocity
+          (concentric only), computed on the filtered signal
+        - Power subplot: the peak power point (concentric only)
+
+    :param df: DataFrame with 'velocity_raw', 'velocity', 'power', 'Phase'
+        and FORCE columns
+    :param power_info: Summary DataFrame returned by _get_power_summary
+    """
+
+    # same concentric-only restriction as in _get_power_summary, so the
+    # plotted points match the values stored in power_info
+    is_concentric = df["Phase"].astype(str).str.startswith("C")
+    concentric_df = df.loc[is_concentric]
+    peak_idx = concentric_df["power"].idxmax()
+    max_vel_idx = concentric_df["velocity"].idxmax()
+    max_force_idx = concentric_df[FORCE_COLUMN].idxmax()
+
+    info = power_info.iloc[0]
+
+    fig, (ax_force, ax_vel_filt, ax_power) = plt.subplots(
+        3, 1, figsize=(12, 11), sharex=True
+    )
+
+    # --- Force subplot ---
+    ax_force.plot(df[FORCE_COLUMN].values, linewidth=0.8, color="tab:orange")
+    ax_force.scatter(peak_idx, info["force_at_peak_power"], color="darkred", zorder=5,
+                      label=f"Force @ peak power ({info['force_at_peak_power']:.2f} N)")
+    ax_force.scatter(max_force_idx, info["max_force"], color="darkgreen", zorder=5,
+                      label=f"Max force ({info['max_force']:.2f} N)")
+    ax_force.set_ylabel("Force (N)")
+    ax_force.legend(fontsize=8, loc="upper right")
+
+
+    # --- Filtered velocity subplot ---
+    ax_vel_filt.plot(df["velocity"].values, linewidth=1.2, color="tab:blue")
+    ax_vel_filt.scatter(peak_idx, info["velocity_at_peak_power"], color="darkred", zorder=5,
+                         label=f"Velocity @ peak power ({info['velocity_at_peak_power']:.2f} m/s)")
+    ax_vel_filt.scatter(max_vel_idx, info["max_velocity"], color="darkgreen", zorder=5,
+                         label=f"Max velocity ({info['max_velocity']:.2f} m/s)")
+    ax_vel_filt.set_ylabel("Velocity (m/s)")
+    ax_vel_filt.legend(fontsize=8, loc="upper right")
+
+    # --- Power subplot ---
+    ax_power.plot(df["power"].values, linewidth=0.8, color="tab:purple")
+    ax_power.scatter(peak_idx, info["peak_power"], color="darkred", zorder=5,
+                      label=f"Peak power ({info['peak_power']:.2f} W)")
+    ax_power.set_ylabel("Power (W)")
+    ax_power.set_xlabel("Samples")
+    ax_power.legend(fontsize=8, loc="upper right")
+
+    fig.suptitle("Force, Velocity and Power")
     plt.tight_layout()
     plt.show()

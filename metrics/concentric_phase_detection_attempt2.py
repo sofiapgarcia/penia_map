@@ -265,6 +265,7 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
         'turn': 'Direction change',
         'end': 'Offset',
         'peak': 'Peak derivative',
+        'local threshold':'Force derivative threshold',
     }
 
     for ax, ch in zip(axes, plot_columns):
@@ -285,14 +286,22 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
             if ch == 'Force_derivative':
                 threshold = phase['derivative_threshold']
                 ax.hlines(threshold, cs, ee, color='tab:green', linestyle=':', linewidth=1,
-                          label='local threshold' if show_label else None)
+                          label=labels['local threshold'] if show_label else None)
                 ax.hlines(-threshold, cs, ee, color='tab:green', linestyle=':', linewidth=1)
+
 
         ax.set_ylabel(ch, fontsize=8)
 
-    handles, labels_ = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels_, loc='upper right', fontsize=8)
+    handles, labels_ = [], []
+    for ax in axes:
+        h, l = ax.get_legend_handles_labels()
+        handles.extend(h)
+        labels_.extend(l)
+
+    # remover duplicados mantendo a ordem
+    by_label = dict(zip(labels_, handles))
+    fig.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
     axes[-1].set_xlabel('Samples')
-    fig.suptitle('Concentric and Eccentric Phases - HD Condition')
-    plt.tight_layout()
+    fig.suptitle('Concentric and Eccentric Phases - DHD task')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()

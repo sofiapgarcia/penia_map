@@ -374,7 +374,8 @@ EMG_Flexor_filt = "EMG_Flexor_filt"
 EMG_Extensor = "EMG_Extensor"
 EMG_Flexor = "EMG_Flexor"
 EMG_CHANNELS = [EMG_Extensor, EMG_Flexor]
-
+"""
+#Antes
 best_models_penia_map = {
     "Estimated metabolic age": [
         "mean_hd_cocontraction_ms",
@@ -417,5 +418,41 @@ best_models_all_variables = {
         "mean_hd_cocontraction_ms",
         "Gender",
         "Height(cm)"
+    ]
+}
+"""
+best_models_all_variables = {
+    "Estimated metabolic age": ['rep_max_hi_emg_peak_ratio', 'Arm muscle (left) kg', 'Leg muscle (right) kg', 'Gender', 'Body mass index (BMI)'],
+    "peak_power": [
+        "Gender",
+        "hi_values_max",
+        "Arm muscle (right) kg"
+    ],
+    "Bone Mineral Density": [
+        "Global muscle kg",
+        "ALMI",
+        "Body mass(kg)"
+    ],
+    "Age (y)": [
+        "mean_hd_cocontraction_ms",
+        "Gender",
+        "Height(cm)"
+    ]
+}
+best_models_penia_map = {
+    "Estimated metabolic age": ['hi_Median_Frequency_extensor_slope', 'peak_power_mass', 'Arm muscle (left) kg', 'Leg muscle (right) kg', 'ALMI'],
+    "peak_power": [
+        "Gender",
+        "hi_values_max",
+        "Arm muscle (right) kg"
+    ],
+    "Bone Mineral Density": [
+        "ALMI",
+        "Gender"
+    ],
+    "Age (y)": [
+        "mean_hd_cocontraction_ms",
+        "Gender",
+        "mean_hi_Median_Frequency_flexor"
     ]
 }

@@ -7,16 +7,17 @@ from datetime import timedelta
 inicio = time.time()
 
 
-filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered.xlsx"
+filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\train.xlsx"
 
 
 # 1. Ler o Excel
 df = pd.read_excel(filepath)
 #df = df.drop(columns=["ID"])
-df = df.drop(columns=["ID","Height(cm)","Body mass index (BMI)","Body mass(kg)","Activity level"])
+#df = df.drop(columns=["ID","Height(cm)","Body mass index (BMI)","Body mass(kg)","Activity level"])
+df = df.drop(columns=["Height(cm)","Body mass index (BMI)","Body mass(kg)","Activity level"])
 # 2. Definir as colunas de features (as 180) e os targets
-target_cols = ["Age (y)","Estimated metabolic age","Bone Mineral Density","peak_power"]   # ajusta aos teus targets
-target_cols = ["peak_power"]
+#target_cols = ["Age (y)","Estimated metabolic age","Bone Mineral Density","peak_power"]   # ajusta aos teus targets
+target_cols = ["Estimated metabolic age"]
 feature_cols = [c for c in df.columns if c not in target_cols]
 
 # 3. Correr com best subset exaustivo
@@ -36,10 +37,10 @@ results = run_for_multiple_targets(
     },
     exclude_features_all=["ID","Age (y)","Estimated metabolic age"],
     vif_threshold=5,
-    n_candidates_to_check=10000,
+    n_candidates_to_check=1000000,
     verbose=True,
 )
-export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_peak_power_again.xlsx")
+export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_train_penia_map.xlsx")
 
 
 fim = time.time()

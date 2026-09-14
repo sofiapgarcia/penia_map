@@ -8,7 +8,7 @@ import pandas as pd
 INPUT_FILE = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
 
 # Nome do ficheiro Excel de saída
-OUTPUT_FILE = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered.xlsx"
+OUTPUT_FILE = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered_without_mean_variables.xlsx"
 
 
 # ============================================================
@@ -37,7 +37,7 @@ print(f"Número inicial de colunas: {len(df.columns)}")
 #   rep_max_hi_onset_diff_ms
 #   mean_hi_rms_extensor
 #   mean_hd_cocontraction_normalized
-
+"""
 columns_to_drop = [
     col
     for col in df.columns
@@ -47,6 +47,20 @@ columns_to_drop = [
             "hi" in col.lower()
             and "normalized" in col.lower()
         )
+    )
+]
+"""
+columns_to_drop = [
+    col
+    for col in df.columns
+    if (
+        "hz" in col.lower()
+        or (
+            "hi" in col.lower()
+            and "normalized" in col.lower()
+        )
+        or col.lower().startswith("mean_hi")
+        or col.lower().startswith("mean_hd")
     )
 ]
 

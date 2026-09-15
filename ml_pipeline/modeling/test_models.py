@@ -241,6 +241,17 @@ def evaluate_production_model_simple(train_df: pd.DataFrame,
     print(f"MAE:      {mae_test:.4f}")
     print(f"RMSE:     {rmse_test:.4f}")
 
+    # Build results DataFrame
+    results_df = pd.DataFrame({
+        "model": [model_name, model_name],
+        "dataset": ["train", "test"],
+        "r2": [r2_train, r2_test],
+        "mae": [mae_train, mae_test],
+        "rmse": [rmse_train, rmse_test]
+    })
+
+    return results_df
+
 
 def evaluate_production_model_k_fold(df: pd.DataFrame,
                                       model_name: str,

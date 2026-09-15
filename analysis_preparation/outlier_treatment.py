@@ -268,9 +268,9 @@ def plot_boxplots_iqr(df, non_numeric_columns=None, factor=2.5,
 
 if __name__ == "__main__":
     # ---- Configuration ----
-    input_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"      # path to the Excel file to read
+    input_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered_without_mean_variables.xlsx"      # path to the Excel file to read
     sheet_name = 0                  # sheet index or name
-    output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_without_outliers.xlsx"  # path to save the cleaned DataFrame
+    output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered_without_mean_variables_without_outliers.xlsx"  # path to save the cleaned DataFrame
     non_numeric_columns = ["ID","Activity level"]  # columns to exclude from outlier analysis
     id_column = "ID"                # name of the ID column
 
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     print(f"\nCleaned data saved to '{output_path}'")
 
 
-    plot_boxplots_iqr(df, non_numeric_columns=non_numeric_columns, factor=2.5,save_dir=None)
+    #plot_boxplots_iqr(df, non_numeric_columns=non_numeric_columns, factor=1.5,save_dir=None)
 
 
 

@@ -598,6 +598,7 @@ def run_for_multiple_targets(
                 print(f"Manually excluded: {manual_excl}")
 
         sub = df[allowed + [target]].dropna()
+        print("n:", len(sub))
 
         search = best_subset_selection(
             sub[allowed], sub[target],

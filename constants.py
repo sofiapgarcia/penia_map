@@ -422,37 +422,14 @@ best_models_all_variables = {
 }
 """
 best_models_all_variables = {
-    "Estimated metabolic age": ['rep_max_hi_emg_peak_ratio', 'Arm muscle (left) kg', 'Leg muscle (right) kg', 'Gender', 'Body mass index (BMI)'],
-    "peak_power": [
-        "Gender",
-        "hi_values_max",
-        "Arm muscle (right) kg"
-    ],
-    "Bone Mineral Density": [
-        "Global muscle kg",
-        "ALMI",
-        "Body mass(kg)"
-    ],
-    "Age (y)": [
-        "mean_hd_cocontraction_ms",
-        "Gender",
-        "Height(cm)"
-    ]
+    "Estimated metabolic age": ['rep_pp_hd_Peak_Frequency_extensor', 'rep_max_hi_Median_Frequency_flexor', 'peak_power_mass', 'Leg muscle (right) kg', 'Gender', 'Body mass index (BMI)'],
+    "peak_power": ["rep_pp_hd_onset_diff_ms", "rep_pp_hd_normalized_envelope_peak_delay", "rep_max_hi_Peak_Frequency_extensor", "hi_values_max", "Gender", "Body mass(kg)"],
+    "Bone Mineral Density": ['rep_pp_hd_emg_peak_extensor', 'rep_max_hi_emg_overlap_area', 'Global muscle kg', 'ALMI'],
+    "Age (y)": ['rep_max_hi_Median_Frequency_flexor', 'rep_max_hi_Peak_Frequency_flexor', 'peak_power_mass', 'Leg muscle (right) kg', 'Gender', 'Body mass index (BMI)']
 }
 best_models_penia_map = {
-    "Estimated metabolic age": ['hi_Median_Frequency_extensor_slope', 'peak_power_mass', 'Arm muscle (left) kg', 'Leg muscle (right) kg', 'ALMI'],
-    "peak_power": [
-        "Gender",
-        "hi_values_max",
-        "Arm muscle (right) kg"
-    ],
-    "Bone Mineral Density": [
-        "ALMI",
-        "Gender"
-    ],
-    "Age (y)": [
-        "mean_hd_cocontraction_ms",
-        "Gender",
-        "mean_hi_Median_Frequency_flexor"
-    ]
+    "Estimated metabolic age": ['rep_pp_hd_emg_overlap_area', 'rep_max_hi_emg_peak_ratio', 'hi_Median_Frequency_extensor_slope', 'Arm muscle (left) kg','Leg muscle (right) kg', 'ALMI'],
+    "peak_power": ['rep_pp_hd_onset_diff_ms_abs', 'rep_pp_hd_emg_peak_ratio', 'rep_pp_hd_normalized_envelope_peak_delay_abs', 'rep_max_hi_mean_emg_extensor', 'rep_max_hi_Peak_Frequency_extensor', 'Arm muscle (right) kg'],
+    "Bone Mineral Density": ['rep_pp_hd_cocontraction_ms', 'rep_max_hi_cocontraction_ms', 'Global muscle kg', 'ALMI'],
+    "Age (y)": ['rep_pp_hd_emg_peak_ratio', 'rep_max_hi_onset_diff_ms', 'hd_Median_Frequency_flexor_slope', 'Arm muscle (left) kg', 'Leg muscle (right) kg', 'ALMI']
 }

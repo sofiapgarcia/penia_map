@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 _integrate = getattr(np, "trapezoid", None) or np.trapz
 
 
-def compute_band_powers(signal, fs, band_edges=None, nperseg=None, plot=False):
+def compute_band_powers(signal, fs, band_edges=None, nperseg=None, plot=True):
     """
     Compute the power spectral density (Welch's method) of a 1D signal and
     integrate it into a set of frequency bands.

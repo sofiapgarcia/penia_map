@@ -85,9 +85,10 @@ for subject in subjects:
         # plot the interpolated signal
         """
         for column in df_interpolated.columns:
-            if condition == "HD":
+            if condition == "HI":
                 plot_interpolated_signal(df_interpolated, mask, column)
         """
+
 
         # Process emg signal
         df_processed = process_emg(df_interpolated, fs)
@@ -119,10 +120,10 @@ for subject in subjects:
 
 
     # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=True)
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
 
     # peak power calculation
-    power_info = process_hd_power(subject_data_sync, show_plot=True)
+    power_info = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
     subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
@@ -135,7 +136,7 @@ for subject in subjects:
 
     # Onset information
 
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=True, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
 
     onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
 

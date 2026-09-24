@@ -9,7 +9,13 @@ from constants import FORCE_COLUMN, DISPLACEMENT_COLUMN , EMG_Extensor_filt , EM
 
 FORCE_DERIVATIVE = "Force_derivative"
 DEFAULT_PLOT_COLUMNS = [EMG_Extensor_filt, EMG_Flexor_filt, DISPLACEMENT_COLUMN, FORCE_COLUMN, FORCE_DERIVATIVE]
-
+AXIS_LABELS = {
+    EMG_Extensor_filt: "EMG Extensor (%MVC)",
+    EMG_Flexor_filt: "EMG Flexor (%MVC)",
+    DISPLACEMENT_COLUMN: "Displacement (mm)",
+    FORCE_COLUMN: "Force (N)",
+    FORCE_DERIVATIVE: "dF/dt (N/s)",
+}
 def detect_concentric_eccentric_phases(subject_data, show_plot=True,
                                         derivative_sigma_ms=20, n_reps=12,
                                         min_distance_s=1.0, threshold_fraction=0.2):
@@ -244,13 +250,18 @@ def _find_offset(derivative, turn_idx, threshold, search_end):
 
     return idx
 
-def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
+
+def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS, axis_labels=AXIS_LABELS):
     """
     Plots the selected channels (EMG / force / displacement / force derivative
     by default) with the concentric and eccentric phases of every detected
     repetition shaded, marking the start/end points of each phase as vertical
     lines. For the 'Force_derivative' channel specifically, also marks each
     repetition's peak and its local +/- threshold.
+
+    :param axis_labels: dict mapping each column name to the Y-axis label
+        (including its unit) that should be shown for that channel. Falls
+        back to the raw column name if a channel isn't in the dict.
     """
     n = len(plot_columns)
     matplotlib.rcParams['toolbar'] = 'toolbar2'
@@ -265,11 +276,13 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
         'turn': 'Direction change',
         'end': 'Offset',
         'peak': 'Peak derivative',
-        'local threshold':'Force derivative threshold',
+        'local threshold': 'Force derivative threshold',
     }
 
     for ax, ch in zip(axes, plot_columns):
         signal = df[ch].to_numpy()
+        if ch in (EMG_Extensor_filt, EMG_Flexor_filt):
+            signal = signal * 100
         ax.plot(signal, color='black', linewidth=0.8)
 
         for rep_i, phase in enumerate(phases_list):
@@ -289,8 +302,9 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
                           label=labels['local threshold'] if show_label else None)
                 ax.hlines(-threshold, cs, ee, color='tab:green', linestyle=':', linewidth=1)
 
-
-        ax.set_ylabel(ch, fontsize=8)
+        # Rotulo do eixo Y com unidade (fallback: nome bruto da coluna)
+        ax.set_ylabel(axis_labels.get(ch, ch), fontsize=9)
+        ax.tick_params(axis='y', labelsize=8)
 
     handles, labels_ = [], []
     for ax in axes:
@@ -301,7 +315,7 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS):
     # remover duplicados mantendo a ordem
     by_label = dict(zip(labels_, handles))
     fig.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
-    axes[-1].set_xlabel('Samples')
+    axes[-1].set_xlabel('Sample Index')
     fig.suptitle('Concentric and Eccentric Phases - DHD task')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()

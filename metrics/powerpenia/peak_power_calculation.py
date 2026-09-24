@@ -216,9 +216,13 @@ def _plot_hd_power_analysis(df, power_info):
 
     info = power_info.iloc[0]
 
-    fig, (ax_force, ax_vel_filt, ax_power) = plt.subplots(
-        3, 1, figsize=(12, 11), sharex=True
+    fig, (ax_disp, ax_force, ax_vel_filt, ax_power) = plt.subplots(
+        4, 1, figsize=(12, 14), sharex=True
     )
+
+    # --- Displacement subplot ---
+    ax_disp.plot(df[DISPLACEMENT_COLUMN].values, linewidth=0.8, color="tab:brown")
+    ax_disp.set_ylabel("Displacement (mm)")
 
     # --- Force subplot ---
     ax_force.plot(df[FORCE_COLUMN].values, linewidth=0.8, color="tab:orange")
@@ -247,6 +251,6 @@ def _plot_hd_power_analysis(df, power_info):
     ax_power.set_xlabel("Samples")
     ax_power.legend(fontsize=8, loc="upper right")
 
-    fig.suptitle("Force, Velocity and Power")
-    plt.tight_layout()
+    fig.suptitle("Displacement, Force, Velocity and Power")
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from dependency_map import DEPENDENCY_MAP
 
 
-def detect_outliers_iqr(df, non_numeric_columns=None, factor=2.5):
+def detect_outliers_iqr(df, non_numeric_columns=None, factor=1.5):
     """
     Detect outliers in numeric columns using the IQR method and
     replace them with NaN.

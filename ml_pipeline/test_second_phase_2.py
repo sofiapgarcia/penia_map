@@ -17,9 +17,9 @@ ALL_VARIABLES = False
 
 features_dict = best_models_all_variables if ALL_VARIABLES else best_models_penia_map
 
-#target = "Age (y)"
+target = "Age (y)"
 #target = "Estimated metabolic age"
-target = "Bone Mineral Density"
+#target = "Bone Mineral Density"
 #target = "peak_power"
 features = features_dict[target] + [target]
 
@@ -41,7 +41,7 @@ df_reduced = df_features[features]
 
 suffix = "all_variables" if ALL_VARIABLES else "penia_map"
 
-filepath3 = rf"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_teste1209_{target}_{suffix}.xlsx"
+filepath3 = rf"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_models_{target}_{suffix}.xlsx"
 
 #results_summary.to_excel(filepath3, index=False)
 
@@ -49,6 +49,8 @@ filepath3 = rf"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\res
 # Evaluation of production model
 
 
-evaluate_production_model_simple(df_train, df_test, model_name="LR",target_column=target, normalization="none")
-#results = evaluate_production_model_k_fold(df_reduced, model_name="LR",target_column=target, normalization="none")
+results_df = evaluate_production_model_simple(df_train, df_test, model_name="KNN",target_column=target, normalization="robust")
 
+results_df.to_excel(rf"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_train_test_{target}_{suffix}.xlsx", index=False)
+
+#results = evaluate_production_model_k_fold(df_reduced, model_name="LR",target_column=target, normalization="none")

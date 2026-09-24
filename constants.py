@@ -374,16 +374,15 @@ EMG_Flexor_filt = "EMG_Flexor_filt"
 EMG_Extensor = "EMG_Extensor"
 EMG_Flexor = "EMG_Flexor"
 EMG_CHANNELS = [EMG_Extensor, EMG_Flexor]
-"""
+
 #Antes
 best_models_penia_map = {
     "Estimated metabolic age": [
-        "mean_hd_cocontraction_ms",
+        "rep_pp_hd_cocontraction_ms",
         "peak_power_mass",
-        "Gender"
+        "ALMI"
     ],
     "peak_power": [
-        "Gender",
         "hi_values_max",
         "Arm muscle (right) kg"
     ],
@@ -391,10 +390,8 @@ best_models_penia_map = {
         "ALMI",
         "Gender"
     ],
-    "Age (y)": [
-        "mean_hd_cocontraction_ms",
-        "Gender",
-        "mean_hi_Median_Frequency_flexor"
+    "Age (y)": ["rep_pp_hd_cocontraction_ms",
+                "Bone Mineral Density"
     ]
 }
 
@@ -402,10 +399,9 @@ best_models_penia_map = {
 best_models_all_variables = {
     "Estimated metabolic age": [
         "Body mass index (BMI)",
-        "mean_hd_cocontraction_ms"
+        "rep_pp_hd_cocontraction_ms"
     ],
     "peak_power": [
-        "Gender",
         "hi_values_max",
         "Arm muscle (right) kg"
     ],
@@ -414,10 +410,8 @@ best_models_all_variables = {
         "ALMI",
         "Body mass(kg)"
     ],
-    "Age (y)": [
-        "mean_hd_cocontraction_ms",
-        "Gender",
-        "Height(cm)"
+    "Age (y)": ["Body mass index (BMI)",
+                "rep_pp_hd_Median_Frequency_flexor"
     ]
 }
 """
@@ -433,3 +427,17 @@ best_models_penia_map = {
     "Bone Mineral Density": ['rep_pp_hd_cocontraction_ms', 'rep_max_hi_cocontraction_ms', 'Global muscle kg', 'ALMI'],
     "Age (y)": ['rep_pp_hd_emg_peak_ratio', 'rep_max_hi_onset_diff_ms', 'hd_Median_Frequency_flexor_slope', 'Arm muscle (left) kg', 'Leg muscle (right) kg', 'ALMI']
 }
+
+best_models_all_variables = {
+    "Estimated metabolic age": ['max_velocity', 'Gender', 'Body mass index (BMI)'],
+    "peak_power": ['rep_pp_hd_emg_peak_flexor', 'rep_max_hi_emg_overlap_area', 'hi_values_max', 'Height(cm)', 'Gender'],
+    "Bone Mineral Density": ['Global muscle kg', 'ALMI'],
+    "Age (y)": ['Arm muscle (left) kg', 'Height(cm)']
+}
+best_models_penia_map = {
+    "Estimated metabolic age": ['max_velocity', 'rep_pp_hd_cocontraction_ms', 'rep_pp_hd_emg_peak_ratio', 'rep_pp_hd_Peak_Frequency_extensor', 'rep_max_hi_Median_Frequency_flexor', 'ALMI'],
+    "peak_power": ['hi_values_max', 'Arm muscle (right) kg'],
+    "Bone Mineral Density": ['Global muscle kg', 'ALMI'],
+    "Age (y)": ['rep_pp_hd_cocontraction_ms']
+}
+"""

@@ -4,22 +4,32 @@ from ml_pipeline.modeling.test_models import (
     evaluate_production_model_simple,
     evaluate_production_model_k_fold,
 )
-from constants import best_models_all_variables, best_models_penia_map
-import pandas as pd
-from ml_pipeline.preprocessing.linear_regression_feature_reduction import run_for_multiple_targets , export_results_to_excel
 
+from ml_pipeline.preprocessing.linear_regression_feature_reduction import run_for_multiple_targets , export_results_to_excel
 import pandas as pd
 import time
 from datetime import timedelta
 
-filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered_without_mean_variables.xlsx"
+filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered_without_mean_variables_without_outliers.xlsx"
 ALL_VARIABLES = True
 K_MAX = 6
 suff = "ant" if ALL_VARIABLES else "penia_map"
 inicio = time.time()
 
 # 1. Ler o Excel
-df = pd.read_excel(filepath, index_col=0).dropna()
+df = pd.read_excel(filepath, index_col=0)
+n_antes = len(df)
+
+df = df.dropna()
+
+n_depois = len(df)
+n_perdidas = n_antes - n_depois
+
+print(f"Linhas antes do dropna: {n_antes}")
+print(f"Linhas depois do dropna: {n_depois}")
+print(f"Linhas perdidas: {n_perdidas}")
+print(f"Percentagem perdida: {n_perdidas / n_antes * 100:.2f}%")
+
 # remove participant column ID
 df = df.drop(columns=["ID"], errors="ignore")
 
@@ -130,7 +140,9 @@ print("\nResultados finais (todas as targets):")
 print(final_results)
 
 # Guardar tudo no mesmo Excel
+
 filepath_final = rf"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\results_test_k{K_MAX}_{suff}.xlsx"
+
 final_results.to_excel(filepath_final, index=False)
 
 print(f"\nResultados guardados em: {filepath_final}")

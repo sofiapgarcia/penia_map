@@ -17,6 +17,7 @@ if __name__ == '__main__':
         folder for folder in os.listdir(base_path)
         if os.path.isdir(os.path.join(base_path, folder))
     ]
+    subjects = ["S46"]
 
     print(f"Found {len(subjects)} subjects.")
 
@@ -94,8 +95,8 @@ if __name__ == '__main__':
                         )
 
                     # Plot each condition
-                    #plot_sensors_over_time(params,df,title=f"{subject} - {condition}")
-                    #plt.show()
+                    plot_sensors_over_time(params,df,title=f"{subject} - {condition}")
+                    plt.show()
 
                 except Exception as e:
                     print(f"Error in {condition}: {e}")

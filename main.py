@@ -28,7 +28,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-subjects = ["S12"]
+#subjects = ["S12"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 subjects_with_signals_bad_quality = ["S21"]
@@ -85,9 +85,10 @@ for subject in subjects:
         # plot the interpolated signal
         """
         for column in df_interpolated.columns:
-            if condition == "HI":
+            if condition == "MVC":
                 plot_interpolated_signal(df_interpolated, mask, column)
         """
+
 
 
         # Process emg signal
@@ -153,7 +154,7 @@ for subject in subjects:
     features.append(subject_row)
 
 final_df = pd.concat(features, ignore_index=True)
-#final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
 print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
 
 

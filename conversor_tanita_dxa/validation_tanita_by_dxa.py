@@ -25,14 +25,79 @@ VARIABLE_MAPPING = {
 }
 
 
-filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"
 
-# read the data
-df = pd.read_excel(filepath, index_col=0)
+def generate_sample_characterization_table(df, output_path="sample_characterization.tex",
+                                                  age_col="Age", gender_col="Gender",
+                                                  bmi_col="Body mass index (BMI)",
+                                                  caption="Sample characteristics by sex and for the total sample.",
+                                                  label="tab:sample_characterization"):
+    """
+    Generate a LaTeX table (Female/Male/Total columns) summarizing age and BMI.
 
-# Calculate the ICC values
-results_icc = compute_icc_pairs(df, VARIABLE_MAPPING, icc_type="ICC2")
-print(results_icc.to_string(index=False))
+    :param df: DataFrame containing age, gender (1=male, 2=female), and BMI columns.
+    :param output_path: Path to save the generated .tex file.
+    :param age_col: Name of the age column.
+    :param gender_col: Name of the gender column.
+    :param bmi_col: Name of the BMI column.
+    :param caption: Table caption.
+    :param label: Table label (must be unique across the document).
+    :return: None. Writes the LaTeX table to output_path and prints it.
+    """
+    missing = [c for c in (age_col, gender_col, bmi_col) if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing column(s) {missing}. Available: {list(df.columns)}")
 
-# Plot the Bland Altman graphs with mapped variables
-#plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=True)
+    female = df[df[gender_col] == 2]
+    male = df[df[gender_col] == 1]
+
+    n_female, n_male, n_total = len(female), len(male), len(df)
+
+    def mean_sd(series):
+        return f"{series.mean():.1f} $\\pm$ {series.std():.1f}"
+
+    row_age = (mean_sd(female[age_col]), mean_sd(male[age_col]), mean_sd(df[age_col]))
+    row_bmi = (mean_sd(female[bmi_col]), mean_sd(male[bmi_col]), mean_sd(df[bmi_col]))
+
+    latex_table = r"""\begin{table}[H]
+	\centering
+	\caption{""" + caption + r"""}
+	\label{""" + label + r"""}
+	\begin{tabularx}{\textwidth}{lXXX}
+		\toprule
+		& \textbf{Female (n=""" + str(n_female) + r""")} & \textbf{Male (n=""" + str(
+        n_male) + r""")} & \textbf{Total (n=""" + str(n_total) + r""")} \\
+		\midrule
+
+		Age (years)
+		& """ + row_age[0] + r"""
+		& """ + row_age[1] + r"""
+		& """ + row_age[2] + r""" \\
+
+		BMI (kg/m$^2$)
+		& """ + row_bmi[0] + r"""
+		& """ + row_bmi[1] + r"""
+		& """ + row_bmi[2] + r""" \\
+
+		\bottomrule
+	\end{tabularx}
+\end{table}
+"""
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(latex_table)
+
+    print(latex_table)
+
+
+
+
+if __name__ == "__main__":
+    filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"
+    df = pd.read_excel(filepath, index_col=0)
+
+    results_icc = compute_icc_pairs(df, VARIABLE_MAPPING, icc_type="ICC2")
+    print(results_icc.to_string(index=False))
+
+    # generate_sample_characterization_table(df, age_col="Idade", gender_col="Gender", bmi_col="Body mass index (BMI)")
+
+    plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=True)

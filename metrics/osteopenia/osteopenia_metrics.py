@@ -23,9 +23,11 @@ def add_bone_variables() -> pd.DataFrame:
 
     # Calculate Bone Mineral Density
     df["Bone Mineral Density"] = (
-        1.32678
-        - 0.00547 * df["Height(cm)"]
-        + 0.30558 * df["Estimated bone mass kg"]
+        1.32662
+        - 0.00519 * df["Height(cm)"]
+        + 0.30035 * df["Estimated bone mass kg"]
+        - 0.00064 * df["Age (y)"]
+        - 0.00776 * df["Gender"]
     )
 
     # Keep only the ID and bone-related variables

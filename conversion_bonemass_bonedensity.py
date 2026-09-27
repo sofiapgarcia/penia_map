@@ -34,7 +34,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # IMPORT THE CORRELATION FUNCTION
 from ml_pipeline.preprocessing.feature_reduction import adaptive_correlation_matrix
-
+from conversor_tanita_dxa.validation_tanita_by_dxa import generate_sample_characterization_table
 
 # ------------------------------------------------------------------
 # 1. LOAD FILES
@@ -46,6 +46,26 @@ demo = pd.read_sas(os.path.join(DATA_DIR, "DEMO_B.xpt"), format="xport")
 bmx = pd.read_sas(os.path.join(DATA_DIR, "BMX_B.xpt"), format="xport")
 dxx = pd.read_sas(os.path.join(DATA_DIR, "DXX_B.xpt"), format="xport")
 
+print(f"\nDXX_B raw rows (all 5 imputations per participant): {dxx.shape[0]}")
+
+# ------------------------------------------------------------------
+# 1b. KEEP ONLY ONE IMPUTATION PER PARTICIPANT (_MULT_ == 1)
+# ------------------------------------------------------------------
+# NHANES documentation, DXX_B codebook:
+# "the data file contains 5 records for each survey participant...
+#  Only 1 record should be used in calculating sample sizes."
+# SAS example given in the docs:
+#   merge dexa.dxx_b (where=(_mult_ = 1)) work.demo;
+
+if "_MULT_" in dxx.columns:
+    dxx = dxx[dxx["_MULT_"] == 1].reset_index(drop=True)
+else:
+    raise KeyError(
+        "_MULT_ column not found in DXX_B -- cannot deduplicate imputations. "
+        "Check the file/column name before proceeding."
+    )
+
+print(f"DXX_B rows after keeping _MULT_ == 1 (one row per participant): {dxx.shape[0]}")
 
 # ------------------------------------------------------------------
 # 2. MERGE ON SEQN
@@ -128,22 +148,22 @@ model_vars = [
 ]
 model_vars = [
     "BoneDensity", "Height", "BodyMass", "BMI",
-    "GlobalMuscleKg","BoneMassKg",
+    "GlobalMuscleKg","BoneMassKg","Age","Gender"
 ]
 
 model_vars = [v for v in model_vars if v in df.columns]
 
 df_model = df[model_vars].dropna().reset_index(drop=True)
 
-
+#generate_sample_characterization_table(df_model, age_col="Age", gender_col="Gender", bmi_col="BMI")
 # ------------------------------------------------------------------
 # 6. RECODE GENDER
 # ------------------------------------------------------------------
 
 # NHANES: 1 = Male, 2 = Female
-# Model:   0 = Male, 1 = Female
+# Model:   1 = Male, 0 = Female
 if "Gender" in df_model.columns:
-    df_model["Gender"] = df_model["Gender"].map({1: 0, 2: 1})
+    df_model["Gender"] = df_model["Gender"].map({1: 1, 2: 0})
 
 print(f"\nFinal regression sample: {df_model.shape[0]} participants")
 print("Variables used:")
@@ -360,3 +380,4 @@ print(f"\nR2: {final_model.rsquared:.4f}")
 print(f"Adjusted R2: {final_model.rsquared_adj:.4f}")
 print(f"F-statistic: {final_model.fvalue:.4f}")
 print(f"F-statistic p-value: {final_model.f_pvalue:.6e}")
+

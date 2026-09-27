@@ -12,10 +12,10 @@ filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_datafra
 
 # 1. Ler o Excel
 df = pd.read_excel(filepath,index_col=0)
-df = df.drop(columns=["Height(cm)","Body mass index (BMI)","Body mass(kg)","Activity level"])
+#df = df.drop(columns=["Height(cm)","Body mass index (BMI)","Body mass(kg)","Activity level"])
 # 2. Definir as colunas de features (as 180) e os targets
-target_cols = ["Age (y)","Estimated metabolic age","Bone Mineral Density","peak_power"]   # ajusta aos teus targets
-#target_cols = ["Estimated metabolic age"]
+#target_cols = ["Age (y)","Estimated metabolic age","Bone Mineral Density","peak_power"]   # ajusta aos teus targets
+target_cols = ["Bone Mineral Density"]
 feature_cols = [c for c in df.columns if c not in ["ID"]]
 
 # 3. Correr com best subset exaustivo
@@ -38,7 +38,7 @@ results = run_for_multiple_targets(
     n_candidates_to_check=1000000,
     verbose=True,
 )
-export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_k6_penia_map.xlsx")
+export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_k6_ant_bmd.xlsx")
 
 
 fim = time.time()

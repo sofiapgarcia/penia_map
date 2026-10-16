@@ -4,7 +4,25 @@ import matplotlib.pyplot as plt
 import pingouin as pg
 
 from conversor_tanita_dxa.ICC import DXA_VARS_IN_GRAMS
-
+DXA_DISPLAY_NAMES = {
+    "Massa_total": "Body mass",
+    "Massa Corporal": "Body mass",
+    "BMI_DXA": "Body Mass Index",
+    "Perc_gordura_total": "Total fat (%)",
+    "Perc_gordura_braco_direito": "Right arm fat (%)",
+    "Perc_gordura_braco_esquerdo": "Left arm fat (%)",
+    "Perc_gordura_perna_direita": "Right leg fat (%)",
+    "Perc_gordura_perna_esquerda": "Left leg fat (%)",
+    "Perc_gordura_tronco": "Torso fat (%)",
+    "Magro_total": "Global muscle mass",
+    "Massa_magra_braco_direito": "Right arm muscle mass",
+    "Massa_magra_braco_esquerdo": "Left arm muscle mass",
+    "Massa_magra_perna_direita": "Right leg muscle mass",
+    "Massa_magra_perna_esquerda": "Left leg muscle mass",
+    "Magro_tronco": "Torso muscle mass",
+    "BMC_total": "Bone mineral content",
+    "Altura": "Height",
+}
 
 def plot_bland_altman_pairs(
     df: pd.DataFrame,
@@ -90,7 +108,7 @@ def _filter_valid_pairs(df: pd.DataFrame, variable_mapping: dict) -> list:
     return valid
 
 
-def _plot_single_bland_altman(df: pd.DataFrame, dxa_col: str, tanita_col: str, ax: plt.Axes) -> None:
+def _plot_single_bland_altman(df: pd.DataFrame, dxa_col: str, tanita_col: str, ax: plt.Axes, dxa_display_names=DXA_DISPLAY_NAMES) -> None:
     """
     Draw a single Bland-Altman plot for one DXA-TANITA pair on a given matplotlib axis.
 
@@ -109,9 +127,9 @@ def _plot_single_bland_altman(df: pd.DataFrame, dxa_col: str, tanita_col: str, a
         annotate=True
     )
 
-    ax.set_title(f"{dxa_col} vs {tanita_col}", fontsize=11)
-    ax.set_xlabel("Mean (DXA, TANITA)")
-    ax.set_ylabel("Difference (DXA - TANITA)")
+    ax.set_title(dxa_display_names.get(dxa_col, dxa_col), fontsize=11)
+    ax.set_xlabel("Mean (DXA, Bioimpedance scale)")
+    ax.set_ylabel("Difference (DXA - Bioimpedance scale)")
 
 
 def _save_figure(fig: plt.Figure, save_dir: str, dxa_col: str, tanita_col: str) -> None:

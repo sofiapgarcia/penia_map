@@ -93,6 +93,7 @@ def generate_sample_characterization_table(df, output_path="sample_characterizat
 
 if __name__ == "__main__":
     filepath = r"C:\Users\Sofia\Desktop\Tese\dados\dxa_tanita.xlsx"
+    out_plots = r"C:\Users\Sofia\Desktop\Tese\dados\blandaltman"
     df = pd.read_excel(filepath, index_col=0)
 
     results_icc = compute_icc_pairs(df, VARIABLE_MAPPING, icc_type="ICC2")
@@ -100,4 +101,4 @@ if __name__ == "__main__":
 
     # generate_sample_characterization_table(df, age_col="Idade", gender_col="Gender", bmi_col="Body mass index (BMI)")
 
-    plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=True)
+    plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=False, save_dir=out_plots)

@@ -270,8 +270,8 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS, axis_labels
         axes = [axes]
 
     labels = {
-        'concentric': 'Concentric phase',
-        'eccentric': 'Eccentric phase',
+        'concentric': 'Grip closing phase',
+        'eccentric': 'Grip opening phase',
         'start': 'Onset',
         'turn': 'Direction change',
         'end': 'Offset',
@@ -316,6 +316,6 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS, axis_labels
     by_label = dict(zip(labels_, handles))
     fig.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
     axes[-1].set_xlabel('Sample Index')
-    fig.suptitle('Concentric and Eccentric Phases - DHD task')
+    fig.suptitle('Grip closing and opening phases - DHD task')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()

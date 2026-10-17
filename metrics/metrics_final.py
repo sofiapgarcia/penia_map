@@ -6,7 +6,7 @@ from osteopenia.osteopenia_metrics import add_bone_variables
 import pandas as pd
 
 path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
-output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
+output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_valids.xlsx"
 
 # ---------------------------------------------------------------------
 # Read the anthropometric data

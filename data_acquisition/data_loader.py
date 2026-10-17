@@ -221,7 +221,7 @@ def extract_data_from_file(file_path):
     if condition == "HD_EMG":
 
         # Rename first two EMG channels
-        if len(emg_cols) >= 2:
+        if len(emg_cols) == 2:
 
             emg_indices = [
                 i for i, col in enumerate(df.columns)
@@ -232,7 +232,7 @@ def extract_data_from_file(file_path):
             df.columns.values[emg_indices[1]] = "EMG_Flexor"
 
         # Rename accelerometer channels
-        if len(df.columns) >= 3:
+        if len(df.columns) >= 7:
             df.columns.values[-3:] = ["x", "y", "z"]
 
     elif condition == "HD":

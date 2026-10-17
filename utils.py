@@ -17,7 +17,7 @@ def _get_rep_row(df, marker, rep_col="repetition"):
         DataFrame if df is None or the marker is not found
     """
     # Nothing to extract if the dataframe wasn't produced for this subject
-    if df is None:
+    if df is None or df.empty or rep_col not in df.columns:
         return pd.DataFrame()
 
     # Keep only the row matching the marker, then drop the repetition column
@@ -42,7 +42,7 @@ def _get_mean_row(df, rep_col="repetition"):
     :return: Single-row DataFrame with the mean of each remaining column, or
         an empty DataFrame if df is None
     """
-    if df is None:
+    if df is None or df.empty:
         return pd.DataFrame()
 
     numeric_df = df.drop(columns=[rep_col], errors="ignore")
@@ -100,10 +100,11 @@ def _get_hi_values_summary(hi_values):
     })
 
 
-def build_subject_feature_row(subject, power_info, coord_hd, coord_hi,
-                               band_power_hd, band_power_hi, hi_values,
-                               median_freq_cols=("Median_Frequency_extensor",
-                                                 "Median_Frequency_flexor")):
+def build_subject_feature_row(subject, power_info, hi_values,
+                              coord_hd=None, coord_hi=None,
+                              band_power_hd=None, band_power_hi=None,
+                              median_freq_cols=("Median_Frequency_extensor",
+                                                "Median_Frequency_flexor")):
     """
     Build the final single-row feature summary for one subject by combining
     power_info with the peak-power repetition row (HD) and max-force

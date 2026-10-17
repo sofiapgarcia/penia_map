@@ -28,7 +28,7 @@ path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
-#subjects = ["S12"]
+#subjects = ["S129"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 subjects_with_signals_bad_quality = ["S21"]
@@ -40,10 +40,13 @@ features = []
 for subject in subjects:
 
     subject_number = int(subject.replace("S", ""))
-
+    """
     if subject in ["S107","S53","S39","129","S130","S25","S84"]:
         continue
     if subject in subjects_with_no_calibration:
+        continue
+    """
+    if subject in ["S107","S39"]: # 107 nao tem HD e 39 nao tem displacement
         continue
 
     print(f"\n{'='*60}")
@@ -110,16 +113,15 @@ for subject in subjects:
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="target",subject_folder=os.path.join(path, subject))
-    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
+    #subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # Trim data
     # Interactively select and save trim regions for this subject
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
-    subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
+    #subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
-
-
+    subject_data_sync = subject_data
     # concentric phase detection
     subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
 
@@ -127,34 +129,34 @@ for subject in subjects:
     power_info = process_hd_power(subject_data_sync, show_plot=False)
 
     # calculate envelope
-    subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
+    #subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
 
     # Get MVC values
-    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+    #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
 
     # Normalize EMG signals
-    subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
+    #subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
 
-    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+    #onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
 
-    onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
+    #onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
 
-    coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
+    #coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
     #scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, show_scalogram_plot=False)
 
-    band_power_hd , band_power_hi = get_muscle_power_spectral_density_info(subject_data_normalized, onset_hd, onset_hi, power_info)
-
+    #band_power_hd , band_power_hi = get_muscle_power_spectral_density_info(subject_data_normalized, onset_hd, onset_hi, power_info)
+    subject_data_normalized = subject_data_phases
     hi_values = subject_data_normalized.get("HI_values")
 
-    subject_row = build_subject_feature_row(subject_number, power_info, coord_hd, coord_hi, band_power_hd, band_power_hi, hi_values)
+    subject_row = build_subject_feature_row(subject_number, power_info, hi_values)
 
     features.append(subject_row)
 
 final_df = pd.concat(features, ignore_index=True)
-final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+final_df.to_excel(os.path.join(path, "features_power_dyna_valids.xlsx"), index=False)
 print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
 
 

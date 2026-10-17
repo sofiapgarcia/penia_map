@@ -27,26 +27,22 @@ from weasyprint import HTML
 # =====================================================================
 # 1) CONFIGURATION
 # =====================================================================
-BASE = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results")
-LOGO_FACULTY = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\participant_reports\imagens\nova_fct.png"
-LOGO_LAB = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\participant_reports\imagens\libphys.png"
-LOGO_PROJECT = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\participant_reports\imagens\logos.png"
-EXCEL_FILE = BASE / "means_report_participant.xlsx"
-PARTICIPANTS_SHEET = "Classified data"
-REFERENCE_SHEET = "Means group x sex"
+BASE = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos")
+EXCEL_FILE = BASE / "report_participants_all.xlsx"
 OUTPUT_DIR = BASE / "participant_reports"
 ICONS_DIR = BASE / "participant_reports" / "imagens"   # sarcopenia.png, dynapenia.png, osteopenia.png, powerpenia.png
+LOGO_PROJECT = ICONS_DIR / "logos.png"
 TEMPLATE_FILE = BASE / "participant_reports" / "template_report_2.html"
 
 # None -> generate for ALL participants.
 # Otherwise: exactly the value in the "Name" column (e.g. "Sujeito 125" or "125").
-TEST_PARTICIPANT = "Maria Manuela Neto Poeiras Garcia"
+TEST_PARTICIPANT = "Francisco Miguel Latas Figueira"
 
 # Column names in the participants sheet (left = internal key, right = YOUR column name)
 COL = {
     "name": "Name",
-    "date": "Date",
-    "sex": "Sex",                                   # <-- NEW: check this column name
+    "date": "Data",
+    "sex": "Gender",                                   # <-- NEW: check this column name
     "chrono_age": "Age (y)",
     "bio_age": "Estimated metabolic age",
     "age_group": "Age group (MeSH)",
@@ -77,21 +73,12 @@ COL = {
     "calories": "Daily calorie intake (DCI)",
 }
 
-# Column names in the reference sheet (long format: one row per age group x sex)
-REF_COL = {
-    "group": "Age group (MeSH)",
-    "sex": "Sex",
-    "muscle_mass": "Global muscle kg",
-    "grip_strength": "hi_values_max",
-    "bmd": "Bone Mineral Density",
-    "peak_power": "peak_power",
-}
 SEX_FEMALE, SEX_MALE = "Female", "Male"
 
-# Accepted values in the "Sex" column of the participants sheet (lowercase) -> SEX_FEMALE / SEX_MALE
+# Accepted values in the "Gender" column (after sex_key normalisation) -> SEX_FEMALE / SEX_MALE
 SEX_MAP = {
-    "female": SEX_FEMALE, "f": SEX_FEMALE, "feminino": SEX_FEMALE, "mulher": SEX_FEMALE,
-    "male": SEX_MALE, "m": SEX_MALE, "masculino": SEX_MALE, "homem": SEX_MALE,
+    "0": SEX_FEMALE, "female": SEX_FEMALE, "f": SEX_FEMALE, "feminino": SEX_FEMALE, "mulher": SEX_FEMALE,
+    "1": SEX_MALE,   "male": SEX_MALE,     "m": SEX_MALE, "masculino": SEX_MALE,   "homem": SEX_MALE,
 }
 SEX_DISPLAY = {SEX_FEMALE: "Mulheres", SEX_MALE: "Homens"}
 SEX_ADJ = {
@@ -184,25 +171,24 @@ def image_uri(path):
 
 
 # ---------------------------------------------------------------------
-# Reference data + classification
+# classification
 # ---------------------------------------------------------------------
-def load_reference(df):
-    """Fill merged/blank age-group cells downward and clean labels."""
-    df = df.copy()
-    df[REF_COL["group"]] = df[REF_COL["group"]].ffill().astype(str).str.strip()
-    df[REF_COL["sex"]] = df[REF_COL["sex"]].astype(str).str.strip()
-    return df
 
-
-def reference_row(refs, group, sex):
-    match = refs[(refs[REF_COL["group"]] == str(group).strip()) & (refs[REF_COL["sex"]] == sex)]
-    if match.empty:
-        raise ValueError(f"No reference row for age group '{group}' / sex '{sex}'.")
-    return match.iloc[0]
+def sex_key(value):
+    """Normalise a cell of the Gender column to a lookup key (1.0 -> '1', ' Male ' -> 'male')."""
+    if pd.isna(value):
+        return ""
+    try:
+        f = float(value)
+        if f.is_integer():
+            return str(int(f))
+    except (TypeError, ValueError):
+        pass
+    return str(value).strip().lower()
 
 
 def normalize_sex(value):
-    key = str(value).strip().lower()
+    key = sex_key(value)
     if key in SEX_MAP:
         return SEX_MAP[key]
     raise ValueError(f"Unrecognised value '{value}' in column '{COL['sex']}' - add it to SEX_MAP.")
@@ -215,7 +201,7 @@ def build_samples(participants):
     """Values of every measure per (age group, sex) and per sex. Use ALL participants (before filtering)."""
     df = participants.copy()
     df["_group"] = df[COL["age_group"]].astype(str).str.strip()
-    df["_sex"] = df[COL["sex"]].map(lambda v: SEX_MAP.get(str(v).strip().lower()))
+    df["_sex"] = df[COL["sex"]].map(lambda v: SEX_MAP.get(sex_key(v)))
     by_group, by_sex = {}, {}
     for m in MEASURES:
         df["_v"] = pd.to_numeric(df[COL[m["key"]]], errors="coerce")
@@ -368,9 +354,9 @@ def build_radar_uri(items):
     svg.append('</g>')
     # --- radar ---
     svg.append(f'<polygon points="{pts([1] * 4)}" fill="none" stroke="#b4b2a9" stroke-width="1"/>')
-    svg.append(f'<polygon points="{pts([hi] * 4)}" fill="#ccf79a" fill-opacity="0.65" stroke="#8fb85a" '
+    svg.append(f'<polygon points="{pts([hi] * 4)}" fill="#e3e6ee" stroke="#aab1c4" '
                f'stroke-width="1" stroke-dasharray="4 3"/>')
-    svg.append(f'<polygon points="{pts([lo] * 4)}" fill="#ffffff" stroke="#8fb85a" '
+    svg.append(f'<polygon points="{pts([lo] * 4)}" fill="#ffffff" stroke="#aab1c4" '
                f'stroke-width="1" stroke-dasharray="4 3"/>')
     svg.append(f'<line x1="{cx}" y1="{cy - R}" x2="{cx}" y2="{cy + R}" stroke="#888780" stroke-width="1"/>')
     svg.append(f'<line x1="{cx - R}" y1="{cy}" x2="{cx + R}" y2="{cy}" stroke="#888780" stroke-width="1"/>')
@@ -408,7 +394,7 @@ def build_radar_uri(items):
 # ---------------------------------------------------------------------
 # Context for the template
 # ---------------------------------------------------------------------
-def build_context(row, refs, samples):
+def build_context(row, samples):
     """Build the dict of values that fills the HTML template for one participant."""
     g = lambda key: row[COL[key]]
     chrono_age = int(g("chrono_age"))
@@ -416,15 +402,15 @@ def build_context(row, refs, samples):
     acceleration = bio_age - chrono_age
     group_label = str(g("age_group")).strip()
     sex = normalize_sex(g("sex"))
-    ref_row = reference_row(refs, group_label, sex)       # only the participant's own sex
     age_group_name = GROUP_DISPLAY.get(group_label, group_label)
 
     # --- 4 main measures: value, reference, classification ---
     items = []
     for m in MEASURES:
         value = g(m["key"])
-        mean = ref_row[REF_COL[m["key"]]]
-        cls = classify(value, get_sample(samples, group_label, sex, m["key"]), m["key"])
+        sample = get_sample(samples, group_label, sex, m["key"])
+        cls = classify(value, sample, m["key"])
+        mean = sample.mean()
         items.append(dict(
             **m, **cls,
             value_txt=f"{fmt_measure(m, value)} {m['unit']}",
@@ -450,7 +436,7 @@ def build_context(row, refs, samples):
     radar_intro = (
         "Ligados entre si, os quatro pontos dos seus resultados formam a sua própria <b>constelação</b>. "
         "Valores mais elevados tendem a refletir características musculares e ósseas mais favoráveis. "
-        "A zona verde representa o intervalo médio de "
+        "A zona cinzenta representa o intervalo médio de "
         f"{sex_pl} da sua faixa etária."
     )
 
@@ -475,8 +461,6 @@ def build_context(row, refs, samples):
     return dict(
         name=g("name"),
         date=date_str,
-        logo_faculty=image_uri(LOGO_FACULTY),
-        logo_lab=image_uri(LOGO_LAB),
         logo_project=image_uri(LOGO_PROJECT),
         space_uri=build_space_uri(),
         chrono_age=chrono_age,
@@ -521,8 +505,7 @@ def build_context(row, refs, samples):
 
 
 def main():
-    all_participants = pd.read_excel(EXCEL_FILE, sheet_name=PARTICIPANTS_SHEET)
-    refs = load_reference(pd.read_excel(EXCEL_FILE, sheet_name=REFERENCE_SHEET))
+    all_participants = pd.read_excel(EXCEL_FILE)
     samples = build_samples(all_participants)         # always from the full sample
 
     participants = all_participants
@@ -543,7 +526,7 @@ def main():
     for _, row in participants.iterrows():
         name = str(row[COL["name"]])
         try:
-            html = template.render(**build_context(row, refs, samples))
+            html = template.render(**build_context(row, samples))
             target = OUTPUT_DIR / f"Report_{name.replace(' ', '_')}.pdf"
             HTML(string=html, base_url=str(TEMPLATE_FILE.parent)).write_pdf(target)
             print(f"✔ {target}")

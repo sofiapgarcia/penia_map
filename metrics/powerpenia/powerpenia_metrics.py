@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 # Path to the peak power Excel file
-PEAK_POWER_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\features_power_dyna.xlsx")
+PEAK_POWER_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\features_power_dyna_valids.xlsx")
 
 
 def add_normalized_peak_power_columns(df: pd.DataFrame) -> pd.DataFrame:

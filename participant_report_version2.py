@@ -118,7 +118,7 @@ MEASURES = [
          meaning="Reflete a robustez dos ossos"),
     dict(key="peak_power", penia="Powerpenia", icon="powerpenia", name="Pico de potência",
          short="Pico de potência", det="o pico de potência", unit="W", dec=2, trim=False,
-         meaning="A rapidez com que consegue gerar força com a mão."),
+         meaning="A rapidez com que consegue gerar força de preensão com a mão."),
 ]
 LEVELS = {"low": "Baixo", "mid": "Médio", "high": "Alto"}
 # =====================================================================

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import welch
 from constants import FS
-from metrics.powerpenia.coordination import get_max_repetition_hi
+from metrics.powerpenia.muscle_coordination import _get_max_repetition_hi
 import matplotlib.pyplot as plt
 
 # np.trapezoid replaced the deprecated np.trapz in newer NumPy releases; fall
@@ -409,7 +409,7 @@ def get_muscle_power_spectral_density_info(
     :return: Tuple (df_hd, df_hi) containing tidy band-power + Median_Frequency/Peak_Frequency DataFrames, one row per repetition
     """
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
-    rep_at_max_hi = get_max_repetition_hi(subject_data_normalized)
+    rep_at_max_hi = _get_max_repetition_hi(subject_data_normalized)
 
     band_power_info_hd = _compute_band_power_info_for_condition(
         subject_data_normalized["HD"]["data"],

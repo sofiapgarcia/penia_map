@@ -15,7 +15,7 @@ from metrics.concentric_phase_detection_attempt2 import detect_concentric_eccent
 from metrics.onset_detection import detect_emg_onsets
 from metrics.powerpenia.scalogram import get_muscle_scalogram_info
 from constants import DISPLACEMENT_COLUMN
-from metrics.powerpenia.coordination import get_muscle_coordination_metrics
+from metrics.powerpenia.muscle_coordination import get_muscle_coordination_metrics
 from metrics.spectral_density import get_muscle_power_spectral_density_info
 from utils import build_subject_feature_row
 from metrics.validate_onsets import validate_onsets

@@ -337,36 +337,8 @@ _function2(...):
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
 # ------------------------------------------------------------------------------------------------------------------- #
-"""
-
-Functions for performing cross-validation for model selection and hyperparameter tuning.
-
-Available Functions
--------------------
-[Public]
-nested_cross_val(...): Performs nested cross-validation using GroupKFold to evaluate a machine learning model with hyperparameter tuning.
-tune_production_model(...): Performs hyperparameter tuning using GroupKFold, X and y.
-------------------
-[Private]
-None
-------------------
-"""
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# imports
-# ------------------------------------------------------------------------------------------------------------------- #
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import KFold, GridSearchCV
-from sklearn.metrics import r2_score, mean_absolute_error
-from typing import Union, List, Dict, Any
-from sklearn.base import RegressorMixin
-from constants import RANDOM_SEED
 
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# public functions
-# ------------------------------------------------------------------------------------------------------------------- #
 RANDOM_SEED = 42
 
 EMG_Extensor_filt = "EMG_Extensor_filt"

@@ -156,7 +156,7 @@ for subject in subjects:
     features.append(subject_row)
 
 final_df = pd.concat(features, ignore_index=True)
-final_df.to_excel(os.path.join(path, "features_power_dyna_valids.xlsx"), index=False)
+#final_df.to_excel(os.path.join(path, "features_power_dyna_valids.xlsx"), index=False)
 print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
 
 

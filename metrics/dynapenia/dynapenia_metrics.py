@@ -1,10 +1,28 @@
-from pathlib import Path
+"""
+Functions for loading and processing isometric handgrip data from an Excel file.
 
+Available Functions
+-------------------
+[Public]
+add_max_column_from_excel(...): Load the handgrip Excel file and calculate the
+    row-wise maximum across the data columns.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
+from pathlib import Path
 import pandas as pd
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 # Path to the input Excel file
 EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\handgrip_isometric.xlsx")
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def add_max_column_from_excel() -> pd.DataFrame:
     """

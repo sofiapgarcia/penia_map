@@ -9,13 +9,13 @@ df = pd.read_excel(excel_path)
 # Basic sample information
 # ---------------------------------------------------------
 
-n_women = (df["Gender"] == 2).sum()
+n_women = (df["Gender"] == 0).sum()
 n_men = (df["Gender"] == 1).sum()
 n_total = len(df)
 
 # Age range
-age_min = df["Age (target)"].min()
-age_max = df["Age (target)"].max()
+age_min = df["Age (y)"].min()
+age_max = df["Age (y)"].max()
 
 
 # ---------------------------------------------------------
@@ -50,7 +50,7 @@ def activity_distribution(series):
 # ---------------------------------------------------------
 
 groups = {
-    "Female": df[df["Gender"] == 2],
+    "Female": df[df["Gender"] == 0],
     "Male": df[df["Gender"] == 1],
     "Total": df
 }
@@ -78,7 +78,7 @@ table = pd.DataFrame(
 for group_name, group in groups.items():
 
     table.loc["Age (years)", group_name] = mean_sd(
-        group["Age (target)"]
+        group["Age (y)"]
     )
 
     table.loc["Weight (kg)", group_name] = mean_sd(

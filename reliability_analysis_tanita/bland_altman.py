@@ -1,11 +1,32 @@
+"""
+Functions to generate Bland-Altman plots for DXA-TANITA comparisons.
+
+Available Functions
+-------------------
+[Public]
+plot_bland_altman_pairs(...): Generate Bland-Altman plots for variable pairs.
+
+[Private]
+_filter_valid_pairs(...): Filter valid DXA-TANITA variable pairs.
+_plot_single_bland_altman(...): Generate a single Bland-Altman plot.
+_save_figure(...): Save a Bland-Altman plot as a PNG file.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import pingouin as pg
 
-from conversor_tanita_dxa.ICC import DXA_VARS_IN_GRAMS
+# internal imports
+from reliability_analysis_tanita.ICC import DXA_VARS_IN_GRAMS , _convert_dxa_grams_to_kg
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 DXA_DISPLAY_NAMES = {
-    "Massa_total": "Body mass",
     "Massa Corporal": "Body mass",
     "BMI_DXA": "Body Mass Index",
     "Perc_gordura_total": "Total fat (%)",
@@ -23,6 +44,10 @@ DXA_DISPLAY_NAMES = {
     "BMC_total": "Bone mineral content",
     "Altura": "Height",
 }
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def plot_bland_altman_pairs(
     df: pd.DataFrame,
@@ -64,24 +89,9 @@ def plot_bland_altman_pairs(
         for fig in figs:
             plt.close(fig)
 
-
-def _convert_dxa_grams_to_kg(df: pd.DataFrame, variable_mapping: dict) -> pd.DataFrame:
-    """
-    Convert DXA columns known to be reported in grams (lean/muscle mass, BMC) to kg,
-    so that they are on the same scale as the corresponding TANITA columns (kg).
-    Returns a copy of the DataFrame with the relevant columns converted;
-    columns not in DXA_VARS_IN_GRAMS, or not present in df, are left untouched.
-
-    :param df: source DataFrame containing DXA columns
-    :param variable_mapping: dict mapping DXA column name -> TANITA column name
-    :return: copy of df with grams->kg conversion applied where relevant
-    """
-    df = df.copy()
-    for dxa_col in variable_mapping.keys():
-        if dxa_col in DXA_VARS_IN_GRAMS and dxa_col in df.columns:
-            df[dxa_col] = df[dxa_col] / 1000
-    return df
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _filter_valid_pairs(df: pd.DataFrame, variable_mapping: dict) -> list:
     """

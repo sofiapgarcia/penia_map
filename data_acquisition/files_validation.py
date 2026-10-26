@@ -17,7 +17,8 @@ if __name__ == '__main__':
         folder for folder in os.listdir(base_path)
         if os.path.isdir(os.path.join(base_path, folder))
     ]
-    subjects = ["S46"]
+    # if one specific subject
+    #subjects = ["S46"]
 
     print(f"Found {len(subjects)} subjects.")
 

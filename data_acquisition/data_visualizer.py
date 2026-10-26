@@ -1,25 +1,157 @@
 """
-Functions to visualize the data.
+Functions for visualizing sensor data and signal processing results.
 
 Available Functions
 -------------------
 [Public]
+plot_subject_data(...): Plot all acquisitions for a subject, pairing raw and
+    filtered signals and comparing synchronized accelerometer signals when
+    available.
 plot_sensors_over_time(...): Plot all sensor channels over acquisition time.
+plot_column_over_time(...): Plot a single signal column over acquisition time.
+plot_interpolated_signal(...): Plot a signal and highlight interpolated values.
 
 [Private]
-
+_center_and_normalize(...): Center and normalize a signal using its z-score.
+_group_signal_columns(...): Group raw signals with their filtered counterparts.
+_plot_group(...): Plot a signal group on a shared axis.
+_make_subplot_figure(...): Create a figure with vertically stacked subplots.
 """
-import matplotlib
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
+
+# Columns to always exclude from plotting (nSeq is metadata; x, z, gACCx,
+# gACCz are accelerometer channels not needed in these plots)
+ALWAYS_EXCLUDED_COLUMNS = {"nSeq", "x", "z", "gACCx", "gACCz"}
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
+def plot_subject_data(subject_data):
+    """
+    Plot all acquisitions contained in subject_data.
+
+    HD (which already merges the former HD and HD_EMG acquisitions into a
+    single DataFrame) is displayed with one subplot per signal, except
+    that each raw signal is plotted together with its filtered
+    counterpart (columns ending in "_filt") in the same subplot, using
+    different colors. If both gACCy and target columns are present, an
+    additional subplot overlays them (centered and normalized) for
+    comparison, and the individual gACCy/target subplots are skipped since
+    they are already shown in that overlay. The accelerometer channels
+    x, z, gACCx and gACCz are excluded from all plots. All other
+    acquisitions follow the same one-subplot-per-signal rule, with
+    raw/filtered pairing applied as well.
+
+    :param subject_data: Dictionary returned by load_subject_data() /
+        apply_saved_sync_indices() (with HD already merged)
+    """
+
+    non_condition_keys = {"potentiometer_position", "HI_values"}
+
+    # ------------------------------------------------------------------
+    # Check availability of HD
+    # ------------------------------------------------------------------
+
+    has_hd = (
+        "HD" in subject_data
+        and isinstance(subject_data["HD"], dict)
+        and "data" in subject_data["HD"]
+    )
+
+    # ------------------------------------------------------------------
+    # Plot HD (one subplot per signal, raw+filtered paired + comparison)
+    # ------------------------------------------------------------------
+
+    if has_hd:
+
+        hd = subject_data["HD"]["data"]
+
+        comparison_available = "gACCy" in hd.columns and "y" in hd.columns
+
+        excluded = set(ALWAYS_EXCLUDED_COLUMNS)
+        if comparison_available:
+            excluded |= {"gACCy", "y"}
+
+        hd_columns = [column for column in hd.columns if column not in excluded]
+        groups = _group_signal_columns(hd_columns)
+
+        n_subplots = len(groups) + int(comparison_available)
+
+        if n_subplots > 0:
+
+            fig, axes = _make_subplot_figure(n_subplots)
+
+            idx = 0
+
+            # ---------------- HD signals (raw + filtered paired) ----------------
+            for group in groups:
+                title = f"HD - {group[0]}"
+                _plot_group(axes[idx], hd, group, title)
+                idx += 1
+
+            # ---------------- Comparison (overlaid) ----------------
+            if comparison_available:
+                gaccy_norm = _center_and_normalize(-hd["gACCy"])
+                y_norm = _center_and_normalize(hd["y"])
+
+                axes[idx].plot(
+                    gaccy_norm,
+                    label="HD gACCy (z-scored)",
+                    linewidth=1.2
+                )
+
+                axes[idx].plot(
+                    y_norm,
+                    label="HD_EMG y (z-scored)",
+                    linewidth=1.2
+                )
+
+                axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)", fontsize=10, pad=8)
+                axes[idx].legend(loc="upper right")
+
+            plt.show()
+
+    # ------------------------------------------------------------------
+    # Plot remaining acquisitions (one subplot per signal, raw+filtered paired)
+    # ------------------------------------------------------------------
+
+    for condition, content in subject_data.items():
+
+        if condition in non_condition_keys:
+            continue
+
+        if condition == "HD":
+            continue
+
+        if (not isinstance(content, dict) or "data" not in content):
+            continue
+
+        df = content["data"]
+
+        columns = [column for column in df.columns if column not in ALWAYS_EXCLUDED_COLUMNS]
+        groups = _group_signal_columns(columns)
+
+        n_subplots = len(groups)
+
+        if n_subplots == 0:
+            continue
+
+        fig, axes = _make_subplot_figure(n_subplots)
+
+        for idx, group in enumerate(groups):
+            title = f"{condition} - {group[0]}"
+            _plot_group(axes[idx], df, group, title)
+
+        plt.show()
 
 def plot_sensors_over_time(params, df, title=None):
     """
@@ -180,6 +312,9 @@ def plot_interpolated_signal(df, mask, column, time_column="nSeq", title=None):
     plt.tight_layout()
     plt.show()
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _center_and_normalize(signal):
     """
@@ -191,9 +326,6 @@ def _center_and_normalize(signal):
     :return: Z-scored signal (mean 0, std 1)
     """
     return (signal - signal.mean()) / signal.std()
-
-
-import matplotlib.pyplot as plt
 
 
 def _group_signal_columns(columns):
@@ -276,133 +408,3 @@ def _make_subplot_figure(n_subplots, height_per_subplot=2.2, max_fig_height=30):
     fig.get_layout_engine().set(h_pad=0.04, hspace=0.02)
 
     return fig, axes
-
-
-# Columns to always exclude from plotting (nSeq is metadata; x, z, gACCx,
-# gACCz are accelerometer channels not needed in these plots)
-ALWAYS_EXCLUDED_COLUMNS = {"nSeq", "x", "z", "gACCx", "gACCz"}
-
-
-def plot_subject_data(subject_data):
-    """
-    Plot all acquisitions contained in subject_data.
-
-    HD (which already merges the former HD and HD_EMG acquisitions into a
-    single DataFrame) is displayed with one subplot per signal, except
-    that each raw signal is plotted together with its filtered
-    counterpart (columns ending in "_filt") in the same subplot, using
-    different colors. If both gACCy and target columns are present, an
-    additional subplot overlays them (centered and normalized) for
-    comparison, and the individual gACCy/target subplots are skipped since
-    they are already shown in that overlay. The accelerometer channels
-    x, z, gACCx and gACCz are excluded from all plots. All other
-    acquisitions follow the same one-subplot-per-signal rule, with
-    raw/filtered pairing applied as well.
-
-    :param subject_data: Dictionary returned by load_subject_data() /
-        apply_saved_sync_indices() (with HD already merged)
-    """
-
-    non_condition_keys = {"potentiometer_position", "HI_values"}
-
-    # ------------------------------------------------------------------
-    # Check availability of HD
-    # ------------------------------------------------------------------
-
-    has_hd = (
-        "HD" in subject_data
-        and isinstance(subject_data["HD"], dict)
-        and "data" in subject_data["HD"]
-    )
-
-    # ------------------------------------------------------------------
-    # Plot HD (one subplot per signal, raw+filtered paired + comparison)
-    # ------------------------------------------------------------------
-
-    if has_hd:
-
-        hd = subject_data["HD"]["data"]
-
-        comparison_available = "gACCy" in hd.columns and "y" in hd.columns
-
-        # Always exclude nSeq and the unwanted accelerometer channels;
-        # skip gACCy/target individually if the comparison overlay covers them
-        excluded = set(ALWAYS_EXCLUDED_COLUMNS)
-        if comparison_available:
-            excluded |= {"gACCy", "y"}
-
-        hd_columns = [column for column in hd.columns if column not in excluded]
-        groups = _group_signal_columns(hd_columns)
-
-        n_subplots = len(groups) + int(comparison_available)
-
-        if n_subplots > 0:
-
-            fig, axes = _make_subplot_figure(n_subplots)
-
-            idx = 0
-
-            # ---------------- HD signals (raw + filtered paired) ----------------
-            for group in groups:
-                title = f"HD - {group[0]}"
-                _plot_group(axes[idx], hd, group, title)
-                idx += 1
-
-            # ---------------- Comparison (overlaid) ----------------
-            if comparison_available:
-                gaccy_norm = _center_and_normalize(-hd["gACCy"])
-                y_norm = _center_and_normalize(hd["y"])
-
-                axes[idx].plot(
-                    gaccy_norm,
-                    label="HD gACCy (z-scored)",
-                    linewidth=1.2
-                )
-
-                axes[idx].plot(
-                    y_norm,
-                    label="HD_EMG y (z-scored)",
-                    linewidth=1.2
-                )
-
-                axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)", fontsize=10, pad=8)
-                axes[idx].legend(loc="upper right")
-
-            plt.show()
-
-    # ------------------------------------------------------------------
-    # Plot remaining acquisitions (one subplot per signal, raw+filtered paired)
-    # ------------------------------------------------------------------
-
-    for condition, content in subject_data.items():
-
-        if condition in non_condition_keys:
-            continue
-
-        if condition == "HD":
-            continue
-
-        if (
-            not isinstance(content, dict)
-            or "data" not in content
-        ):
-            continue
-
-        df = content["data"]
-
-        columns = [column for column in df.columns if column not in ALWAYS_EXCLUDED_COLUMNS]
-        groups = _group_signal_columns(columns)
-
-        n_subplots = len(groups)
-
-        if n_subplots == 0:
-            continue
-
-        fig, axes = _make_subplot_figure(n_subplots)
-
-        for idx, group in enumerate(groups):
-            title = f"{condition} - {group[0]}"
-            _plot_group(axes[idx], df, group, title)
-
-        plt.show()
-

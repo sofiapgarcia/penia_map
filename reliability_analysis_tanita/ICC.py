@@ -1,6 +1,26 @@
+"""
+Functions to compute and interpret intraclass correlation coefficients (ICC) for DXA-TANITA comparisons.
+
+Available Functions
+
+[Public]
+compute_icc_pairs(...): Compute ICC statistics for paired DXA-TANITA measurements.
+
+[Private]
+_convert_dxa_grams_to_kg(...): Convert DXA mass measurements from grams to kilograms.
+_compute_single_icc(...): Compute ICC statistics for a single variable pair.
+_interpret_icc(...): Classify ICC values by agreement level.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import pandas as pd
 import pingouin as pg
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 DXA_VARS_IN_GRAMS = {
     "Magro_total",
     "Massa_magra_braco_direito",
@@ -11,6 +31,17 @@ DXA_VARS_IN_GRAMS = {
     "BMC_total",
 }
 
+_ICC_TYPE_MAP = {
+    "ICC1": "ICC(1,1)",
+    "ICC2": "ICC(A,1)",
+    "ICC3": "ICC(C,1)",
+    "ICC1k": "ICC(1,k)",
+    "ICC2k": "ICC(A,k)",
+    "ICC3k": "ICC(C,k)",
+}
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = "ICC2") -> pd.DataFrame:
     """
@@ -32,7 +63,9 @@ def compute_icc_pairs(df: pd.DataFrame, variable_mapping: dict, icc_type: str = 
 
     return pd.DataFrame(results)
 
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 def _convert_dxa_grams_to_kg(df: pd.DataFrame, variable_mapping: dict) -> pd.DataFrame:
     """
     Convert DXA columns known to be reported in grams (lean/muscle mass, BMC) to kg,
@@ -49,18 +82,6 @@ def _convert_dxa_grams_to_kg(df: pd.DataFrame, variable_mapping: dict) -> pd.Dat
         if dxa_col in DXA_VARS_IN_GRAMS and dxa_col in df.columns:
             df[dxa_col] = df[dxa_col] / 1000
     return df
-
-
-
-_ICC_TYPE_MAP = {
-    "ICC1": "ICC(1,1)",
-    "ICC2": "ICC(A,1)",
-    "ICC3": "ICC(C,1)",
-    "ICC1k": "ICC(1,k)",
-    "ICC2k": "ICC(A,k)",
-    "ICC3k": "ICC(C,k)",
-}
-
 
 def _compute_single_icc(df: pd.DataFrame, dxa_col: str, tanita_col: str, icc_type: str) -> dict:
     """

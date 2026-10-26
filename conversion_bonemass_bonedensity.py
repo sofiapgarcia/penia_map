@@ -34,7 +34,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # IMPORT THE CORRELATION FUNCTION
 from ml_pipeline.preprocessing.feature_reduction import adaptive_correlation_matrix
-from conversor_tanita_dxa.validation_tanita_by_dxa import generate_sample_characterization_table
+from reliability_analysis_tanita.run_reliability_analysis import generate_sample_characterization_table
 
 # ------------------------------------------------------------------
 # 1. LOAD FILES

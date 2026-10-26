@@ -1,11 +1,26 @@
+"""
+Functions to analyze agreement between DXA and TANITA measurements and characterize the study sample.
+
+Available Functions
+-------------------
+[Public]
+generate_sample_characterization_table(...): Generate a LaTeX table summarizing sample characteristics.
+
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import pandas as pd
-from conversor_tanita_dxa.ICC import compute_icc_pairs
-from conversor_tanita_dxa.bland_altman import plot_bland_altman_pairs
 
-
+# internal imports
+from reliability_analysis_tanita.ICC import compute_icc_pairs
+from reliability_analysis_tanita.bland_altman import plot_bland_altman_pairs
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 VARIABLE_MAPPING = {
     # DXA variable -> TANITA variable
-    "Massa_total": "Body mass(kg)",
     "Massa Corporal": "Body mass(kg)",
     "BMI_DXA": "Body mass index (BMI)",
     "Perc_gordura_total": "Global fat %",
@@ -23,25 +38,25 @@ VARIABLE_MAPPING = {
     "BMC_total": "Estimated bone mass kg",
     "Altura": "Altura_testes"
 }
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
-
-
-def generate_sample_characterization_table(df, output_path="sample_characterization.tex",
+def generate_sample_characterization_table(df,
                                                   age_col="Age", gender_col="Gender",
                                                   bmi_col="Body mass index (BMI)",
                                                   caption="Sample characteristics by sex and for the total sample.",
                                                   label="tab:sample_characterization"):
     """
-    Generate a LaTeX table (Female/Male/Total columns) summarizing age and BMI.
+    Generate a LaTeX table (Female/Male/Total columns) summarizing age, gender and BMI to participant group of icc analysis.
 
     :param df: DataFrame containing age, gender (1=male, 2=female), and BMI columns.
-    :param output_path: Path to save the generated .tex file.
     :param age_col: Name of the age column.
     :param gender_col: Name of the gender column.
     :param bmi_col: Name of the BMI column.
     :param caption: Table caption.
-    :param label: Table label (must be unique across the document).
-    :return: None. Writes the LaTeX table to output_path and prints it.
+    :param label: Table label.
+    :return: None. Print a LateX table.
     """
     missing = [c for c in (age_col, gender_col, bmi_col) if c not in df.columns]
     if missing:
@@ -82,13 +97,7 @@ def generate_sample_characterization_table(df, output_path="sample_characterizat
 	\end{tabularx}
 \end{table}
 """
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(latex_table)
-
     print(latex_table)
-
-
 
 
 if __name__ == "__main__":
@@ -96,9 +105,12 @@ if __name__ == "__main__":
     out_plots = r"C:\Users\Sofia\Desktop\Tese\dados\blandaltman"
     df = pd.read_excel(filepath, index_col=0)
 
+    # ICC analysis
     results_icc = compute_icc_pairs(df, VARIABLE_MAPPING, icc_type="ICC2")
     print(results_icc.to_string(index=False))
 
-    # generate_sample_characterization_table(df, age_col="Idade", gender_col="Gender", bmi_col="Body mass index (BMI)")
+    # Generate characterization table of participants of ICC analysis
+    generate_sample_characterization_table(df, age_col="Idade", gender_col="Gender", bmi_col="Body mass index (BMI)")
 
+    # Bland Altman graphs
     plot_bland_altman_pairs(df, VARIABLE_MAPPING, show_plot=False, save_dir=out_plots)

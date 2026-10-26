@@ -1,17 +1,19 @@
 """
-Functions to load the data.
+Functions to load and process OpenSignals data and analyze signal sequence integrity.
 
 Available Functions
 -------------------
-
 [Public]
-load_subject_data(...): Load all OpenSignals files for a subject into a structured dictionary.
-analyze_sequence(...): Analyzes signal sequence integrity.
+load_subject_data(...): Load signal and auxiliary data for a subject.
+analyze_sequence(...): Analyze signal sequence integrity and data loss.
 
 [Private]
-_extract_data_from_file(...): Loads data from OpenSignals files.
-_parse_filename(...): Parses information from filenames.
-
+extract_data_from_file(...): Extract metadata and signals from an OpenSignals file.
+_parse_filename(...): Extract the experimental condition from a filename.
+_load_handgrip_position(...): Load handgrip position data.
+_load_handgrip_isometric(...): Load isometric handgrip measurements.
+_get_levels(...): Estimate low and high signal levels.
+_plot_levels(...): Plot the signal with estimated levels.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -34,18 +36,7 @@ def load_subject_data(base_path, subject):
 
         :param base_path: Path to the folder containing all subjects' folders
         :param subject: Subject ID (e.g., "S83")
-        :return: Dictionary keyed by condition, e.g.:
-                 {
-                     "HI": {
-                         "subject": ...,
-                         "params": {...},
-                         "data": df,
-                         "handgrip_position": ...,
-                         "handgrip_position_source":...,
-                         "handgrip_isometric": {...}
-                     },
-                     ...
-                 }
+        :return: Dictionary keyed by condition
         """
 
     subject_path = os.path.join(base_path, subject)
@@ -67,9 +58,9 @@ def load_subject_data(base_path, subject):
 
         file_path = os.path.join(subject_path, filename)
 
-        _ , params, df = extract_data_from_file(file_path)
+        params, df = extract_data_from_file(file_path)
 
-        condition = filename.replace(".txt", "").split("_", 1)[1]
+        condition = _parse_filename(filename)
 
         if condition == "calibration":
             # Only the two displacement levels are needed for calibration,
@@ -213,7 +204,7 @@ def extract_data_from_file(file_path):
     filename = os.path.basename(file_path)
 
     # Extract subject and condition from filename
-    subject, condition = _parse_filename(filename)
+    condition = _parse_filename(filename)
 
     # Find EMG columns
     emg_cols = [col for col in df.columns if col.upper() == "EMG"]
@@ -294,7 +285,7 @@ def extract_data_from_file(file_path):
         "time": device_info["time"]
     }
 
-    return subject, params, df
+    return params, df
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
@@ -305,17 +296,13 @@ def _parse_filename(file):
     Parse subject ID and condition from filename.
 
     :param file: Filename in format 'Sx_HI.txt', 'Sx_HD.txt' or 'Sx_MVC_FLEXOR.txt'
-    :return: Tuple containing:
-             - subject (str): subject ID (e.g., S1)
-             - condition (str): experimental test (HI, HD or MVC_FLEXOR)
+    :return: condition (str): experimental test (HI, HD or MVC_FLEXOR)
     """
     name = file.replace(".txt", "")
 
-    subject_raw, condition = name.split("_", 1)
+    _ , condition = name.split("_", 1)
 
-    subject = subject_raw.replace("S", "")
-
-    return subject, condition
+    return condition
 
 def _load_handgrip_position(base_path, subject_id):
     """
@@ -386,7 +373,7 @@ def _load_handgrip_isometric(base_path, subject_id):
 
 def _get_levels(signal, pct=10 , show_plot = False):
     """
-    Estimate the low and high levels of a square-wave-like signal.
+    Estimate the low and high levels of the signal.
 
     :param signal: 1D array (or list) containing the signal samples, e.g. in bits
     :param pct: Percentage of samples (from each end of the sorted signal) used to estimate each level

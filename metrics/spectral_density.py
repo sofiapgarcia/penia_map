@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import welch
 from constants import FS
-from metrics.powerpenia.muscle_coordination import _get_max_repetition_hi
+from metrics.muscle_coordination_metrics import _get_max_repetition_hi
 import matplotlib.pyplot as plt
 
 # np.trapezoid replaced the deprecated np.trapz in newer NumPy releases; fall

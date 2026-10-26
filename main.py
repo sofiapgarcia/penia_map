@@ -2,25 +2,13 @@ import os
 import pandas as pd
 
 from data_acquisition.data_loader import load_subject_data
-from data_acquisition.data_visualizer import plot_sensors_over_time , plot_subject_data , plot_column_over_time
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
-from synchronization.sync_attempt2 import apply_saved_sync_indices, synchronize_hd_acquisitions
-from processor.trimming import apply_trim_indices , select_trim_regions
-from processor.emg import process_emg , get_emg_envelope
+from processor.emg import process_emg
 from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
-from metrics.emg_normalization import get_mvc_values , normalize_emg
 from metrics.concentric_phase_detection_attempt2 import detect_concentric_eccentric_phases
-from metrics.onset_detection import detect_emg_onsets
-from metrics.powerpenia.scalogram import get_muscle_scalogram_info
-from constants import DISPLACEMENT_COLUMN
-from metrics.powerpenia.muscle_coordination import get_muscle_coordination_metrics
-from metrics.spectral_density import get_muscle_power_spectral_density_info
 from utils import build_subject_feature_row
-from metrics.validate_onsets import validate_onsets
-from data_acquisition.data_visualizer import plot_interpolated_signal
-
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
 

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 # File paths
-INPUT_FILE = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\report_participants_all.xlsx"
+INPUT_FILE = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\report_participants_valids.xlsx"
 
 AGE_COL = "Age (y)"
 

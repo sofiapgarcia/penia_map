@@ -23,7 +23,6 @@ _unfold_sequence_counter(...): Converts wrapped nSeq counter into a continuous s
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-import matplotlib.pyplot as plt
 
 # internal imports
 from data_acquisition.data_loader import analyze_sequence

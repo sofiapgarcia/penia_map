@@ -1,11 +1,39 @@
+"""
+Functions for converting, filtering and extracting the linear envelope of EMG signals.
+
+Available Functions
+-------------------
+[Public]
+emg_transfer_function(...): Converts EMG analog-to-digital converter (ADC) values into millivolts (mV).
+process_emg(...): Applies a 50 Hz notch filter and a Butterworth bandpass filter to EMG channels, optionally plotting raw and filtered signals.
+get_emg_envelope(...): Computes the linear envelope of filtered EMG signals for the HD, HI and MVC conditions, optionally plotting the results.
+[Private]
+_bandpass_filter_emg(...): Applies a Butterworth bandpass filter to an EMG signal.
+_notch_filter_emg(...): Applies a notch filter to remove power-line interference from an EMG signal.
+_plot_emg_processing(...): Plots raw and filtered EMG signals for visual comparison.
+_lowpass_filter_envelope(...): Applies a Butterworth low-pass filter to a rectified EMG signal to obtain its linear envelope.
+_plot_emg_envelope(...): Plots a filtered EMG signal with its linear envelope overlaid.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 from scipy.signal import butter, filtfilt, iirnotch
 from matplotlib import pyplot as plt
 import numpy as np
 
+# internal imports
 from constants import EMG_Flexor_filt, EMG_Extensor_filt , EMG_Flexor, EMG_Extensor
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 EMG_CHANNELS_filt = [EMG_Flexor_filt, EMG_Extensor_filt]
 EMG_CHANNELS =[EMG_Flexor, EMG_Extensor]
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def emg_transfer_function(df,
                           n_bits=16, vcc=3.0, g_emg=1000):
@@ -112,6 +140,9 @@ def get_emg_envelope(subject_data, show_plot=True):
 
     return subject_data
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _bandpass_filter_emg(signal, fs, lowcut=10, highcut=499, order=4):
     """

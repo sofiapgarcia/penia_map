@@ -1,11 +1,45 @@
+"""
+Functions for synchronizing HD and HD_EMG acquisitions and correcting sample-rate drift.
+
+Available Functions
+-------------------
+[Public]
+apply_saved_sync_indices(...): Applies previously saved synchronization parameters to align and merge HD and HD_EMG acquisitions.
+synchronize_hd_acquisitions(...): Synchronizes HD and HD_EMG signals using cross-correlation and interactive peak validation, manually refined alignment at two anchors, and linear drift correction.
+
+[Private]
+_invert_column(...): Inverts the sign of a specified DataFrame column.
+_compute_alignment_offset(...): Estimates the initial sample offset between two signals using validated synchronization peaks and cross-correlation.
+_find_candidate_peaks(...): Detects candidate peaks based on signal prominence and the expected movement period.
+_find_longest_consistent_run(...): Identifies the longest sequence of consecutive peaks with intervals consistent with the expected movement period.
+_initial_sync_peaks(...): Selects candidate synchronization peaks belonging to the longest rhythmically consistent sequence.
+_peaks_to_offsets(...): Converts peak indices into time-amplitude coordinates for plotting.
+_interactive_validate_peaks(...): Displays candidate synchronization peaks and allows interactive addition or removal before alignment.
+_window_from_peaks(...): Extracts a signal segment spanning the selected peaks with a margin on each side.
+_estimate_offset_by_correlation(...): Estimates the sample offset between two signals using cross-correlation.
+_zscore(...): Standardizes a signal by subtracting its mean and dividing by its standard deviation.
+_estimate_drift_correction(...): Estimates alignment offsets at the beginning and end of the recordings to determine the relative clock drift.
+_interactive_local_alignment(...): Displays local signal windows and allows manual adjustment of the alignment offset using keyboard controls.
+_apply_drift_correction(...): Resamples the HD signal onto the HD_EMG sample grid using linear interpolation to correct for clock drift.
+_save_sync_params(...): Saves synchronization offsets and anchor indices to an Excel file.
+_plot_validation(...): Plots the synchronized signals after drift correction to visually assess alignment.
+"""
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import os
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
 from scipy.signal import find_peaks, correlate, correlation_lags
-from constants import FS
 import matplotlib.pyplot as plt
 
+# internal imports
+from constants import FS
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def apply_saved_sync_indices(subject_data, subject_folder,
                              column_hd="gACCy",
@@ -198,6 +232,9 @@ def synchronize_hd_acquisitions(subject_data,
 
     return subject_data
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _invert_column(df, column):
     """
@@ -535,7 +572,7 @@ def _estimate_drift_correction(signal_hd, signal_hd_emg, fs, coarse_offset, peak
     print("Alinhe o FIM do sinal (use as setas do teclado; feche a janela para confirmar)...")
     offset_end = _interactive_local_alignment(
         signal_hd, signal_hd_emg, fs, anchor_end, offset_start,
-        local_window_seconds, "fim do sinal",
+        local_window_seconds, "end do sinal",
     )
 
     return offset_start, offset_end, anchor_start, anchor_end

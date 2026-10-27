@@ -1,4 +1,3 @@
-from ml_pipeline.preprocessing.feature_reduction import apply_pca
 from constants import PENIA_MAP_GROUPS
 
 import pandas as pd

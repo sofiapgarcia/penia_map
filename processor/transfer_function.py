@@ -5,7 +5,6 @@ Available Functions
 -------------------
 [Public]
 apply_all_transfers(...): Applies all available sensor transfer functions to a raw DataFrame.
-
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #

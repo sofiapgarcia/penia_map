@@ -1,12 +1,13 @@
 """
-Functions to convert force signal.
+Functions for converting and processing force signals.
 
 Available Functions
 -------------------
 [Public]
-convert_force(...): Convert FORCE signal values using calibration factor.
-
+convert_force(...): Converts force signal values using a calibration factor.
+process_force(...): Centers the force signal around zero and applies a moving average filter, optionally plotting the raw and smoothed signals.
 [Private]
+_plot_smoothing_check(...): Plots the raw and smoothed force signals to assess the effect of smoothing.
 """
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
@@ -39,12 +40,6 @@ def convert_force(df):
         df_converted[FORCE_COLUMN] = df_converted[FORCE_COLUMN] * factor
 
     return df_converted
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-from constants import FORCE_COLUMN
 
 
 def process_force(df, fs, window_ms=20, show_plot=False):
@@ -101,7 +96,9 @@ def process_force(df, fs, window_ms=20, show_plot=False):
 
     return df
 
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 def _plot_smoothing_check(raw, smoothed, window_ms):
     """
     Plots the raw signal on top and the smoothed signal below, sharing the same
@@ -127,6 +124,3 @@ def _plot_smoothing_check(raw, smoothed, window_ms):
 
     plt.tight_layout()
     plt.show()
-
-
-

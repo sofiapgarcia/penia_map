@@ -1,17 +1,190 @@
+"""
+Functions for manually validating automatically detected EMG onsets and offsets.
+
+Available Functions
+-------------------
+[Public]
+validate_onsets(...): Manually reviews and corrects detected EMG onsets for dynamic handgrip (HD)
+and onsets and offsets for isometric handgrip (HI). Saves validated results to an Excel file for
+reuse and optionally displays summary plots.
+
+[Private]
+_is_missing(...): Checks whether a value represents a missing index.
+_window_bounds(...): Computes the sample bounds of an initial viewing window centered on a reference index.
+_autoscale_y(...): Adjusts the vertical axis limits to fit the signal currently visible in the plot.
+_review_index(...): Opens an interactive plot to review or manually correct a single onset or offset index.
+_sheet_exists(...): Checks whether a specified worksheet exists in an Excel file.
+_load_validated_onsets(...): Loads previously validated HD and HI onset and offset tables from an Excel file.
+_save_validated_onsets(...): Saves the validated HD and HI onset and offset tables to an Excel file.
+_shade_phases(...): Shades concentric and eccentric phases in a plot based on the phase labels.
+_plot_condition_validation(...): Plots the full EMG signals for a condition, marking validated onsets and offsets
+and optionally shading movement phases.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import os
 import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 
-# Disable the default navigation toolbar: we implement our own zoom/pan so
-# that left-click (drag) and scroll are always free for navigation, and the
-# right mouse button is always free to confirm a position.
-#matplotlib.rcParams['toolbar'] = 'None'
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 EMG_COLUMNS = ['EMG_Extensor_filt', 'EMG_Flexor_filt']
 DEFAULT_VALIDATION_FILENAME = "onsets_validated.xlsx"
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
+
+def validate_onsets(subject_data, onset_hd, onset_hi, subject, output_dir,
+                     emg_columns=None, initial_margin_ms_hd=300,
+                     initial_margin_ms_hi=4000, force_review=False,
+                     show_validation_plot=False,
+                     validation_filename=DEFAULT_VALIDATION_FILENAME):
+    """
+    Manually review (and correct) the automatically detected EMG onsets (HD)
+    and onsets/offsets (HI) for a single subject, with free zoom/pan
+    navigation, and persist the validated values to an Excel file kept in
+    that subject's own output folder, so the manual review never has to be
+    repeated once it's been done.
+
+    Behaviour:
+      - If a validation file already exists in output_dir with BOTH the 'HD'
+        and 'HI' sheets populated (and force_review is False), the manual
+        review is skipped entirely and the stored values are returned as-is.
+      - Otherwise, one interactive plot per (repetition, muscle, onset/offset)
+        is shown: scroll to zoom, left-drag to pan, right-click to confirm a
+        new position (the only way to confirm an index), close the window to
+        keep the value as-is. Once every row has been reviewed, the results
+        are written to the validation file, overwriting any previous content.
+
+    :param subject_data: Dict as produced/consumed by detect_concentric_eccentric_phases,
+        used here to fetch the raw EMG signals and sampling rates for HD/HI.
+    :param onset_hd: DataFrame with the automatically detected HD onsets, as
+        returned by detect_emg_onsets (one row per repetition/muscle).
+    :param onset_hi: DataFrame with the automatically detected HI onsets/offsets,
+        as returned by detect_emg_onsets (one row per repetition/muscle).
+    :param subject: Subject identifier (e.g. int or str), used only for
+        log/print messages.
+    :param output_dir: Directory where this subject's validation Excel file
+        lives (typically the subject's own output folder).
+    :param emg_columns: Names of the EMG columns to process. Defaults to EMG_COLUMNS.
+    :param initial_margin_ms_hd: Half-width (ms) of the initial view window
+        for HD onsets. Just a starting point -- zoom/pan freely afterward.
+    :param initial_margin_ms_hi: Half-width (ms) of the initial view window
+        for HI onsets/offsets. Just a starting point -- zoom/pan freely
+        afterward.
+    :param force_review: If True, re-do the manual review even if a
+        validation file already exists (overwriting it).
+    :param show_validation_plot: If True, after the validated onsets are
+        obtained (whether freshly reviewed or loaded from file), show one
+        static plot per condition (HD, HI) with the whole raw signal per
+        muscle and the validated onsets (and offsets, for HI) marked as
+        vertical lines.
+    :param validation_filename: Name of the validation Excel file (kept
+        inside output_dir).
+    :return: (validated_hd, validated_hi) tuple of DataFrames, in the same
+        format as onset_hd/onset_hi but with validated 'onset_idx' (and
+        'offset_idx' for HI) values -- ready to be used by downstream
+        metrics instead of the raw automatic detections.
+    """
+    columns = emg_columns if emg_columns is not None else EMG_COLUMNS
+    output_file = os.path.join(output_dir, validation_filename)
+
+    existing_hd, existing_hi = _load_validated_onsets(output_file)
+
+    if not force_review and not existing_hd.empty and not existing_hi.empty:
+        print(f"Subject {subject}: validated onsets already found in '{validation_filename}' -- skipping manual review.")
+        existing_hd = existing_hd.reset_index(drop=True)
+        existing_hi = existing_hi.reset_index(drop=True)
+        if show_validation_plot:
+            if not existing_hd.empty:
+                _plot_condition_validation(subject_data['HD']['data'], existing_hd,
+                                            subject_data['HD']['params']['sampling rate'], 'HD', columns,
+                                            phase_column='Phase')
+            if not existing_hi.empty:
+                _plot_condition_validation(subject_data['HI']['data'], existing_hi,
+                                            subject_data['HI']['params']['sampling rate'], 'HI', columns)
+        return existing_hd, existing_hi
+
+    print(f"\n{'-'*60}\nSubject {subject}: manual onset/offset validation\n{'-'*60}")
+
+    # --- HD: only 'onset_idx' is a real detection; concentric start/end come
+    #     from the Phase column and are not reviewed here. ---
+    validated_hd = onset_hd.copy()
+    if not validated_hd.empty:
+        fs_hd = subject_data['HD']['params']['sampling rate']
+        df_hd = subject_data['HD']['data']
+
+        for i, row in validated_hd.iterrows():
+            col = row['muscle']
+            if col not in columns:
+                continue
+            raw = df_hd[col].to_numpy()
+            title = f"HD -- {col} -- Rep {row['rep']}"
+            # if onset detection failed, fall back to the concentric start
+            # (always available for HD) to still center the initial view
+            new_onset = _review_index(
+                raw, fs_hd, row['onset_idx'], 'onset', title,
+                fallback_center=row.get('concentric_start_idx'),
+                initial_margin_ms=initial_margin_ms_hd,
+            )
+            validated_hd.at[i, 'onset_idx'] = new_onset
+
+    # --- HI: both 'onset_idx' and 'offset_idx' are reviewed. ---
+    validated_hi = onset_hi.copy()
+    if not validated_hi.empty:
+        fs_hi = subject_data['HI']['params']['sampling rate']
+        df_hi = subject_data['HI']['data']
+
+        for i, row in validated_hi.iterrows():
+            col = row['muscle']
+            if col not in columns:
+                continue
+            raw = df_hi[col].to_numpy()
+
+            title_onset = f"HI -- {col} -- Rep {row['rep']}"
+            # if onset detection failed, fall back to the (raw) offset to
+            # still center the initial view
+            new_onset = _review_index(
+                raw, fs_hi, row['onset_idx'], 'onset', title_onset,
+                fallback_center=row.get('offset_idx'),
+                initial_margin_ms=initial_margin_ms_hi,
+            )
+            validated_hi.at[i, 'onset_idx'] = new_onset
+
+            title_offset = f"HI -- {col} -- Rep {row['rep']}"
+            # if offset detection failed, prefer the just-reviewed onset as
+            # fallback (more accurate than the raw one), else the raw onset
+            fallback_for_offset = new_onset if not _is_missing(new_onset) else row.get('onset_idx')
+            new_offset = _review_index(
+                raw, fs_hi, row['offset_idx'], 'offset', title_offset,
+                fallback_center=fallback_for_offset,
+                initial_margin_ms=initial_margin_ms_hi,
+            )
+            validated_hi.at[i, 'offset_idx'] = new_offset
+
+    _save_validated_onsets(output_file, validated_hd, validated_hi)
+    print(f"Subject {subject}: validated onsets saved to '{output_file}'.")
+
+    if show_validation_plot:
+        if not validated_hd.empty:
+            _plot_condition_validation(subject_data['HD']['data'], validated_hd,
+                                        subject_data['HD']['params']['sampling rate'], 'HD', columns,
+                                        phase_column='Phase')
+        if not validated_hi.empty:
+            _plot_condition_validation(subject_data['HI']['data'], validated_hi,
+                                        subject_data['HI']['params']['sampling rate'], 'HI', columns)
+
+    return validated_hd, validated_hi
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _is_missing(value):
     """
@@ -363,146 +536,3 @@ def _plot_condition_validation(df_signal, validated_df, fs, condition_label, col
     fig.suptitle(f"{condition_label} -- validated " + ("onsets/offsets" if has_offset else "onsets"))
     plt.tight_layout()
     plt.show(block=True)
-
-
-def validate_onsets(subject_data, onset_hd, onset_hi, subject, output_dir,
-                     emg_columns=None, initial_margin_ms_hd=300,
-                     initial_margin_ms_hi=4000, force_review=False,
-                     show_validation_plot=False,
-                     validation_filename=DEFAULT_VALIDATION_FILENAME):
-    """
-    Manually review (and correct) the automatically detected EMG onsets (HD)
-    and onsets/offsets (HI) for a single subject, with free zoom/pan
-    navigation, and persist the validated values to an Excel file kept in
-    that subject's own output folder, so the manual review never has to be
-    repeated once it's been done.
-
-    Behaviour:
-      - If a validation file already exists in output_dir with BOTH the 'HD'
-        and 'HI' sheets populated (and force_review is False), the manual
-        review is skipped entirely and the stored values are returned as-is.
-      - Otherwise, one interactive plot per (repetition, muscle, onset/offset)
-        is shown: scroll to zoom, left-drag to pan, right-click to confirm a
-        new position (the only way to confirm an index), close the window to
-        keep the value as-is. Once every row has been reviewed, the results
-        are written to the validation file, overwriting any previous content.
-
-    :param subject_data: Dict as produced/consumed by detect_concentric_eccentric_phases,
-        used here to fetch the raw EMG signals and sampling rates for HD/HI.
-    :param onset_hd: DataFrame with the automatically detected HD onsets, as
-        returned by detect_emg_onsets (one row per repetition/muscle).
-    :param onset_hi: DataFrame with the automatically detected HI onsets/offsets,
-        as returned by detect_emg_onsets (one row per repetition/muscle).
-    :param subject: Subject identifier (e.g. int or str), used only for
-        log/print messages.
-    :param output_dir: Directory where this subject's validation Excel file
-        lives (typically the subject's own output folder).
-    :param emg_columns: Names of the EMG columns to process. Defaults to EMG_COLUMNS.
-    :param initial_margin_ms_hd: Half-width (ms) of the initial view window
-        for HD onsets. Just a starting point -- zoom/pan freely afterward.
-    :param initial_margin_ms_hi: Half-width (ms) of the initial view window
-        for HI onsets/offsets. Just a starting point -- zoom/pan freely
-        afterward.
-    :param force_review: If True, re-do the manual review even if a
-        validation file already exists (overwriting it).
-    :param show_validation_plot: If True, after the validated onsets are
-        obtained (whether freshly reviewed or loaded from file), show one
-        static plot per condition (HD, HI) with the whole raw signal per
-        muscle and the validated onsets (and offsets, for HI) marked as
-        vertical lines.
-    :param validation_filename: Name of the validation Excel file (kept
-        inside output_dir).
-    :return: (validated_hd, validated_hi) tuple of DataFrames, in the same
-        format as onset_hd/onset_hi but with validated 'onset_idx' (and
-        'offset_idx' for HI) values -- ready to be used by downstream
-        metrics instead of the raw automatic detections.
-    """
-    columns = emg_columns if emg_columns is not None else EMG_COLUMNS
-    output_file = os.path.join(output_dir, validation_filename)
-
-    existing_hd, existing_hi = _load_validated_onsets(output_file)
-
-    if not force_review and not existing_hd.empty and not existing_hi.empty:
-        print(f"Subject {subject}: validated onsets already found in '{validation_filename}' -- skipping manual review.")
-        existing_hd = existing_hd.reset_index(drop=True)
-        existing_hi = existing_hi.reset_index(drop=True)
-        if show_validation_plot:
-            if not existing_hd.empty:
-                _plot_condition_validation(subject_data['HD']['data'], existing_hd,
-                                            subject_data['HD']['params']['sampling rate'], 'HD', columns,
-                                            phase_column='Phase')
-            if not existing_hi.empty:
-                _plot_condition_validation(subject_data['HI']['data'], existing_hi,
-                                            subject_data['HI']['params']['sampling rate'], 'HI', columns)
-        return existing_hd, existing_hi
-
-    print(f"\n{'-'*60}\nSubject {subject}: manual onset/offset validation\n{'-'*60}")
-
-    # --- HD: only 'onset_idx' is a real detection; concentric start/end come
-    #     from the Phase column and are not reviewed here. ---
-    validated_hd = onset_hd.copy()
-    if not validated_hd.empty:
-        fs_hd = subject_data['HD']['params']['sampling rate']
-        df_hd = subject_data['HD']['data']
-
-        for i, row in validated_hd.iterrows():
-            col = row['muscle']
-            if col not in columns:
-                continue
-            raw = df_hd[col].to_numpy()
-            title = f"HD -- {col} -- Rep {row['rep']}"
-            # if onset detection failed, fall back to the concentric start
-            # (always available for HD) to still center the initial view
-            new_onset = _review_index(
-                raw, fs_hd, row['onset_idx'], 'onset', title,
-                fallback_center=row.get('concentric_start_idx'),
-                initial_margin_ms=initial_margin_ms_hd,
-            )
-            validated_hd.at[i, 'onset_idx'] = new_onset
-
-    # --- HI: both 'onset_idx' and 'offset_idx' are reviewed. ---
-    validated_hi = onset_hi.copy()
-    if not validated_hi.empty:
-        fs_hi = subject_data['HI']['params']['sampling rate']
-        df_hi = subject_data['HI']['data']
-
-        for i, row in validated_hi.iterrows():
-            col = row['muscle']
-            if col not in columns:
-                continue
-            raw = df_hi[col].to_numpy()
-
-            title_onset = f"HI -- {col} -- Rep {row['rep']}"
-            # if onset detection failed, fall back to the (raw) offset to
-            # still center the initial view
-            new_onset = _review_index(
-                raw, fs_hi, row['onset_idx'], 'onset', title_onset,
-                fallback_center=row.get('offset_idx'),
-                initial_margin_ms=initial_margin_ms_hi,
-            )
-            validated_hi.at[i, 'onset_idx'] = new_onset
-
-            title_offset = f"HI -- {col} -- Rep {row['rep']}"
-            # if offset detection failed, prefer the just-reviewed onset as
-            # fallback (more accurate than the raw one), else the raw onset
-            fallback_for_offset = new_onset if not _is_missing(new_onset) else row.get('onset_idx')
-            new_offset = _review_index(
-                raw, fs_hi, row['offset_idx'], 'offset', title_offset,
-                fallback_center=fallback_for_offset,
-                initial_margin_ms=initial_margin_ms_hi,
-            )
-            validated_hi.at[i, 'offset_idx'] = new_offset
-
-    _save_validated_onsets(output_file, validated_hd, validated_hi)
-    print(f"Subject {subject}: validated onsets saved to '{output_file}'.")
-
-    if show_validation_plot:
-        if not validated_hd.empty:
-            _plot_condition_validation(subject_data['HD']['data'], validated_hd,
-                                        subject_data['HD']['params']['sampling rate'], 'HD', columns,
-                                        phase_column='Phase')
-        if not validated_hi.empty:
-            _plot_condition_validation(subject_data['HI']['data'], validated_hi,
-                                        subject_data['HI']['params']['sampling rate'], 'HI', columns)
-
-    return validated_hd, validated_hi

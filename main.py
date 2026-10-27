@@ -7,7 +7,7 @@ from processor.transfer_function import apply_transfer_functions
 from processor.emg import process_emg
 from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
-from metrics.concentric_phase_detection_attempt2 import detect_concentric_eccentric_phases
+from metrics.grip_closing_phase_detection import detect_concentric_eccentric_phases
 from utils import build_subject_feature_row
 
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"

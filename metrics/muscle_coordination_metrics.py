@@ -77,9 +77,9 @@ def get_muscle_coordination_metrics(
     :param FS: Sampling frequency (Hz). If None, extracted from subject_data_normalized per condition
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
-    :param emg_extensor_column: Column name of normalized extensor EMG
-    :param emg_flexor_column: Column name of normalized flexor EMG
-    :param offset_column: Column name of the muscle ofFSet sample index (HI onset_df)
+    :param emg_extensor_column: Column name of normalized extensor envelope EMG
+    :param emg_flexor_column: Column name of normalized flexor envelope EMG
+    :param offset_column: Column name of the muscle offset sample index (HI onset_df)
     :param hi_values_key: Key inside subject_data_normalized["HI"] holding the H1/H2/H3 values
     :return: Tuple (df_hd, df_hi) with one row per repetition each
     """

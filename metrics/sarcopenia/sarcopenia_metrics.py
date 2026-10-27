@@ -1,7 +1,22 @@
-from pathlib import Path
+"""
+Functions to extract sarcopenia metrics and calculate the Appendicular Lean Mass Index (ALMI).
 
+Available Functions
+-------------------
+[Public]
+add_almi(...): Read muscle mass data from an Excel file, extract the required metrics,
+and calculate ALMI by normalizing appendicular lean mass to height squared.
+
+"""
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
+from pathlib import Path
 import pandas as pd
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 # Path to the sarcopenia Excel file
 SARCOPENIA_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx")
 
@@ -19,7 +34,9 @@ APPENDICULAR_METRICS = [
     "Leg muscle (right) kg",
     "Leg muscle (left) kg",
 ]
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def add_almi() -> pd.DataFrame:
     """

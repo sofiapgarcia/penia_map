@@ -1,10 +1,28 @@
-from pathlib import Path
+"""
+Functions to normalize peak power values using body mass and height.
 
+Available Functions
+-------------------
+[Public]
+add_normalized_peak_power_columns(...): Load peak power data from an Excel file and add peak power normalized
+by body mass and height squared, using anthropometric data from the input DataFrame.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
+from pathlib import Path
 import pandas as pd
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 # Path to the peak power Excel file
 PEAK_POWER_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\features_power_dyna_valids.xlsx")
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def add_normalized_peak_power_columns(df: pd.DataFrame) -> pd.DataFrame:
     """

@@ -1,8 +1,36 @@
-from constants import DISPLACEMENT_COLUMN, FORCE_COLUMN
+"""
+Functions to process and analyse HD power signals.
+
+Available Functions
+-------------------
+[Public]
+process_hd_power(...): Compute velocity and power from displacement and force signals, extract peak power and
+maximum velocity and force during the concentric phase, and optionally plot the results.
+
+[Private]
+_compute_velocity(...): Compute velocity from displacement using numerical differentiation.
+_moving_average_centered(...): Smooth a signal using a centered moving average.
+_get_power_summary(...): Extract peak power and its associated velocity, force and repetition,
+as well as maximum velocity and force, during the concentric phase.
+_plot_hd_power_analysis_with_velocity_raw(...): Plot displacement, force, raw and smoothed velocity, and
+power signals, highlighting the relevant maximum values.
+_plot_hd_power_analysis(...): Plot displacement, force, smoothed velocity, and power signals,
+highlighting peak power and the maximum force and velocity.
+"""
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+# internal imports
+from constants import DISPLACEMENT_COLUMN, FORCE_COLUMN
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def process_hd_power(subject_data, show_plot=True, velocity_window_ms=5):
     """
@@ -45,6 +73,9 @@ def process_hd_power(subject_data, show_plot=True, velocity_window_ms=5):
 
     return power_info
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _compute_velocity(displacement, fs):
     """

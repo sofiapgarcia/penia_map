@@ -1,12 +1,35 @@
+"""
+Functions for detecting and visualizing concentric and eccentric phases
+during the HD task.
+
+Available Functions
+-------------------
+[Public]
+detect_concentric_eccentric_phases(...): Detects concentric and eccentric phases for each repetition based on
+the force derivative and optionally visualizes the detected phases.
+
+[Private]
+_compute_force_derivative(...): Computes the smoothed force derivative signal.
+_find_rep_peaks(...): Detects repetition peaks in the force derivative.
+_find_onset(...): Identifies the onset of each repetition.
+_find_turn(...): Identifies the transition from the concentric to the eccentric phase.
+_find_offset(...): Identifies the end of each repetition.
+_plot_phases(...): Plots the selected signals and the detected phases.
+"""
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 
-
+# internal imports
 from constants import FORCE_COLUMN, DISPLACEMENT_COLUMN , EMG_Extensor_filt , EMG_Flexor_filt
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 FORCE_DERIVATIVE = "Force_derivative"
 DEFAULT_PLOT_COLUMNS = [EMG_Extensor_filt, EMG_Flexor_filt, DISPLACEMENT_COLUMN, FORCE_COLUMN, FORCE_DERIVATIVE]
 AXIS_LABELS = {
@@ -16,6 +39,10 @@ AXIS_LABELS = {
     FORCE_COLUMN: "Force (N)",
     FORCE_DERIVATIVE: "dF/dt (N/s)",
 }
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
+
 def detect_concentric_eccentric_phases(subject_data, show_plot=True,
                                         derivative_sigma_ms=20, n_reps=12,
                                         min_distance_s=1.0, threshold_fraction=0.2):
@@ -120,6 +147,9 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
     return subject_data
 
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def _compute_force_derivative(force, fs, sigma_ms):
     """
@@ -302,7 +332,6 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS, axis_labels
                           label=labels['local threshold'] if show_label else None)
                 ax.hlines(-threshold, cs, ee, color='tab:green', linestyle=':', linewidth=1)
 
-        # Rotulo do eixo Y com unidade (fallback: nome bruto da coluna)
         ax.set_ylabel(axis_labels.get(ch, ch), fontsize=9)
         ax.tick_params(axis='y', labelsize=8)
 
@@ -312,7 +341,6 @@ def _plot_phases(df, phases_list, plot_columns=DEFAULT_PLOT_COLUMNS, axis_labels
         handles.extend(h)
         labels_.extend(l)
 
-    # remover duplicados mantendo a ordem
     by_label = dict(zip(labels_, handles))
     fig.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
     axes[-1].set_xlabel('Sample Index')

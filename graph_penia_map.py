@@ -45,7 +45,7 @@ SEX_COL = "Gender"
 
 # --- valores dentro dessas colunas (não distingue maiúsculas/minúsculas) ---
 FEMALE_VALUE = 0      # valor que representa as mulheres na coluna SEX_COL
-MALE_VALUE = 1        # valor que representa os homens (CONFIRMA que é este!)
+MALE_VALUE = 1        # valor que representa os homens
 GROUP_YOUNG = "Young Adult (18-24)"
 GROUP_MIDDLE = "Middle Aged (45-64)"
 GROUP_ELDERLY = "Aged (>=65)"

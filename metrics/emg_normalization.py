@@ -1,12 +1,41 @@
+"""
+Functions for calculating maximum voluntary contraction (MVC) reference values
+and normalizing electromyography (EMG) signals relative to MVC.
+
+Available Functions
+-------------------
+[Public]
+get_mvc_values(...): Calculates MVC reference values for the extensor and flexor muscles using
+the maximum envelope and filtered EMG amplitudes from their respective reference conditions.
+normalize_emg(...): Normalizes EMG envelope and filtered signals in the HD and HI conditions
+as a percentage of their corresponding MVC reference values.
+
+[Private]
+_plot_emg_normalized(...): Plots EMG envelope signals before and after MVC normalization, including
+the normalized filtered signals for comparison.
+_plot_mvc_peak(...): Plots an EMG signal and highlights the maximum amplitude used as the MVC
+reference value.
+"""
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import numpy as np
 from matplotlib import pyplot as plt
+
+# internal imports
 from constants import EMG_CHANNELS
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 _MVC_KEY_BY_CHANNEL = {
     "EMG_Extensor": "extensor",
     "EMG_Flexor": "flexor",
 }
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# public functions
+# ------------------------------------------------------------------------------------------------------------------- #
 
 def get_mvc_values(subject_data, show_plot=True):
     """
@@ -55,31 +84,6 @@ def get_mvc_values(subject_data, show_plot=True):
         _plot_mvc_peak("Flexor Filt MVC (MVC condition)", flexor_filt, flexor_mvc_filt)
 
     return subject_data
-
-def _plot_mvc_peak(title, envelope, mvc_value):
-    """
-    Plot an EMG envelope signal with its maximum (MVC) value marked.
-
-    :param title: Title for the plot (e.g. "Extensor MVC (HI condition)")
-    :param envelope: Envelope signal (1D array)
-    :param mvc_value: MVC value (peak of the envelope) to highlight
-    """
-
-    peak_idx = np.argmax(envelope)
-
-    fig, ax = plt.subplots(figsize=(12, 4))
-
-    ax.plot(envelope, linewidth=0.8, label="Envelope")
-    ax.scatter(peak_idx, mvc_value, color="red", zorder=5, label=f"MVC = {mvc_value:.4f}")
-    ax.axhline(mvc_value, color="red", linestyle="--", linewidth=0.7, alpha=0.6)
-
-    ax.set_title(title)
-    ax.set_xlabel("Samples")
-    ax.legend()
-
-    plt.tight_layout()
-    plt.show()
-
 
 def normalize_emg(subject_data, show_plot=True):
     """
@@ -164,6 +168,11 @@ def normalize_emg(subject_data, show_plot=True):
 
     return subject_data
 
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# private functions
+# ------------------------------------------------------------------------------------------------------------------- #
+
 def _plot_emg_normalized(condition, envelope_signals, env_normalized_signals, filt_normalized_signals=None):
     """
     Plot envelope vs normalized (%MVC) EMG signals stacked vertically, with
@@ -219,5 +228,29 @@ def _plot_emg_normalized(condition, envelope_signals, env_normalized_signals, fi
     ax_after.legend()
 
     fig.suptitle(f"EMG Normalization - {condition}")
+    plt.tight_layout()
+    plt.show()
+
+def _plot_mvc_peak(title, envelope, mvc_value):
+    """
+    Plot an EMG envelope signal with its maximum (MVC) value marked.
+
+    :param title: Title for the plot (e.g. "Extensor MVC (HI condition)")
+    :param envelope: Envelope signal (1D array)
+    :param mvc_value: MVC value (peak of the envelope) to highlight
+    """
+
+    peak_idx = np.argmax(envelope)
+
+    fig, ax = plt.subplots(figsize=(12, 4))
+
+    ax.plot(envelope, linewidth=0.8, label="Envelope")
+    ax.scatter(peak_idx, mvc_value, color="red", zorder=5, label=f"MVC = {mvc_value:.4f}")
+    ax.axhline(mvc_value, color="red", linestyle="--", linewidth=0.7, alpha=0.6)
+
+    ax.set_title(title)
+    ax.set_xlabel("Samples")
+    ax.legend()
+
     plt.tight_layout()
     plt.show()

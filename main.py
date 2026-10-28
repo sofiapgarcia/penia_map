@@ -35,15 +35,15 @@ from processor.transfer_function import apply_transfer_functions
 from processor.emg import process_emg , get_emg_envelope
 from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
-from metrics.grip_closing_phase_detection import detect_concentric_eccentric_phases
+from algorithms.grip_closing_phase_detection import detect_concentric_eccentric_phases
 from utils import build_subject_feature_row
-from synchronization.synchronization import apply_saved_sync_indices, synchronize_hd_acquisitions
-from processor.trimming import apply_trim_indices, select_trim_regions
-from metrics.emg_normalization import get_mvc_values , normalize_emg
-from metrics.onset_detection import detect_emg_onsets
-from metrics.validate_onsets import validate_onsets
+from algorithms.synchronization import apply_saved_sync_indices
+from algorithms.trimming import apply_trim_indices
+from processor.emg_normalization import get_mvc_values , normalize_emg
+from algorithms.onset_detection import detect_emg_onsets
+from algorithms.validate_onsets import validate_onsets
 from metrics.muscle_coordination_metrics import get_muscle_coordination_metrics
-from metrics.spectral_density import get_muscle_power_spectral_density_info
+from metrics.spectral_density_metrics import get_muscle_power_spectral_density_info
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants

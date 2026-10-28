@@ -35,7 +35,7 @@ import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # internal imports
-from ml_pipeline.preprocessing.linear_regression_feature_reduction import adaptive_correlation_matrix
+from models.feature_reduction_and_linear_regression import adaptive_correlation_matrix
 from reliability_analysis_tanita.run_reliability_analysis import generate_sample_characterization_table
 
 # ------------------------------------------------------------------

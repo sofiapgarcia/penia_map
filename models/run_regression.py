@@ -10,7 +10,7 @@ import pandas as pd
 import time
 from datetime import timedelta
 # internal imports
-from ml_pipeline.preprocessing.linear_regression_feature_reduction import run_for_multiple_targets , export_results_to_excel
+from models.feature_reduction_and_linear_regression import run_for_multiple_targets , export_results_to_excel
 # ------------------------------------------------------------------------------------------------------------------- #
 
 start = time.time()

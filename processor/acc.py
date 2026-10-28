@@ -135,7 +135,7 @@ def _getAccCalibration(axis:str):
     This function works for tri-axial accelerometers.
     :return: tuple with Callibration values for the three axes.
     """
-    calib_file = np.loadtxt(r"C:\Users\Sofia\Desktop\Tese\codigo\Acc_calib_new.txt")
+    calib_file = np.loadtxt(r"/processor/Acc_calib_new.txt")
     if axis == 'x':
         C_min = min(calib_file[:, 2])
         C_max = max(calib_file[:, 2])

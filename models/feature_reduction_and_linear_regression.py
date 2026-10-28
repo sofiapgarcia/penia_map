@@ -37,7 +37,7 @@ import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # internal imports
-from ml_pipeline.preprocessing.correlation_calculation import adaptive_correlation_matrix
+from models.correlation_calculation import adaptive_correlation_matrix
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants

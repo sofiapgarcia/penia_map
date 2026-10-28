@@ -1,8 +1,25 @@
+"""
+Script to classify participants with a high BMI (>= 25) according to their body fat percentage.
+
+Participants from the Tanita file are first filtered to keep only those whose ID also exists in the final dataframe.
+Then, among participants with BMI >= 25, excess body fat is defined by a sex-specific cutoff
+(Male: >= 25%; Female: >= 35%) and each participant is assigned to one of four classes:
+    - Overweight + excess body fat
+    - Overweight + normal body fat
+    - Obesity + excess body fat
+    - Obesity + normal body fat
+
+Counts, percentages and a BMI category x body fat cross-tabulation are printed to the console.
+
+Input:  tanita.xlsx, final_dataframe.xlsx (used only to obtain the valid IDs)
+Output: console summary
+"""
+
 import numpy as np
 import pandas as pd
 
 # -----------------------------
-# FICHEIROS
+# FILES
 # -----------------------------
 
 path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
@@ -12,29 +29,29 @@ df = pd.read_excel(path_tanita)
 df_ids = pd.read_excel(path_ids)
 
 # -----------------------------
-# FILTRAR PELOS IDs
+# FILTER BY IDs
 # -----------------------------
 
-# IDs que existem no outro Excel
+# IDs that exist in the other Excel file
 valid_ids = df_ids["ID"].dropna().unique()
 
-# Manter apenas participantes do Tanita
-# que também existem no outro Excel
+# Keep only Tanita participants
+# that also exist in the other Excel file
 df = df[df["ID"].isin(valid_ids)].copy()
 
-print(f"Participantes no Tanita: {len(pd.read_excel(path_tanita))}")
-print(f"IDs no outro Excel: {len(valid_ids)}")
-print(f"Participantes após cruzamento: {len(df)}")
+print(f"Participants in Tanita: {len(pd.read_excel(path_tanita))}")
+print(f"IDs in the other Excel: {len(valid_ids)}")
+print(f"Participants after matching: {len(df)}")
 
 # -----------------------------
-# VARIÁVEIS
+# VARIABLES
 # -----------------------------
 
 bmi_col = "Body mass index (BMI)"
 fat_col = "Global fat %"
 gender_col = "Gender"
 
-# Apenas BMI >= 25
+# Only BMI >= 25
 df_bmi_high = df[df[bmi_col] >= 25].copy()
 
 # Gender: 1 = Male, 2 = Female
@@ -44,13 +61,13 @@ df_bmi_high["fat_cutoff"] = np.where(
     35
 )
 
-# Excesso de gordura
+# Excess body fat
 df_bmi_high["excess_body_fat"] = (
     df_bmi_high[fat_col] >= df_bmi_high["fat_cutoff"]
 )
 
 # -----------------------------
-# CLASSIFICAÇÃO
+# CLASSIFICATION
 # -----------------------------
 
 df_bmi_high["classification"] = np.select(

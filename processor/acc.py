@@ -20,6 +20,7 @@ _gravitational_filter(...): Estimates the gravitational component of the signal.
 # ------------------------------------------------------------------------------------------------------------------- #
 from scipy.signal import butter, filtfilt
 import numpy as np
+from pathlib import Path
 
 # internal imports
 from constants import ACC_COLUMNS_HUB , ACC_COLUMNS_HD
@@ -135,7 +136,7 @@ def _getAccCalibration(axis:str):
     This function works for tri-axial accelerometers.
     :return: tuple with Callibration values for the three axes.
     """
-    calib_file = np.loadtxt(r"/processor/Acc_calib_new.txt")
+    calib_file = calib_file = np.loadtxt(Path(__file__).resolve().parent / "Acc_calib_new.txt")
     if axis == 'x':
         C_min = min(calib_file[:, 2])
         C_max = max(calib_file[:, 2])

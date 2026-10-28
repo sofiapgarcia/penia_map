@@ -15,7 +15,7 @@ from models.feature_reduction_and_linear_regression import run_for_multiple_targ
 
 start = time.time()
 
-filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered_without_mean_variables.xlsx"
+filepath = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_filtered.xlsx"
 
 
 # 1. Load the Excel file
@@ -31,7 +31,7 @@ feature_cols = [c for c in df.columns if c not in ["ID"]]
 results = run_for_multiple_targets(
     df, feature_cols, target_cols,
     criterion="r2_adj",
-    k_max=6,
+    k_max=2,
     corr_prescreen=0.85,
     max_combinations=100_000_000,
     exclude_features={
@@ -47,7 +47,7 @@ results = run_for_multiple_targets(
     n_candidates_to_check=1000000,
     verbose=True,
 )
-export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados_k6_ant_bmd.xlsx")
+export_results_to_excel(results, r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\results\resultados.xlsx")
 
 end = time.time()
 

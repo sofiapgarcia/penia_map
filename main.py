@@ -29,7 +29,8 @@ import os
 import pandas as pd
 
 # internal imports
-from data_acquisition.data_loader import load_subject_data
+from data_loader.data_loading import load_subject_data
+from data_loader.data_visualizer import plot_sensors_over_time , plot_column_over_time , plot_interpolated_signal , plot_subject_data
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
 from processor.emg import process_emg , get_emg_envelope
@@ -176,5 +177,5 @@ for subject in subjects:
     features.append(subject_row)
 
 final_df = pd.concat(features, ignore_index=True)
-#final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
 print(f"\nFinal DataFrame exported with {len(final_df)} participants.")

@@ -25,7 +25,7 @@ import pandas as pd
 from scipy.interpolate import CubicSpline
 
 # internal imports
-from data_acquisition.data_loader import analyze_sequence
+from data_loader.data_loading import analyze_sequence
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions

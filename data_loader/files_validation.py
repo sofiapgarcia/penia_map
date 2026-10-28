@@ -3,8 +3,8 @@ import os
 import matplotlib.pyplot as plt
 
 # internal imports
-from data_acquisition.data_loader import load_subject_data, analyze_sequence
-from data_acquisition.data_visualizer import plot_sensors_over_time
+from data_loader.data_loading import load_subject_data, analyze_sequence
+from data_loader.data_visualizer import plot_sensors_over_time
 
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
 

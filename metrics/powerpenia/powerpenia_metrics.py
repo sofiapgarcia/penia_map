@@ -11,31 +11,25 @@ by body mass and height squared, using anthropometric data from the input DataFr
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
-from pathlib import Path
 import pandas as pd
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# file specific constants
-# ------------------------------------------------------------------------------------------------------------------- #
-# Path to the peak power Excel file
-PEAK_POWER_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\features_power_dyna_valids.xlsx")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def add_normalized_peak_power_columns(df: pd.DataFrame) -> pd.DataFrame:
+def add_normalized_peak_power_columns(df: pd.DataFrame, dyna_power_metrics_excel: str) -> pd.DataFrame:
     """
     Read the peak power Excel file and add normalized peak power columns using
     the body mass and height from the input DataFrame.
 
 
     :param df: Input DataFrame containing the subject ID, body mass, and height
+    :param dyna_power_metrics_excel: Path to power and dyna metrics
     :return: Peak power DataFrame with the normalized peak power columns added
 
     """
 
-    peak_power_df = pd.read_excel(PEAK_POWER_EXCEL_PATH)
+    peak_power_df = pd.read_excel(dyna_power_metrics_excel)
 
     # Rename ID columns to a common name
     peak_power_df = peak_power_df.rename(columns={peak_power_df.columns[0]: "ID"})

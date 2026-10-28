@@ -1,4 +1,3 @@
-from dynapenia.dynapenia_metrics import add_max_column_from_excel
 from sarcopenia.sarcopenia_metrics import add_almi
 from powerpenia.powerpenia_metrics import add_normalized_peak_power_columns
 from osteopenia.osteopenia_metrics import add_bone_variables
@@ -6,7 +5,8 @@ from osteopenia.osteopenia_metrics import add_bone_variables
 import pandas as pd
 
 path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
-output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe_valids.xlsx"
+path_power_dyna = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\features_power_dyna.xlsx"
+output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
 
 # ---------------------------------------------------------------------
 # Read the anthropometric data
@@ -34,7 +34,7 @@ df_ant["Gender"] = df_ant["Gender"].replace({2: 0})
 # ---------------------------------------------------------------------
 
 sarco = add_almi()
-power = add_normalized_peak_power_columns(df_ant)
+power = add_normalized_peak_power_columns(df_ant, path_power_dyna)
 osteo = add_bone_variables()
 
 # ---------------------------------------------------------------------

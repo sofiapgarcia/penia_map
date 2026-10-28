@@ -56,14 +56,14 @@ LOGO_PROJECT = ICONS_DIR / "logos.png"
 TEMPLATE_FILE = BASE / "participant_reports" / "template_report_2.html"
 
 # None -> generate for ALL participants.
-# Otherwise: exactly the value in the "Name" column (e.g. "Sujeito 125" or "125").
+# Otherwise: exactly the value in the "Name" column
 TEST_PARTICIPANT = "Francisco Miguel Latas Figueira"
 
 # Column names in the participants sheet (left = internal key, right = YOUR column name)
 COL = {
     "name": "Name",
     "date": "Data",
-    "sex": "Gender",                                   # <-- NEW: check this column name
+    "sex": "Gender",
     "chrono_age": "Age (y)",
     "bio_age": "Estimated metabolic age",
     "age_group": "Age group (MeSH)",
@@ -265,7 +265,9 @@ def build_context(row, samples):
     ref_note = (
         f"* O seu grupo corresponde aos participantes do sexo "
         f"{SEX_ADJ[sex]} da mesma faixa etária ({age_group_name}). "
-        "A faixa etária foi definida com base na idade cronológica."
+        "A faixa etária foi definida com base na idade cronológica, "
+        "segundo os critérios de classificação etária do MeSH "
+        "(Medical Subject Headings)."
     )
     radar_intro = (
         "Ligados entre si, os quatro pontos dos seus resultados formam a sua própria <b>constelação</b>. "

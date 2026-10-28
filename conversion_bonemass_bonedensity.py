@@ -24,7 +24,9 @@ What this script does:
 
   8. Prints and saves the final equation.
 """
-
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import os
 
 import numpy as np
@@ -32,7 +34,7 @@ import pandas as pd
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-# IMPORT THE CORRELATION FUNCTION
+# internal imports
 from ml_pipeline.preprocessing.linear_regression_feature_reduction import adaptive_correlation_matrix
 from reliability_analysis_tanita.run_reliability_analysis import generate_sample_characterization_table
 
@@ -54,8 +56,6 @@ print(f"\nDXX_B raw rows (all 5 imputations per participant): {dxx.shape[0]}")
 # NHANES documentation, DXX_B codebook:
 # "the data file contains 5 records for each survey participant...
 #  Only 1 record should be used in calculating sample sizes."
-# SAS example given in the docs:
-#   merge dexa.dxx_b (where=(_mult_ = 1)) work.demo;
 
 if "_MULT_" in dxx.columns:
     dxx = dxx[dxx["_MULT_"] == 1].reset_index(drop=True)
@@ -155,7 +155,7 @@ model_vars = [v for v in model_vars if v in df.columns]
 
 df_model = df[model_vars].dropna().reset_index(drop=True)
 
-#generate_sample_characterization_table(df_model, age_col="Age", gender_col="Gender", bmi_col="BMI")
+generate_sample_characterization_table(df_model, age_col="Age", gender_col="Gender", bmi_col="BMI")
 # ------------------------------------------------------------------
 # 6. RECODE GENDER
 # ------------------------------------------------------------------

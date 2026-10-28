@@ -1,27 +1,67 @@
+"""
+Feature extraction pipeline for the handgrip (HD/HI) acquisitions.
+
+For each subject folder (S*) in the data directory, the script loads the raw
+acquisitions and processes them step by step:
+
+    1. Signal preprocessing: transfer functions, interpolation of missing
+       samples, EMG filtering and force processing.
+    2. Alignment: synchronization of the HD acquisitions and trimming of the
+       regions of interest.
+    3. Kinematics: detection of the grip closing and opening phases and
+       peak power calculation.
+    4. EMG analysis: envelope extraction, normalization to MVC, onset
+       detection and validation.
+    5. Muscle metrics: muscle coordination and spectral features
+       for HD and HI conditions.
+
+The per-subject features (power, isometric HI values, coordination and
+spectral metrics) are gathered into a single DataFrame with one row per
+participant, ready to be exported to Excel.
+
+Input:  folder with one sub-folder per subject (S1, S2, ...)
+Output: DataFrame `final_df`
+"""
+# ------------------------------------------------------------------------------------------------------------------- #
+# imports
+# ------------------------------------------------------------------------------------------------------------------- #
 import os
 import pandas as pd
 
+# internal imports
 from data_acquisition.data_loader import load_subject_data
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
-from processor.emg import process_emg
+from processor.emg import process_emg , get_emg_envelope
 from processor.load_cell import process_force
 from metrics.powerpenia.peak_power_calculation import process_hd_power
 from metrics.grip_closing_phase_detection import detect_concentric_eccentric_phases
 from utils import build_subject_feature_row
+from synchronization.synchronization import apply_saved_sync_indices, synchronize_hd_acquisitions
+from processor.trimming import apply_trim_indices, select_trim_regions
+from metrics.emg_normalization import get_mvc_values , normalize_emg
+from metrics.onset_detection import detect_emg_onsets
+from metrics.validate_onsets import validate_onsets
+from metrics.muscle_coordination_metrics import get_muscle_coordination_metrics
+from metrics.spectral_density import get_muscle_power_spectral_density_info
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# file specific constants
+# ------------------------------------------------------------------------------------------------------------------- #
 path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
-
-
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","HI_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
+# if only 1 subject to analyse
 #subjects = ["S129"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
-subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"]
-subjects_with_signals_bad_quality = ["S21"]
-subjects_with_strange_noise = ["S1","S82","S109","S11","S121","S126","S128","S133","S37","S45"]
+subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"] # valids but with no calibration
+subjects_with_signals_bad_quality = ["S21"] # missing samples in one repetion of HD
+subjects_with_strange_noise = ["S1","S82","S109","S11","S121","S126","S128","S133","S37","S45"] # similar to ecg signal
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# main processing loop
+# ------------------------------------------------------------------------------------------------------------------- #
 
 features = []
 
@@ -29,13 +69,11 @@ for subject in subjects:
 
     subject_number = int(subject.replace("S", ""))
     """
-    if subject in ["S107","S53","S39","129","S130","S25","S84"]:
+    if subject in ["S107","S53","S39","129","S130"]: # without HD condition
         continue
     if subject in subjects_with_no_calibration:
         continue
     """
-    if subject in ["S107","S39"]: # 107 nao tem HD e 39 nao tem displacement
-        continue
 
     print(f"\n{'='*60}")
     print(f"Processing {subject}")
@@ -76,12 +114,8 @@ for subject in subjects:
         # plot the interpolated signal
         """
         for column in df_interpolated.columns:
-            if condition == "MVC":
-                plot_interpolated_signal(df_interpolated, mask, column)
+            plot_interpolated_signal(df_interpolated, mask, column)
         """
-
-
-
         # Process emg signal
         df_processed = process_emg(df_interpolated, fs)
 
@@ -91,75 +125,56 @@ for subject in subjects:
         # Update dictionary
         subject_data[condition]["data"] = df_processed
 
+        # plot sensors or specific column
 
-        #if condition!="HD":
-            #plot_sensors_over_time(params, df_processed)
-            #plot_column_over_time(params, df_processed, "EMG_Extensor_filt")
-            #plot_column_over_time(params, df_processed, "EMG_Flexor_filt")
-
-
+        #plot_sensors_over_time(params, df_processed)
+        #plot_column_over_time(params, df_processed, "EMG_Extensor_filt")
+        #plot_column_over_time(params, df_processed, "EMG_Flexor_filt")
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_hd_acquisitions(subject_data,column_hd="gACCy",column_hd_emg="target",subject_folder=os.path.join(path, subject))
-    #subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
+    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # Trim data
     # Interactively select and save trim regions for this subject
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
-    #subject_data_sync = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
+    subject_data_trim = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
-    subject_data_sync = subject_data
-    # concentric phase detection
-    subject_data_phases = detect_concentric_eccentric_phases(subject_data_sync, show_plot=False)
+
+    # grip closing phase detection
+    subject_data_phases = detect_concentric_eccentric_phases(subject_data_trim, show_plot=False)
 
     # peak power calculation
-    power_info = process_hd_power(subject_data_sync, show_plot=False)
+    power_info = process_hd_power(subject_data_phases, show_plot=False)
 
-    # calculate envelope
-    #subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
+    # calculate emg envelope
+    subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
 
     # Get MVC values
-    #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
 
     # Normalize EMG signals
-    #subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
+    subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
 
     # Onset information
+    onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+    onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
 
-    #onset_hd , onset_hi = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+    # Muscle coordination
+    coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
 
-    #onset_hd , onset_hi = validate_onsets(subject_data_normalized, onset_hd, onset_hi, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
+    # Spectral metrics
+    band_power_hd , band_power_hi = get_muscle_power_spectral_density_info(subject_data_normalized, onset_hd, onset_hi, power_info)
 
-    #coord_hd , coord_hi = get_muscle_coordination_metrics(subject_data_normalized, onset_hd, onset_hi, power_info)
-
-    #scalogram_hd , scalogram_hi = get_muscle_scalogram_info(subject_data_normalized,onset_hd, onset_hi, power_info, show_scalogram_plot=False)
-
-    #band_power_hd , band_power_hi = get_muscle_power_spectral_density_info(subject_data_normalized, onset_hd, onset_hi, power_info)
-    subject_data_normalized = subject_data_phases
+    # Isometric values
     hi_values = subject_data_normalized.get("HI_values")
 
-    subject_row = build_subject_feature_row(subject_number, power_info, hi_values)
+    # Total metrics
+    subject_row = build_subject_feature_row(subject_number, power_info, hi_values, coord_hd, coord_hi, band_power_hd, band_power_hi)
 
     features.append(subject_row)
 
 final_df = pd.concat(features, ignore_index=True)
-#final_df.to_excel(os.path.join(path, "features_power_dyna_valids.xlsx"), index=False)
-print(f"\nExportado dataframe final com {len(final_df)} sujeitos.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+print(f"\nFinal DataFrame exported with {len(final_df)} participants.")

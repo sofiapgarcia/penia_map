@@ -56,8 +56,8 @@ subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path
 # if only 1 subject to analyse
 #subjects = ["S129"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
-subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"] # valids but with no calibration
-subjects_with_signals_bad_quality = ["S21"] # missing samples in one repetion of HD
+subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"] # valids but with no displacement calibration
+subjects_with_signals_bad_quality = ["S21"] # missing samples in one repetition of HD
 subjects_with_strange_noise = ["S1","S82","S109","S11","S121","S126","S128","S133","S37","S45"] # similar to ecg signal
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -70,7 +70,7 @@ for subject in subjects:
 
     subject_number = int(subject.replace("S", ""))
     """
-    if subject in ["S107","S53","S39","129","S130"]: # without HD condition
+    if subject in ["S107","S53","S39","S129","S130"]: # without HD condition
         continue
     if subject in subjects_with_no_calibration:
         continue

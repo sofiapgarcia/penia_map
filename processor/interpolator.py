@@ -3,18 +3,15 @@ Functions to interpolate the data.
 
 Available Functions
 -------------------
-
 [Public]
 interpolate_signal(...): Fill missing samples and interpolate signal values.
-fill_missing_samples(...): Detects sequence gaps and inserts missing samples
-interpolate_missing_values(...): Interpolates sensor signals using spline and linear methods
 
 [Private]
-_fill_nan_linear(...): Applies linear interpolation to signal columns
-_fill_acc_nan_spline(...): Applies cubic spline interpolation to accelerometer signals
-_create_missing_rows(...): Creates placeholder rows for detected sequence gaps
-_insert_missing_rows(...): Inserts generated missing rows into the DataFrame
-_unfold_sequence_counter(...): Converts wrapped nSeq counter into a continuous sequence
+_fill_missing_samples(...): Detects sequence gaps and inserts missing samples.
+_interpolate_missing_values(...): Interpolates missing values in all signal columns.
+_create_missing_rows(...): Creates placeholder rows for detected sequence gaps.
+_insert_missing_rows(...): Inserts generated missing rows into the DataFrame.
+_unfold_sequence_counter(...): Converts wrapped nSeq counter into a continuous sequence.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -22,7 +19,6 @@ _unfold_sequence_counter(...): Converts wrapped nSeq counter into a continuous s
 # ------------------------------------------------------------------------------------------------------------------- #
 import numpy as np
 import pandas as pd
-from scipy.interpolate import CubicSpline
 
 # internal imports
 from data_loader.data_loading import analyze_sequence
@@ -34,13 +30,9 @@ from data_loader.data_loading import analyze_sequence
 def interpolate_signal(df):
     """
     Fill missing samples and interpolate signal values.
-
-    Combines gap detection/filling (fill_missing_samples) with
-    interpolation (interpolate_missing_values) into a single step.
-
+    Combines gap detection/filling with linear interpolation.
     :param df: Input DataFrame containing the nSeq sequence counter and signal columns
-    :return: Tuple containing the interpolated DataFrame, sequence analysis information,
-             and a boolean mask DataFrame marking interpolated values
+    :return: Tuple containing the interpolated DataFrame, sequence analysis information, and an interpolation mask
     """
 
     df_filled, info = _fill_missing_samples(df)
@@ -100,100 +92,24 @@ def _fill_missing_samples(df):
 
 def _interpolate_missing_values(df):
     """
-    Interpolate missing values according to signal type.
-
-    Accelerometer channels (x, target, z) are interpolated using cubic spline,
-    while all remaining signal channels are interpolated using linear interpolation.
-
+    Interpolate missing values in all signal columns using linear interpolation.
     :param df: Input DataFrame containing sensor signals
     :return: DataFrame with interpolated missing values
     """
-
     df_filled = df.copy()
 
-    # Accelerometer channels
-    ACC_COLUMNS = ["x", "y", "z", "gACCx", "gACCy", "gACCz"]
-
-    acc_columns = [
-        column
-        for column in ACC_COLUMNS
-        if column in df.columns
-    ]
-
-    # All remaining signal columns except sequence counter
-    other_columns = [
+    signal_columns = [
         column
         for column in df.columns
         if column != "nSeq"
-        and column not in acc_columns
     ]
 
-    # Apply cubic spline to accelerometer
-    if acc_columns:
-
-        df_filled = _fill_nan_linear(df_filled, acc_columns)
-
-    # Apply linear interpolation to all other signals
-    if other_columns:
-        df_filled = _fill_nan_linear(df_filled, other_columns)
+    df_filled[signal_columns] = df_filled[signal_columns].interpolate(
+        method="linear"
+    )
 
     return df_filled
 
-def _fill_nan_linear(df, columns):
-    """
-    Fill missing values in signal columns using linear interpolation.
-
-    ```
-    :param df: Input DataFrame containing signal columns
-    :param columns: Columns to interpolate
-    :return: DataFrame with interpolated values
-    """
-
-    df_filled = df.copy()
-
-
-    for column in columns:
-
-        df_filled[column] = (
-            df_filled[column]
-            .interpolate(
-                method="linear"
-            )
-        )
-
-    return df_filled
-
-def _fill_acc_nan_spline(df, acc_columns):
-    """
-    Fill missing values in accelerometer signals using natural cubic spline interpolation.
-
-    ```
-    :param df: Input DataFrame containing accelerometer signals
-    :param acc_columns: List of accelerometer column names
-    :return: DataFrame with accelerometer NaN values filled
-    """
-
-    df_filled = df.copy()
-
-
-    x = np.arange(len(df_filled))
-
-
-    for column in acc_columns:
-
-        y = df_filled[column].values
-        valid = ~np.isnan(y)
-
-        spline = CubicSpline(
-            x[valid],
-            y[valid],
-            bc_type="natural"
-        )
-
-        df_filled[column] = spline(x)
-
-
-    return df_filled
 
 def _create_missing_rows(df, invalid_jumps):
     """
@@ -243,7 +159,6 @@ def _create_missing_rows(df, invalid_jumps):
             )
 
     return missing_rows
-
 
 
 def _insert_missing_rows(df, missing_rows):

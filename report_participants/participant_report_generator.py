@@ -92,6 +92,9 @@ COL = {
     "bone_mass": "Estimated bone mass kg",
     "water": "Global body water %",
     "calories": "Daily calorie intake (DCI)",
+    "rel_muscle_mass": "rel_muscle_mass",
+    "rel_grip": "rel_grip",
+    "rel_peak_power": "rel_peak_power",
 }
 
 SEX_FEMALE, SEX_MALE = "Female", "Male"
@@ -141,12 +144,42 @@ MEASURES = [
          short="Pico de potência", det="o pico de potência", unit="W", dec=2, trim=False,
          meaning="A rapidez com que consegue gerar força de preensão com a mão."),
 ]
-LEVELS = {"low": "Baixo", "mid": "Médio", "high": "Alto"}
+LEVELS = {"low": "Abaixo da média", "mid": "Na média", "high": "Acima da média"}   # absolutos
+LEVELS_REL = {"low": "Baixo", "mid": "Médio", "high": "Alto"}                      # relativos
+
+# Relative measures (normalised by body mass). BMD is kept: it is already per area.
+MEASURES_REL = [
+    dict(key="rel_muscle_mass", penia="Sarcopenia", icon="sarcopenia", name="Índice de massa muscular",
+         short="Massa muscular / altura²", det="o índice de massa muscular", unit="kg/m²", dec=1, trim=False,
+         meaning="Massa muscular ajustada à altura"),
+    dict(key="rel_grip", penia="Dinapenia", icon="dynapenia", name="Força de preensão relativa",
+         short="Força / massa corporal", det="a força de preensão relativa", unit="kg/kg", dec=2, trim=False,
+         meaning="Força de preensão ajustada à massa corporal"),
+    MEASURES[2],   # bmd (unchanged)
+    dict(key="rel_peak_power", penia="Powerpenia", icon="powerpenia", name="Pico de potência relativo",
+         short="Potência / massa corporal", det="o pico de potência relativo", unit="W/kg", dec=2, trim=False,
+         meaning="Pico de potência ajustado à massa corporal"),
+]
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
+def add_relative_columns(df):
+    """
+    Add the normalised columns used by the relative radar: muscle mass / height² (kg/m²),
+    grip strength and peak power / body mass.
 
+    :param df: DataFrame with all participants
+    :return: Copy of df with the relative columns added
+    """
+    df = df.copy()
+    num = lambda k: pd.to_numeric(df[COL[k]], errors="coerce")
+    h2 = (num("height") / 100) ** 2
+    w = num("weight")
+    df[COL["rel_muscle_mass"]] = num("muscle_mass") / h2
+    df[COL["rel_grip"]] = num("grip_strength") / w
+    df[COL["rel_peak_power"]] = num("peak_power") / w
+    return df
 
 def normalize_sex(value):
     """
@@ -173,7 +206,7 @@ def build_samples(participants):
     df["_group"] = df[COL["age_group"]].astype(str).str.strip()
     df["_sex"] = df[COL["sex"]].map(lambda v: SEX_MAP.get(_sex_key(v)))
     by_group, by_sex = {}, {}
-    for m in MEASURES:
+    for m in MEASURES + MEASURES_REL:
         df["_v"] = pd.to_numeric(df[COL[m["key"]]], errors="coerce")
         for (grp, sex), s in df.groupby(["_group", "_sex"])["_v"]:
             s = s.dropna()
@@ -204,7 +237,7 @@ def get_sample(samples, group, sex, key):
     return arr
 
 
-def classify(value, sample, key):
+def classify(value, sample, key, levels=LEVELS):
     """
     Compute the percentile of a value within its reference sample and map it to a tercile (Baixo / Médio / Alto).
 
@@ -219,7 +252,7 @@ def classify(value, sample, key):
     v = float(value)
     pct = ((sample < v).sum() + 0.5 * (sample == v).sum()) / len(sample)    # 0..1
     level = "low" if pct < 1 / 3 else "high" if pct > 2 / 3 else "mid"
-    return dict(pct=pct, level=level, label=LEVELS[level], frac=pct, pos=round(pct * 100, 1))
+    return dict(pct=pct, level=level, label=levels[level], frac=pct, pos=round(pct * 100, 1))
 
 
 def build_context(row, samples):
@@ -239,17 +272,8 @@ def build_context(row, samples):
     age_group_name = GROUP_DISPLAY.get(group_label, group_label)
 
     # --- 4 main measures: value, reference, classification ---
-    items = []
-    for m in MEASURES:
-        value = g(m["key"])
-        sample = get_sample(samples, group_label, sex, m["key"])
-        cls = classify(value, sample, m["key"])
-        mean = sample.mean()
-        items.append(dict(
-            **m, **cls,
-            value_txt=f"{_fmt_measure(m, value)} {m['unit']}",
-            ref_txt=f"{_fmt_fixed(mean, m['dec'])} {m['unit']}",
-        ))
+    items = _build_items(MEASURES, g, group_label, sex, samples, LEVELS)
+    items_rel = _build_items(MEASURES_REL, g, group_label, sex, samples, LEVELS_REL)
 
     measures = [dict(name=i["name"], meaning=i["meaning"], icon=_icon_uri(i["icon"]),
                      value=i["value_txt"], ref=i["ref_txt"],
@@ -258,9 +282,9 @@ def build_context(row, samples):
 
     sex_pl = SEX_DISPLAY[sex].lower()
     legend = [
-        dict(label="Baixo", text="Os seus valores encontram-se no terço mais baixo do grupo."),
-        dict(label="Médio", text="Os seus valores encontram-se no terço intermédio do grupo."),
-        dict(label="Alto", text="Os seus valores encontram-se no terço mais alto do grupo."),
+        dict(label=LEVELS["low"], text="Os seus valores encontram-se no terço mais baixo do grupo."),
+        dict(label=LEVELS["mid"], text="Os seus valores encontram-se no terço intermédio do grupo."),
+        dict(label=LEVELS["high"], text="Os seus valores encontram-se no terço mais alto do grupo."),
     ]
     ref_note = (
         f"* O seu grupo corresponde aos participantes do sexo "
@@ -271,8 +295,16 @@ def build_context(row, samples):
     )
     radar_intro = (
         "Ligados entre si, os quatro pontos dos seus resultados formam a sua própria <b>constelação</b>. "
+        "Estes são valores absolutos, ou seja, não têm em conta o tamanho do corpo. "
         "Valores mais elevados tendem a refletir características musculares e ósseas mais favoráveis. "
         "A zona cinzenta representa o intervalo médio de "
+        f"{sex_pl} da sua faixa etária."
+    )
+    radar_rel_intro = (
+        "Para uma comparação mais justa entre pessoas de tamanhos diferentes, este segundo mapa ajusta os "
+        "resultados ao tamanho do corpo: a massa muscular é dividida pela altura ao quadrado, e a força de "
+        "preensão e o pico de potência pela massa corporal. A densidade mineral óssea "
+        "mantém-se igual, por já ser expressa por área. A zona cinzenta representa o intervalo médio de "
         f"{sex_pl} da sua faixa etária."
     )
 
@@ -298,7 +330,7 @@ def build_context(row, samples):
     info_know_more = ("Os resultados completos deste estudo farão parte da dissertação de mestrado da Universidade Nova de Lisboa, "
                       "intitulada <i>“Penia Map: Integrating Muscle-Based Biomarkers for Predicting Biological Age”</i>. Se tiver interesse "
                       f"em ser {info_know_more_sex[sex]} quando estiver disponível, ou se tiver qualquer questão sobre este relatório ou sobre o estudo, "
-                      "contacte a equipa de investigação.")
+                      "contacte sp.garcia@campus.fct.unl.pt.")
 
     return dict(
         name=g("name"),
@@ -321,7 +353,10 @@ def build_context(row, samples):
         legend=legend,
         ref_note=ref_note,
         radar_intro=radar_intro,
-        radar_uri=_build_radar_uri(items),
+        level_labels=[LEVELS["low"], LEVELS["mid"], LEVELS["high"]],
+        radar_rel_intro=radar_rel_intro,
+        radar_uri=_build_radar_uri(items, axis=("Acima", "Na média", "Abaixo"), split_label=True),
+        radar_rel_uri=_build_radar_uri(items_rel),
         declines=[
             dict(name="Sarcopenia", desc="Perda de massa muscular", icon=_icon_uri("sarcopenia")),
             dict(name="Dinapenia", desc="Perda de força muscular", icon=_icon_uri("dynapenia")),
@@ -352,7 +387,7 @@ def main():
 
     :return: None
     """
-    all_participants = pd.read_excel(EXCEL_FILE)
+    all_participants = add_relative_columns(pd.read_excel(EXCEL_FILE))
     samples = build_samples(all_participants)         # always from the full sample
 
     participants = all_participants
@@ -520,6 +555,28 @@ def _build_timeline(chrono, bio):
     pb = pos(bio)
     return dict(chrono=50, bio=round(pb, 1), left=round(min(50, pb), 1), width=round(abs(pb - 50), 1), ticks=ticks)
 
+def _build_items(measures, g, group_label, sex, samples, levels=LEVELS):
+    """
+    Value, reference mean and tercile classification for a list of measures.
+
+    :param measures: List of measure definitions (MEASURES or MEASURES_REL)
+    :param g: Function key -> row value
+    :param group_label: Age group label (MeSH)
+    :param sex: SEX_FEMALE or SEX_MALE
+    :param samples: Tuple (by_group, by_sex) returned by build_samples
+    :return: List of dicts (measure info + classification + formatted texts)
+    """
+    items = []
+    for m in measures:
+        value = g(m["key"])
+        sample = get_sample(samples, group_label, sex, m["key"])
+        cls = classify(value, sample, m["key"], levels)
+        items.append(dict(
+            **m, **cls,
+            value_txt=f"{_fmt_measure(m, value)} {m['unit']}",
+            ref_txt=f"{_fmt_fixed(sample.mean(), m['dec'])} {m['unit']}",
+        ))
+    return items
 
 def _build_space_uri():
     """
@@ -594,7 +651,7 @@ def _build_rocket_uri(flip=False):
     return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
-def _build_radar_uri(items):
+def _build_radar_uri(items, axis=("Alto", "Médio", "Baixo"), split_label=False):
     """
     Build the 4-axis radar chart as an SVG data-URI. Items are in MEASURES order: top, right, bottom, left.
 
@@ -633,7 +690,8 @@ def _build_radar_uri(items):
         return (f'<polygon points="{coords}" fill="{fill}" stroke="{stroke}" '
                 f'stroke-width="{sw}" stroke-linejoin="round"/>')
 
-    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 445" width="640" height="445" '
+    H = 445 + (17 if split_label else 0)
+    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 {H}" width="640" height="{H}" '
            f'font-family="Helvetica, Arial, sans-serif">']
 
     # --- decorative background: orbit, sparkles, mini constellation ---
@@ -663,7 +721,7 @@ def _build_radar_uri(items):
     svg.append(f'<line x1="{cx}" y1="{cy - R}" x2="{cx}" y2="{cy + R}" stroke="#888780" stroke-width="1"/>')
     svg.append(f'<line x1="{cx - R}" y1="{cy}" x2="{cx + R}" y2="{cy}" stroke="#888780" stroke-width="1"/>')
 
-    for txt, f in (("Alto", (1 + hi) / 2), ("Médio", 0.5), ("Baixo", lo / 2)):
+    for txt, f in zip(axis, ((1 + hi) / 2, 0.5, lo / 2)):
         svg.append(f'<text x="{cx + 8}" y="{cy - R * f + 4:.1f}" font-size="11" fill="#555">{txt}</text>')
 
     svg.append(f'<polygon points="{pts([i["frac"] for i in items])}" fill="#94aef7" fill-opacity="0.55" '
@@ -677,10 +735,13 @@ def _build_radar_uri(items):
 
     # labels: penia name / measure / value · classification
     for i, d in zip(items, dirs):
-        lines = [(i["penia"], 15, "700", "#111"), (i["short"], 12, "400", "#444"),
-                 (f'{i["value_txt"]} · {i["label"]}', 12, "700", "#27367a")]
+        lines = [(i["penia"], 15, "700", "#111"), (i["short"], 12, "400", "#444")]
+        if split_label:
+            lines += [(i["value_txt"], 12, "700", "#27367a"), (i["label"], 12, "700", "#27367a")]
+        else:
+            lines += [(f'{i["value_txt"]} · {i["label"]}', 12, "700", "#27367a")]
         if d == (0, -1):
-            anchor, x, y0 = "middle", cx, cy - R - 52
+            anchor, x, y0 = "middle", cx, cy - R - 17 * len(lines) - 1
         elif d == (0, 1):
             anchor, x, y0 = "middle", cx, cy + R + 26
         elif d == (1, 0):

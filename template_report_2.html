@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --blue:#94aef7; --blue-light:#e2e8fd; --blue-mid:#c5d2fc; --blue-dark:#4f6fd6; --navy:#27367a; --green:#ccf79a; --green-text:#9ccc65; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Inter","Helvetica Neue",Arial,sans-serif; font-size:10.5pt; color:#111; }
+  .page { width:210mm; height:297mm; padding:12mm 13mm; page-break-after:always; position:relative; overflow:hidden; }
+  .page:last-child { page-break-after:auto; }
+  h1,h2,h3 { font-family: "DM Serif Display", Georgia, "Times New Roman", serif; font-weight:400; margin:0; }
+  p { text-align:justify; line-height:1.25; margin:0 0 4mm 0; }
+
+.page-foot { position:absolute; left:13mm; right:13mm; bottom:6mm; display:flex;
+             justify-content:space-between; font-size:7.5pt; color:#6b78a8;
+             border-top:0.3mm solid var(--blue-mid); padding-top:1.5mm; }
+  .identification { display:flex; justify-content:space-between; margin:4mm 5mm 3mm; font-size:11pt; }
+  .identification b { font-size:14pt; }
+  h2 { font-size:22pt; margin:5mm 0 2mm; }
+  h2.center { text-align:center; font-size:22pt; margin:3mm 0 2mm;}
+.header { border-radius:10mm; text-align:center; padding:5mm 8mm 6mm; }
+.header .sup { font-family:Georgia,serif; color:#fff; font-size:15pt; }
+.header h1 { font-size:20pt; line-height:1.05; margin-top:2mm; color:#fff; }
+  .green-box { background:var(--green); border-radius:9mm; padding:5mm 7mm; }
+  .green-box p { margin:0; }
+.scale-note {
+  font-size: 8.5pt;
+  color: #666;
+  margin: 1mm 1mm 3mm;
+  text-align: left;}
+.space-box { display:flex; align-items:center; gap:5mm; background:var(--blue-light);
+             border-radius:9mm; padding:3mm 7mm 2mm; margin:3mm 0 0; }
+.space-text { flex:1; }
+.space-box p { margin:0 0 1mm 0; }
+.space-art { flex:none; width:32mm; height:auto; display:block; }
+.space-box p { margin:0 0 1mm 0; }
+.space-tag { display:inline-block; background:var(--navy); color:#fff; border-radius:4mm;
+             padding:0.8mm 4mm; margin-bottom:2mm; font-weight:600; font-size:9.5pt; }
+
+  .declines { display:flex; justify-content:space-between; margin:3mm 0 2mm; text-align:center; }
+  .decline { width:23%; }
+.icon { width:22mm; height:22mm; border-radius:50%; background:var(--blue); border:1.2mm solid #cfeef0; margin:0 auto 2mm; overflow:hidden; padding:2.5mm; }
+  .icon img { width:100%; height:100%; object-fit:contain; display:block; }
+  .tag { background:var(--blue-light); border-radius:5mm; padding:1.5mm 0; font-weight:600; font-size:11pt; margin-bottom:2mm; }
+  .decline span { font-size:10pt; line-height:1.15; display:block; }
+
+  /* ---------- page 2: idades + tabela ---------- */
+  .timeline { position:relative; height:38mm; margin:3mm 6mm 1mm; }
+  .tl-track { position:absolute; left:0; right:0; top:16mm; height:1mm; background:var(--blue-mid); border-radius:1mm; }
+.tl-rocket { position:absolute; top:12.5mm; width:13mm; height:7mm; margin-left:-6.5mm; display:block; }
+  .tl-tick { position:absolute; top:14.5mm; width:0.3mm; height:4mm; margin-left:-0.15mm; background:#8c9bd0; }
+  .tl-tick.major { top:13.5mm; height:6mm; width:0.5mm; margin-left:-0.25mm; background:#5b6aa8; }
+  .tl-num { position:absolute; top:20mm; width:10mm; margin-left:-5mm; text-align:center; font-size:8pt; color:#555; }
+  .accel-explain { font-size:9pt; color:#444; text-align:center; margin:2mm 0 4mm; }
+  .tl-span { position:absolute; top:15mm; height:3mm; background:var(--green); border-radius:1.5mm; }
+  .tl-dot { position:absolute; top:13.5mm; width:6mm; height:6mm; margin-left:-3mm; border-radius:50%; }
+  .tl-dot-chrono { background:#fff; border:1.2mm solid var(--blue-dark); }
+  .tl-dot-bio { background:var(--navy); border:1.2mm solid #fff; }
+  .tl-label { position:absolute; width:44mm; margin-left:-22mm; text-align:center; line-height:1.2; }
+  .tl-label span { display:block; font-size:9.5pt; font-weight:700; }
+  .tl-label b { display:block; font-size:15pt; font-weight:600; }
+  .tl-top { top:0; }
+  .tl-bottom { top:25mm; }
+.sign-off { font-family:Georgia,serif; font-style:italic; font-size:12pt; color:var(--navy); text-align:left; margin:1mm 0 0; }
+  .accel { text-align:center; margin:0 0 3mm; }
+  .accel-label { font-weight:700; font-size:10pt; margin-right:3mm; }
+  .accel-val { background:var(--green); border-radius:5mm; padding:1.5mm 7mm; font-size:15pt; }
+  .disclaimer { font-size:8.5pt; color:#444; text-align:center; font-style:italic; margin:0 0 4mm 0; }
+
+  table { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:2.2mm; }
+  th:nth-child(1){width:27%} th:nth-child(2){width:16%} th:nth-child(3){width:17%} th:nth-child(4){width:34%}
+  th {background: var(--blue);padding: 3.5mm 2mm;font-size: 10.5pt;text-align: center;    vertical-align: middle;}
+  th small { font-weight:400; font-size:8.5pt; display:block; }
+  td { background:var(--blue-light); text-align:center; padding:3.5mm 3mm; font-size:10.5pt; vertical-align:middle; }
+  td.measure { background:var(--blue-mid); }
+  .m-icon { width:10mm; height:10mm; border-radius:50%; background:var(--blue); border:0.6mm solid #cfeef0; margin:0 auto 1.5mm; overflow:hidden; padding:1.2mm; }
+  .m-icon img { width:100%; height:100%; object-fit:contain; display:block; }
+  .m-name { font-weight:700; font-size:10pt; line-height:1.15; margin-bottom:1mm; }
+  .m-meaning { font-size:8.5pt; line-height:1.15; }
+  td.value { font-weight:600; font-size:10.5pt; white-space:nowrap; }
+
+  .bar-wrap {position: relative; margin: 2mm 3mm 0;}
+.bar {display: flex;height: 3.6mm;gap: 1.2mm;}
+.seg {background: #fff;height: 3.6mm;min-width: 0;}
+.seg.low {border-radius: 2mm 0 0 2mm;}
+.seg.mid {margin:0;}
+.seg.high {border-radius: 0 2mm 2mm 0;}
+.seg.on {background: var(--blue-dark);}
+  .marker { position:absolute; top:-0.2mm; width:4mm; height:4mm; margin-left:-2mm; border-radius:50%; background:var(--navy); border:0.8mm solid #fff; }
+  .bar-labels { display:flex; margin:1.6mm 3mm 0; font-size:8pt; color:#444; }
+  .bar-labels span { text-align:center; }
+.legend3 { display:flex; gap:3mm; margin:4mm 2.2mm 3mm; }
+.legend3-item { flex:1; text-align:center; }
+.legend3-box { background:var(--green); border-radius:3mm; padding:1.8mm 0; font-weight:700; font-size:9pt; }
+.legend3-text { font-size:8pt; color:#444; line-height:1.2; margin-top:1.5mm; }
+  .how-to { border-top:0.3mm solid var(--blue-mid); padding-top:2.5mm; margin:3mm 2.2mm 2mm; }
+  .how-items { display:flex; gap:5mm; }
+  .how-item { flex:1; font-size:8pt; line-height:1.25; color:#444; }
+  .how-item b { color:#111; }
+  .foot { font-size:8pt; color:#444; text-align:left; margin:0 2.2mm 1.5mm; line-height:1.25; }
+  
+  /* ---------- page 3: Mapa de Penias ---------- */
+.radar { display:block; width:100mm; margin:0 auto; }
+.radar-legend { display:flex; justify-content:center; gap:10mm; font-size:9pt; margin:1mm 0 3mm; }
+.radar-sub { font-family:Inter,Arial,sans-serif; font-weight:700; font-size:11pt; margin:3mm 0 1mm; }
+.radar-intro { font-size:9.5pt; margin:0 0 1mm 0; }
+  .radar-legend span { display:flex; align-items:center; }
+  .radar-legend i { display:inline-block; width:4mm; height:4mm; border-radius:1mm; margin-right:2mm; }
+  .green-title { color:var(--green-text); font-weight:700; font-size:14pt; margin-top:6mm; }
+.closing { display:flex; align-items:center; justify-content:space-between; gap:5mm; margin-top:6mm; }
+.closing .green-title { margin-top:0; }
+.planet-art { flex:none; width:42mm; height:auto; display:block; }
+
+  /* ---------- page 4: balança ---------- */
+  .scale-title { background:#b0c1f7; border-radius:7mm; text-align:center; width:130mm; margin:2mm auto 4mm; padding:4mm; }
+  .scale-title h1 { font-size:22pt; line-height:1.05; }
+  .block { background:#f0f3fc; border-radius:5mm; padding:4mm 6mm 5mm; margin-bottom:5mm; }
+  .block h3 { font-family:Inter,Arial,sans-serif; font-weight:700; font-size:12pt; margin-bottom:4mm; }
+  .row { display:flex; justify-content:center; gap:5mm; margin-top:4mm; text-align:center; }
+  .item .label { font-size:9.5pt; margin-bottom:1.5mm; }
+  .item .val { background:var(--green); border-radius:5mm; padding:2.5mm 6mm; font-size:19pt; min-width:30mm; }
+  .item .val small { font-size:8pt; }
+  .item.small-item .val { font-size:16pt; min-width:24mm; padding:2.5mm 3mm; }
+.radar-wrap { position:relative; }
+.radar-tag {display: inline-block;background: var(--blue-light);color: var(--navy);
+  border-radius: 5mm;padding: 1.5mm 4mm;font-weight: 600;font-size: 10pt;margin-right: 2mm;}
+/* ---------- Cabeçalho institucional ---------- */
+
+.page-logos {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 3mm;
+  height: 16mm;
+  margin-top: -7mm;
+  margin-right: -8mm;
+  margin-bottom: 2mm;
+}
+
+.page-logos img {
+  max-height: 20mm;
+  max-width: 60mm;
+  width: auto;
+  object-fit: contain;
+}
+.starry {
+  background:
+    radial-gradient(circle at 4% 20%, #fff 0.35mm, transparent 0.5mm),
+    radial-gradient(circle at 8% 70%, #ccf79a 0.45mm, transparent 0.6mm),
+    radial-gradient(circle at 13% 38%, #fff 0.25mm, transparent 0.4mm),
+    radial-gradient(circle at 18% 85%, #fff 0.3mm, transparent 0.45mm),
+    radial-gradient(circle at 24% 12%, #fff 0.4mm, transparent 0.55mm),
+    radial-gradient(circle at 31% 62%, #fff 0.25mm, transparent 0.4mm),
+    radial-gradient(circle at 38% 90%, #ccf79a 0.3mm, transparent 0.45mm),
+    radial-gradient(circle at 45% 8%, #fff 0.25mm, transparent 0.4mm),
+    radial-gradient(circle at 54% 78%, #fff 0.35mm, transparent 0.5mm),
+    radial-gradient(circle at 61% 18%, #fff 0.3mm, transparent 0.45mm),
+    radial-gradient(circle at 68% 88%, #fff 0.25mm, transparent 0.4mm),
+    radial-gradient(circle at 74% 35%, #ccf79a 0.4mm, transparent 0.55mm),
+    radial-gradient(circle at 81% 72%, #fff 0.4mm, transparent 0.55mm),
+    radial-gradient(circle at 87% 14%, #fff 0.3mm, transparent 0.45mm),
+    radial-gradient(circle at 92% 55%, #fff 0.25mm, transparent 0.4mm),
+    radial-gradient(circle at 96% 85%, #ccf79a 0.35mm, transparent 0.5mm),
+    linear-gradient(135deg, var(--navy), var(--blue-dark));
+}
+.header h1, .scale-title h1 { color:#fff; }
+th, td { border-radius:1mm; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 ============ -->
+<div class="page">
+<div class="page-logos">
+  <img src="{{ logo_project }}" alt="Logos">
+</div>
+  <div class="header starry">
+    <div class="sup">Relatório de missão</div>
+    <h1>Estimativa da Idade Biológica através de indicadores do sistema musculoesquelético</h1>
+  </div>
+
+  <div class="identification">
+    <div><b>Nome</b>: {{ name }}</div>
+    <div><b>Data:</b> {{ date }}</div>
+  </div>
+
+  <p><b class="hello">{{ welcome }} a bordo, {{ first_name }}!</b> Este estudo, realizado no âmbito do projeto ASTROPOWER, teve como objetivo perceber se medidas simples relacionadas com a composição corporal, força e potência dos músculos podem ajudar a estimar a idade biológica de uma pessoa. A sua participação foi muito importante para a realização deste trabalho e, por isso, apresentamos neste documento os seus principais resultados.</p>
+<p class="scale-note">
+  <b>Nota:</b> A validade dos resultados da balança de composição corporal pode ser significativamente comprometida caso tenha ingerido alimentos ou bebidas nas 2 a 3 horas anteriores à avaliação.
+</p>
+  <h2 class="center">O que é a idade biológica?</h2>
+  <div class="green-box"><p>A idade biológica procura representar o estado de envelhecimento do nosso organismo, que nem sempre corresponde à idade que temos em anos. Isto acontece porque pessoas com a mesma idade podem apresentar diferenças na sua condição física e no funcionamento do organismo.</p></div>
+<div class="space-box">
+  <div class="space-text">
+    <div class="space-tag">Da Terra para o espaço</div>
+    <p>No espaço, a ausência de gravidade provoca perdas de massa muscular e óssea semelhantes às do envelhecimento. Por isso, estudar o envelhecimento na Terra pode ajudar a proteger a saúde dos astronautas. O projeto ASTROPOWER nasce desta ligação.</p>
+  </div>
+  <img class="space-art" src="{{ space_uri }}" alt="">
+</div>
+
+  <h2>O que estudámos</h2>
+  <p>O estudo propôs um modelo, chamado Mapa de Penias, que junta quatro tipos de declínio muscular e ósseo associados ao envelhecimento e estudou a sua relação com a idade biológica.</p>
+
+  <div class="declines">
+    {% for d in declines %}
+    <div class="decline">
+      <div class="icon">{% if d.icon %}<img src="{{ d.icon }}">{% endif %}</div>
+      <div class="tag">{{ d.name }}</div>
+      <span>{{ d.desc }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>O que concluímos</h2>
+  <p>Os resultados deste estudo sugerem que a idade biológica pode vir a ser estimada através de testes simples, rápidos e não invasivos, baseados na força, potência e coordenação muscular, sem necessidade de exames de sangue ou procedimentos complexos. No futuro, este tipo de avaliação pode ajudar a identificar precocemente sinais de declínio funcional e a incentivar hábitos que promovam um envelhecimento mais saudável.</p>
+<div class="page-foot"><span>ASTROPOWER · Da Terra para o espaço</span><span>Página 1 de 4</span></div>
+</div>
+
+<!-- ============ PAGE 2: idades + tabela ============ -->
+<div class="page">
+<div class="page-logos">
+  <img src="{{ logo_project }}" alt="Logos">
+</div>
+  <h2 style="margin-top:0">Os seus resultados</h2>
+
+  <div class="timeline">
+    <div class="tl-track"></div>
+    <div class="tl-span" style="left:{{ tl.left }}%; width:{{ tl.width }}%;"></div>
+    {% for k in tl.ticks %}
+<div class="tl-tick {% if k.major %}major{% endif %}" style="left:{{ k.pos }}%;"></div>
+{% if k.label %}<div class="tl-num" style="left:{{ k.pos }}%;">{{ k.label }}</div>{% endif %}
+{% endfor %}
+    <div class="tl-label tl-top" style="left:{{ tl.chrono }}%;"><span>Idade cronológica</span><b>{{ chrono_age }} anos</b></div>
+    <div class="tl-dot tl-dot-chrono" style="left:{{ tl.chrono }}%;"></div>
+    <img class="tl-rocket" style="left:{{ tl.bio }}%;" src="{{ rocket_uri }}" alt="">
+    <div class="tl-label tl-bottom" style="left:{{ tl.bio }}%;"><span>Idade biológica</span><b>{{ bio_age }} anos</b></div>
+  </div>
+  <div class="accel"><span class="accel-label">Aceleração biológica</span><span class="accel-val">{{ acceleration }} {{ acceleration_unit }}</span></div>
+<p class="accel-explain">A aceleração biológica é a diferença entre a sua idade biológica e a sua idade cronológica. Como numa trajetória espacial, um valor positivo indica que o organismo "viaja" mais depressa do que os anos, e um valor negativo, mais devagar.</p>
+  <table>
+    <tr>
+      <th>Medida</th><th>O seu resultado</th>
+      <th>Média do seu grupo*</th>
+      <th>Classificação</th>
+    </tr>
+    {% for m in measures %}
+    <tr>
+      <td class="measure">
+        <div class="m-name">{{ m.name }}</div>
+        <div class="m-meaning">{{ m.meaning }}</div>
+      </td>
+      <td class="value">{{ m.value }}</td>
+      <td>{{ m.ref }}</td>
+      <td>
+  <div class="bar-wrap">
+    <div class="bar">
+      <div class="seg low {% if m.level == 'low' %}on{% endif %}" style="width:{{ bands.low }}%;"></div>
+      <div class="seg mid {% if m.level == 'mid' %}on{% endif %}" style="width:{{ bands.mid }}%;"></div>
+      <div class="seg high {% if m.level == 'high' %}on{% endif %}" style="width:{{ bands.high }}%;"></div>
+    </div>
+  <div class="marker" style="left:{{ m.pos }}%;"></div>
+  </div>
+  <div class="bar-labels">
+    <span style="width:{{ bands.low }}%;">{{ level_labels[0] }}</span><span style="width:{{ bands.mid }}%;">{{ level_labels[1] }}</span><span style="width:{{ bands.high }}%;">{{ level_labels[2] }}</span>
+  </div>
+  </td>    </tr>
+    {% endfor %}
+  </table>
+<p class="foot">{{ ref_note }}</p>
+    <div class="legend3">
+  {% for l in legend %}
+  <div class="legend3-item">
+    <div class="legend3-box">{{ l.label }}</div>
+    <div class="legend3-text">{{ l.text }}</div>
+  </div>
+  {% endfor %}
+</div>
+<div class="page-foot"><span>ASTROPOWER · Da Terra para o espaço</span><span>Página 2 de 4</span></div>
+</div>
+<!-- ============ PAGE 3: Mapa de Penias (absoluto + relativo) ============ -->
+<div class="page">
+<div class="page-logos"><img src="{{ logo_project }}" alt="Logos"></div>
+  <h2 style="margin-top:0">O seu Mapa de Penias</h2>
+<p class="radar-intro">
+  <span class="radar-tag">Valores absolutos</span>
+  {{radar_intro | safe}}
+</p>
+
+<div class="radar-wrap">
+  <img class="radar" src="{{radar_uri}}">
+</div>
+
+<p class="radar-intro">
+  <span class="radar-tag">Valores relativos</span>
+  {{radar_rel_intro | safe}}
+</p>
+
+<div class="radar-wrap">
+  <img class="radar" src="{{radar_rel_uri}}">
+</div>
+        <div class="radar-legend">
+    <span><i style="background:#94aef7; border:0.4mm solid #4f6fd6;"></i>O seu resultado</span>
+    <span><i style="background:#e3e6ee; border:0.3mm solid #aab1c4;"></i>Intervalo médio do seu grupo</span>
+  </div>
+<p class="foot"><b>Nota:</b> Os resultados detalhados da <b>balança de bioimpedância</b> (composição corporal) encontram-se na última página deste relatório.</p>
+
+  <h2 style="margin-top:3mm; font-size:18pt">Quer ir mais longe?</h2>
+  <p style="font-size:9.5pt; margin-bottom:2mm">{{ info_know_more | safe }}</p>
+  <div class="green-title" style="margin-top:2mm">Muito obrigada pela sua colaboração!</div>
+  <p class="sign-off">Encontramo-nos no próximo planeta.</p>
+<div class="page-foot"><span>ASTROPOWER · Da Terra para o espaço</span><span>Página 3 de 4</span></div>
+</div>
+<!-- ============ PAGE 4: balança de bioimpedância ============ -->
+<div class="page">
+<div class="page-logos">
+  <img src="{{ logo_project }}" alt="Logos">
+</div>
+  <div class="scale-title starry"><h1>Resultados Balança de Composição Corporal (TANITA BC-601)</h1></div>
+
+  <div class="block">
+    <h3>Dados antropométricos</h3>
+    <div class="row">
+      {% for i in anthropometrics %}
+      <div class="item"><div class="label">{{ i.label }}</div><div class="val">{{ i.value }} <small>{{ i.unit|safe }}</small></div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% for b in blocks %}
+  <div class="block">
+    <h3>{{ b.title }}</h3>
+    <div class="row"><div class="item"><div class="label">Total</div><div class="val">{{ b.total }} <small>{{ b.unit }}</small></div></div></div>
+    <div class="row">
+      {% for s in b.segments %}
+      <div class="item small-item"><div class="label">{{ s.label }}</div><div class="val">{{ s.value }} <small>{{ b.unit }}</small></div></div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="block">
+    <div class="row">
+      {% for i in others %}
+      <div class="item"><div class="label">{{ i.label }}</div><div class="val">{{ i.value }} <small>{{ i.unit }}</small></div></div>
+      {% endfor %}
+    </div>
+  </div>
+<div class="page-foot"><span>ASTROPOWER · Da Terra para o espaço</span><span>Página 4 de 4</span></div>
+</div>
+
+</body>
+</html>

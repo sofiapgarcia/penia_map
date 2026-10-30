@@ -33,9 +33,9 @@ df_ant["Gender"] = df_ant["Gender"].replace({2: 0})
 # Compute feature dataframes
 # ---------------------------------------------------------------------
 
-sarco = add_almi()
+sarco = add_almi(path_tanita)
 power = add_normalized_peak_power_columns(df_ant, path_power_dyna)
-osteo = add_bone_variables()
+osteo = add_bone_variables(path_tanita)
 
 # ---------------------------------------------------------------------
 # Check that every subject in power exists in the remaining dataframes

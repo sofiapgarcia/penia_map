@@ -1,9 +1,9 @@
 import pandas as pd
 
 # Path to the Excel file
-excel_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
+EXCEL_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
 
-df = pd.read_excel(excel_path)
+df = pd.read_excel(EXCEL_PATH)
 
 # ---------------------------------------------------------
 # Basic sample information

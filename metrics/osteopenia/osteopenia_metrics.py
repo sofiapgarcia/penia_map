@@ -14,26 +14,20 @@ from pathlib import Path
 import pandas as pd
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# file specific constants
-# ------------------------------------------------------------------------------------------------------------------- #
-# Path to the Tanita Excel file
-OSTEOPENIA_EXCEL_PATH = Path(r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx")
-
-# ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def add_bone_variables() -> pd.DataFrame:
+def add_bone_variables(tanita_excel_path) -> pd.DataFrame:
     """
     Read the Tanita Excel file and calculate estimated bone mass and
     Bone Mineral Density (BMD).
-
+    :param tanita_excel_path: path to bioimpedance data
     :return: DataFrame containing the subject ID, estimated bone mass,
              and Bone Mineral Density
     """
 
     # Read the Tanita data
-    df = pd.read_excel(OSTEOPENIA_EXCEL_PATH)
+    df = pd.read_excel(tanita_excel_path)
 
     # Assume the first column contains the subject ID
     id_column = df.columns[0]

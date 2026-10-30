@@ -22,10 +22,10 @@ import pandas as pd
 # FILES
 # -----------------------------
 
-path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
+EXCEL_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
 path_ids = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
 
-df = pd.read_excel(path_tanita)
+df = pd.read_excel(EXCEL_PATH)
 df_ids = pd.read_excel(path_ids)
 
 # -----------------------------
@@ -39,7 +39,7 @@ valid_ids = df_ids["ID"].dropna().unique()
 # that also exist in the other Excel file
 df = df[df["ID"].isin(valid_ids)].copy()
 
-print(f"Participants in Tanita: {len(pd.read_excel(path_tanita))}")
+print(f"Participants in Tanita: {len(pd.read_excel(EXCEL_PATH))}")
 print(f"IDs in the other Excel: {len(valid_ids)}")
 print(f"Participants after matching: {len(df)}")
 

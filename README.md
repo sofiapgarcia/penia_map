@@ -23,8 +23,9 @@ More specifically, this code was developed within the master’s thesis entitled
 The main purpose of the code is therefore to extract metrics from dynamic and isometric handgrip contractions, namely from EMG, force and displacement signals (`features_power_dyna.xlsx`); to merge them with body composition, anthropometric and demographic data (`final_dataframe.xlsx`); and, finally, to run regression models for different biological age proxies and save their results (`results.xlsx`).
 
 ## 2. Data format
+Data is in two different formats: .txt, for recording files, and .xlsx, for data sheet files.
 
-Recordings are **OpenSignals text files** (`.txt`). The number of columns depends on the recording type. Signal values are raw ADC values (bits).
+Recordings are **OpenSignals text files** (`.txt`). The number of columns depends on the recording type. Signal values are raw ADC values (bits). These files contain an header with metadata.
 
 ### 2.1 MVC and IHD files (4 columns)
 
@@ -183,7 +184,7 @@ Before running, set the paths below (they are defined inside each script).
 
 | Script                                                | Variable          | Points to                                                 |
 |-------------------------------------------------------|-------------------|-----------------------------------------------------------|
-| `main.py`                                             | *(dataset path)*  | Dataset folder                                            |
+| `main.py`                                             | path  | Dataset folder                                            |
 | `data_loader/files_validation.py`                     | `base_path`       | Dataset folder                                            |
 | `metrics/metrics_aggregation.py`                      | `path_tanita`     | Bioimpedance Excel file                                   |
 |                                                       | `path_power_dyna` | Power and dynapenia features                              |
@@ -234,8 +235,8 @@ python -m graph_penia_map                                       # Penia Map rada
 ### Sample characterisation
 
 ```bash
-python -m participant_distribution
-python -m sample_characterization
+python -m participant_distribution                             # sex and age distribution of participants
+python -m sample_characterization                              # table with characterization of participants including sex, bmi and physical activity level 
 ```
 
 ### Participant reports
@@ -243,10 +244,10 @@ python -m sample_characterization
 Run in this order:
 
 ```bash
-python -m age_groups
-python -m add_additional_tanita_info
-python -m add_participant_name
-python -m participant_report_generator
+python -m age_groups                                           # add age groups classification
+python -m add_additional_tanita_info                           # add additional bioimpedance data that it's not used in the models 
+python -m add_participant_name                                 # add name of the participant
+python -m participant_report_generator                        # file to generate all the participants' report
 ```
 
 ## 7. Signal processing

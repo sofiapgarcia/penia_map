@@ -24,8 +24,8 @@ _detect_emg_onsets_isometric_condition(...): Detects EMG onset and offset for is
 _results_to_dataframe(...): Converts the detection results into a pandas DataFrame.
 _plot_onsets(...): Plots the EMG signals and the detected onset, offset and reference points.
 _plot_pipeline_steps(...): Plots intermediate signal-processing steps used for onset detection in dynamic conditions.
-_plot_hi_coarse_detection(...): Visualizes the initial detection of active segments in isometric conditions.
-_plot_hi_pipeline_steps(...): Plots intermediate signal-processing steps used for onset and offset detection in isometric conditions.
+_plot_ihd_coarse_detection(...): Visualizes the initial detection of active segments in isometric conditions.
+_plot_ihd_pipeline_steps(...): Plots intermediate signal-processing steps used for onset and offset detection in isometric conditions.
 _reps_for_muscle(...): Selects the repetitions to include in diagnostic plots.
 _const_sse(...): Calculates the sum of squared errors for a constant model.
 _line_sse(...): Calculates the sum of squared errors for a linear model.
@@ -46,7 +46,7 @@ EMG_COLUMNS = ['EMG_Extensor_filt', 'EMG_Flexor_filt']
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
-def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window_ms=100, guard_ms=10,
+def detect_emg_onsets(subject_data, conditions=('DHD', 'IHD'), sigma_ms=30, window_ms=100, guard_ms=10,
                        min_window_ms=100, emg_columns=None, show_plot=False,
                        n_reps=3, min_duration_ms=300, min_gap_ms=400,
                        forward_margin_ms=0, offset_margin_ms=None, show_pipeline_plots=False,
@@ -59,17 +59,17 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
 
     Two detection paths are used automatically, depending on whether the condition's
     DataFrame has a 'Phase' column:
-      - If 'Phase' is present (e.g. HD), the concentric start/end of each repetition
+      - If 'Phase' is present (e.g. DHD), the concentric start/end of each repetition
         (shared across muscles) is used as the reference (see
         _detect_emg_onsets_dynamic_condition). No offset detection is performed here;
         the concentric end from the Phase column is used directly.
-      - If 'Phase' is absent (e.g. HI, isometric contractions), both onset and offset
+      - If 'Phase' is absent (e.g. IHD, isometric contractions), both onset and offset
         are estimated directly from the envelope, independently per muscle (see
-        _detect_emg_onsets_isometric_condition). No concentric phase exists for HI,
+        _detect_emg_onsets_isometric_condition). No concentric phase exists for IHD,
         so no phase-boundary or onset-to-phase-start columns are produced for it.
 
     :param subject_data: Dict as produced/consumed by detect_concentric_eccentric_phases.
-    :param conditions: Iterable with the condition names to process (e.g. 'HD', 'HI').
+    :param conditions: Iterable with the condition names to process (e.g. 'DHD', 'IHD').
     :param sigma_ms: Standard deviation (ms) of the Gaussian kernel used to smooth the
         TKEO-based envelope.
     :param window_ms: Analysis window (ms) used to search for the onset/offset.
@@ -77,26 +77,26 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
     :param min_window_ms: Minimum usable window length (ms).
     :param emg_columns: Names of the EMG columns to process. Defaults to EMG_COLUMNS.
     :param show_plot: If True, plots both EMG signals with the detected onsets/offsets, per condition.
-    :param n_reps: Expected number of isometric contractions per muscle (HI only).
-    :param min_duration_ms: Minimum contraction duration (ms) (HI only).
-    :param min_gap_ms: Maximum gap (ms) to merge nearby active segments (HI only).
-    :param forward_margin_ms: Margin (ms) added past the onset threshold crossing (HI only).
+    :param n_reps: Expected number of isometric contractions per muscle (IHD only).
+    :param min_duration_ms: Minimum contraction duration (ms) (IHD only).
+    :param min_gap_ms: Maximum gap (ms) to merge nearby active segments (IHD only).
+    :param forward_margin_ms: Margin (ms) added past the onset threshold crossing (IHD only).
     :param offset_margin_ms: Margin (ms) subtracted from the offset threshold crossing
-        (HI only). Defaults to forward_margin_ms if not provided.
+        (IHD only). Defaults to forward_margin_ms if not provided.
     :param show_pipeline_plots: If True, additionally plots intermediate signal-processing
-        steps per repetition/muscle for visual sanity-checking. For HD this shows the
-        onset search (see _plot_pipeline_steps); for HI this shows both the onset and
-        offset search plus the detected active segment (see _plot_hi_pipeline_steps).
+        steps per repetition/muscle for visual sanity-checking. For DHD this shows the
+        onset search (see _plot_pipeline_steps); for IHD this shows both the onset and
+        offset search plus the detected active segment (see _plot_ihd_pipeline_steps).
     :param pipeline_margin_before_ms: Signal margin (ms) before the onset in pipeline plots.
     :param pipeline_margin_after_ms: Signal margin (ms) after the reference point in pipeline plots.
     :param pipeline_max_reps: How many repetitions to show in the pipeline plots, per muscle.
         Can be None (show all), an int (same number for every muscle), or a dict
         {muscle_column: n} to choose a different number of repetitions for each muscle.
-    :param show_coarse_detection_plots: If True (HI only), plots the coarse contraction
+    :param show_coarse_detection_plots: If True (IHD only), plots the coarse contraction
         detection step per muscle -- raw signal, envelope + threshold + every raw
         crossing, and the final segments kept after merging/duration-filtering. Useful
         for tuning `threshold`, `min_duration_ms` and `min_gap_ms` before looking at
-        the finer onset/offset refinement (see _plot_hi_coarse_detection).
+        the finer onset/offset refinement (see _plot_ihd_coarse_detection).
     :return: Dict keyed by condition name, each value a pandas DataFrame with one row
         per (repetition, muscle) -- see `_results_to_dataframe`.
     """
@@ -129,7 +129,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
             _plot_onsets(df, columns, condition_results, condition)
 
         if is_isometric and show_coarse_detection_plots:
-            _plot_hi_coarse_detection(
+            _plot_ihd_coarse_detection(
                 df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms, condition
             )
 
@@ -142,7 +142,7 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
                     max_reps=pipeline_max_reps,
                 )
             else:
-                _plot_hi_pipeline_steps(
+                _plot_ihd_pipeline_steps(
                     df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms,
                     condition_results,
                     margin_before_ms=pipeline_margin_before_ms,
@@ -153,10 +153,10 @@ def detect_emg_onsets(subject_data, conditions=('HD', 'HI'), sigma_ms=30, window
     results_dict = {condition: _results_to_dataframe(condition_results)
         for condition, condition_results in results_by_condition.items()}
 
-    info_hd = results_dict["HD"]
-    info_hi = results_dict["HI"]
+    info_dhd = results_dict["DHD"]
+    info_ihd = results_dict["IHD"]
 
-    return info_hd, info_hi
+    return info_dhd, info_ihd
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
@@ -266,7 +266,7 @@ def _find_offset_in_window(envelope_window, guard_samples, min_window_samples):
     Find the sample index that best splits a window into a falling (deactivation
     ramp) segment followed by a constant (post-contraction baseline) segment.
 
-    This is the mirror image of _find_onset_in_window: instead of looking for
+    Tihds is the mirror image of _find_onset_in_window: instead of looking for
     "baseline -> ramp up", it looks for "ramp down -> baseline", which is the
     pattern expected at the END of a contraction.
 
@@ -313,7 +313,7 @@ def _rep_numbers_from_phase(phase_col):
 def _detect_emg_onsets_dynamic_condition(df, fs, moving_ms, window_ms, guard_ms, min_window_ms, columns):
     """
     Detect the EMG onset for both muscles, for every repetition, within a single
-    condition that has a 'Phase' column (e.g. HD, where concentric/eccentric phases
+    condition that has a 'Phase' column (e.g. DHD, where concentric/eccentric phases
     are identifiable).
 
     :param df: DataFrame containing the 'Phase' column and the EMG columns to process.
@@ -419,7 +419,7 @@ def _raw_active_segments(envelope, threshold):
     Find every contiguous segment where the envelope is above the threshold,
     with NO merging and NO duration filtering applied yet. This is the "before"
     picture used by `_detect_active_segments` -- useful on its own for visualizing
-    the coarse (unfiltered) detection step, e.g. in `_plot_hi_coarse_detection`.
+    the coarse (unfiltered) detection step, e.g. in `_plot_ihd_coarse_detection`.
 
     :param envelope: 1D array with the (smoothed) energy envelope.
     :param threshold: Amplitude threshold above which the signal is considered "active".
@@ -467,9 +467,9 @@ def _detect_active_segments(envelope, fs, threshold, min_duration_ms, min_gap_ms
     return merged
 
 
-def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms, condition):
+def _plot_ihd_coarse_detection(df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms, condition):
     """
-    Plot, for every muscle in an isometric condition (e.g. HI), the three stages of
+    Plot, for every muscle in an isometric condition (e.g. IHD), the three stages of
     the COARSE contraction detection step (before onset/offset refinement):
       1. Raw (filtered) EMG signal.
       2. Envelope + robust threshold + every raw threshold crossing (unfiltered).
@@ -478,7 +478,7 @@ def _plot_hi_coarse_detection(df, columns, fs, sigma_ms, min_duration_ms, min_ga
 
     This is meant purely for visual sanity-checking of , `min_gap_ms`
     and `min_duration_ms` -- it does NOT perform onset/offset refinement (see
-    `_plot_hi_pipeline_steps` for that).
+    `_plot_ihd_pipeline_steps` for that).
 
     :param df: DataFrame containing the EMG columns to plot.
     :param columns: List of EMG column names to plot (one figure per column).
@@ -538,7 +538,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
                                             columns, n_reps, min_duration_ms,
                                             min_gap_ms, forward_margin_ms, offset_margin_ms=None):
     """
-    Detect EMG onsets AND offsets for isometric conditions (e.g. HI), where there is
+    Detect EMG onsets AND offsets for isometric conditions (e.g. IHD), where there is
     no 'Phase' column to mark a concentric start/end, since there's no concentric
     (nor eccentric) phase at all -- only an activation onset and offset per repetition.
 
@@ -607,7 +607,7 @@ def _detect_emg_onsets_isometric_condition(df, fs, sigma_ms, window_ms, guard_ms
 
         if len(segments) != n_reps:
             print(f"Warning: expected {n_reps} contractions for '{col}', found {len(segments)}. "
-                  f"Adjust threshold / min_duration_ms / min_gap_ms if this looks wrong. "
+                  f"Adjust threshold / min_duration_ms / min_gap_ms if necessary. "
                   f"Keeping the {n_reps} longest segments found, in temporal order.")
             segments = sorted(
                 sorted(segments, key=lambda se: se[1] - se[0], reverse=True)[:n_reps],
@@ -653,10 +653,10 @@ def _results_to_dataframe(results):
 
     Since every dict in `results` belongs to the same condition, they all share
     the same set of keys, so the columns come out consistent automatically:
-      - HD-like conditions (with a real, shared concentric phase): 'rep',
+      - DHD-like conditions (with a real, shared concentric phase): 'rep',
         'muscle', 'onset_idx', 'concentric_start_idx', 'concentric_end_idx',
         'onset_to_start_ms'.
-      - HI-like conditions (isometric, per-muscle contraction window, no
+      - IHD-like conditions (isometric, per-muscle contraction window, no
         concentric/eccentric phase): 'rep', 'muscle', 'onset_idx', 'offset_idx'.
 
     :param results: List of result dicts for a single condition (possibly empty).
@@ -697,8 +697,8 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
     signal, the TKEO output, and the rectified TKEO (|TKEO|) overlaid with the
     smoothed envelope -- with the reference point and onset marked on every panel,
     for visual sanity-checking of the pipeline. Used for conditions with a real
-    concentric phase (e.g. HD); for isometric conditions (e.g. HI) use
-    `_plot_hi_pipeline_steps` instead.
+    concentric phase (e.g. DHD); for isometric conditions (e.g. IHD) use
+    `_plot_ihd_pipeline_steps` instead.
 
     :param df: DataFrame containing the EMG columns to plot.
     :param columns: List of EMG column names to plot.
@@ -777,17 +777,17 @@ def _plot_pipeline_steps(df, columns, fs, window_ms, results, condition,
             plt.show()
 
 
-def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms,
+def _plot_ihd_pipeline_steps(df, columns, fs, sigma_ms, min_duration_ms, min_gap_ms,
                              results, margin_before_ms=300, margin_after_ms=300,
                              reps_per_muscle=None):
     """
     Plot, for every repetition and muscle, the intermediate signal-processing steps
-    used to detect the EMG onset AND offset in isometric conditions (e.g. HI): the
+    used to detect the EMG onset AND offset in isometric conditions (e.g. IHD): the
     raw (filtered) EMG signal, the rectified signal, the TKEO output, and the
     rectified TKEO (|TKEO|) overlaid with the smoothed envelope and the robust
     detection threshold -- with the detected active ("plateau") segment shaded and
     the refined onset/offset marked on every panel, for visual sanity-checking of
-    the full HI pipeline (threshold-based segment detection -> onset/offset refinement).
+    the full IHD pipeline (threshold-based segment detection -> onset/offset refinement).
 
     :param df: DataFrame containing the EMG columns to plot.
     :param columns: List of EMG column names to plot.
@@ -800,7 +800,7 @@ def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, min_duration_ms, min_gap_
         accepted as a real contraction (must match the value used for detection).
     :param min_gap_ms: Maximum gap (ms) between two active segments for them to be
         merged into a single contraction (must match the value used for detection).
-    :param results: List of onset/offset result dicts for the HI condition (must
+    :param results: List of onset/offset result dicts for the IHD condition (must
         contain 'rep', 'muscle', 'onset_idx', 'offset_idx').
     :param margin_before_ms: How much signal (ms) to show before the onset.
     :param margin_after_ms: How much signal (ms) to show after the offset.
@@ -868,7 +868,7 @@ def _plot_hi_pipeline_steps(df, columns, fs, sigma_ms, min_duration_ms, min_gap_
 
             axes[-1].set_xlabel('Samples')
             fig.suptitle(
-                f"HI -- {col} -- Rep {r['rep']} -- pipeline steps\n"
+                f"IHD -- {col} -- Rep {r['rep']} -- pipeline steps\n"
                 f"(shaded = detected active segment, dotted = threshold, "
                 f"red = onset, green = offset)",
                 fontsize=10,

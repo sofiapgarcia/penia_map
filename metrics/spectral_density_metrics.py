@@ -6,8 +6,8 @@ Available Functions
 -------------------
 [Public]
 get_muscle_power_spectral_density_info(...): Computes per-repetition EMG band powers, median frequency and peak frequency
-for the extensor and flexor muscles under HD and HI conditions. Calculates flexor-to-extensor frequency ratios and labels
-the peak-power repetition in HD and the maximum-value repetition in HI.
+for the extensor and flexor muscles under DHD and IHD conditions. Calculates flexor-to-extensor frequency ratios and labels
+the peak-power repetition in DHD and the maximum-value repetition in IHD.
 
 [Private]
 _compute_band_powers(...): Computes the Welch power spectral density and integrates it over predefined frequency bands.
@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 
 # internal imports
 from constants import FS
-from metrics.muscle_coordination_metrics import _get_max_repetition_hi
+from metrics.muscle_coordination_metrics import _get_max_repetition_ihd
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants
@@ -46,8 +46,8 @@ _integrate = getattr(np, "trapezoid", None) or np.trapz
 # ------------------------------------------------------------------------------------------------------------------- #
 def get_muscle_power_spectral_density_info(
     subject_data_normalized,
-    onset_df_hd,
-    onset_df_hi,
+    onset_df_dhd,
+    onset_df_ihd,
     power_info,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
@@ -58,20 +58,20 @@ def get_muscle_power_spectral_density_info(
 ):
     """
     Build the per-repetition band-power and spectral-frequency (Median_Frequency/Peak_Frequency)
-    info for both HD and HI conditions using their respective onset
+    info for both DHD and IHD conditions using their respective onset
     DataFrames from detect_emg_onsets.
 
     For each repetition, computes the power spectral density (Welch method)
     of the extensor and flexor EMG within an analysis window, then:
-    - integrates it into frequency bands spanning 0-500 Hz (see
+    - integrates it into frequency bands spanning 20-470 Hz (see
       compute_band_powers)
     - derives the median frequency (Median_Frequency) and peak frequency (Peak_Frequency) from the
       same spectrum (see compute_spectral_frequency_metrics)
     - computes the flexor/extensor ratio of Median_Frequency and of Peak_Frequency
 
     The window always starts at the muscle's own onset ('onset_idx'); it
-    ends at the concentric phase end ('concentric_end_idx') for HD, and at
-    the muscle's own offset ('offset_idx') for HI (isometric condition, no
+    ends at the concentric phase end ('concentric_end_idx') for DHD, and at
+    the muscle's own offset ('offset_idx') for IHD (isometric condition, no
     concentric/eccentric phases) -- the same window convention used in
     emg_scalogram.get_muscle_scalogram_info.
 
@@ -81,34 +81,34 @@ def get_muscle_power_spectral_density_info(
     get_muscle_scalogram_info: the envelope's smoothing removes most of the
     spectral content being characterized.
 
-    HD has a repetition of peak power (identified via power_info and keyed
+    DHD has a repetition of peak power (identified via power_info and keyed
     as 'rep_peakpower' in the output, matching the convention used in
     get_muscle_scalogram_info so the two outputs can be joined on
-    'repetition'). HI has no power_info-based peak repetition; instead, its
+    'repetition'). IHD has no power_info-based peak repetition; instead, its
     repetition of maximum value is identified from
-    subject_data["HI_values"] (a dict keyed "H1", "H2", ... whose highest
+    subject_data["IHD_values"] (a dict keyed "H1", "H2", ... whose highest
     value marks the max repetition) and keyed as 'rep_max' in the output.
-    All other HI repetitions keep their plain numeric key.
+    All other IHD repetitions keep their plain numeric key.
 
-    :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params' for both conditions ('HD' and 'HI' keys)
-    :param onset_df_hd: DataFrame output for condition 'HD' from detect_emg_onsets
-    :param onset_df_hi: DataFrame output for condition 'HI' from detect_emg_onsets
-    :param power_info: DataFrame containing a 'rep_at_peak_power' column (HD only)
+    :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params' for both conditions ('DHD' and 'IHD' keys)
+    :param onset_df_dhd: DataFrame output for condition 'DHD' from detect_emg_onsets
+    :param onset_df_ihd: DataFrame output for condition 'IHD' from detect_emg_onsets
+    :param power_info: DataFrame containing a 'rep_at_peak_power' column (DHD only)
     :param fs: Sampling frequency (Hz). If None, extracted per-condition from subject_data_normalized
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of the normalized (filtered) extensor EMG
     :param emg_flexor_column: Column name of the normalized (filtered) flexor EMG
-    :param band_edges: See compute_band_powers. Defaults to 50 Hz wide bands spanning 0-500 Hz
+    :param band_edges: See compute_band_powers. Defaults to 50 Hz wide bands spanning 20-470 Hz
     :param nperseg: See compute_band_powers
-    :return: Tuple (df_hd, df_hi) containing tidy band-power + Median_Frequency/Peak_Frequency DataFrames, one row per repetition
+    :return: Tuple (df_dhd, df_ihd) containing tidy band-power + Median_Frequency/Peak_Frequency DataFrames, one row per repetition
     """
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
-    rep_at_max_hi = _get_max_repetition_hi(subject_data_normalized)
+    rep_at_max_ihd = _get_max_repetition_ihd(subject_data_normalized)
 
-    band_power_info_hd = _compute_band_power_info_for_condition(
-        subject_data_normalized["HD"]["data"],
-        onset_df_hd,
+    band_power_info_dhd = _compute_band_power_info_for_condition(
+        subject_data_normalized["DHD"]["data"],
+        onset_df_dhd,
         FS,
         onset_extensor_column,
         onset_flexor_column,
@@ -122,9 +122,9 @@ def get_muscle_power_spectral_density_info(
         peak_rep_label="rep_peakpower",
     )
 
-    band_power_info_hi = _compute_band_power_info_for_condition(
-        subject_data_normalized["HI"]["data"],
-        onset_df_hi,
+    band_power_info_ihd = _compute_band_power_info_for_condition(
+        subject_data_normalized["IHD"]["data"],
+        onset_df_ihd,
         FS,
         onset_extensor_column,
         onset_flexor_column,
@@ -134,14 +134,14 @@ def get_muscle_power_spectral_density_info(
         nperseg,
         start_idx_column="onset_idx",
         end_idx_column="offset_idx",
-        rep_at_peak_power=rep_at_max_hi,
+        rep_at_peak_power=rep_at_max_ihd,
         peak_rep_label="rep_max",
     )
 
-    df_hd = _build_band_power_dataframe({"HD": band_power_info_hd}, condition="HD")
-    df_hi = _build_band_power_dataframe({"HI": band_power_info_hi}, condition="HI")
+    df_dhd = _build_band_power_dataframe({"DHD": band_power_info_dhd}, condition="DHD")
+    df_ihd = _build_band_power_dataframe({"IHD": band_power_info_ihd}, condition="IHD")
 
-    return df_hd, df_hi
+    return df_dhd, df_ihd
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
@@ -154,9 +154,8 @@ def _compute_band_powers(signal, fs, band_edges=None, nperseg=None, plot=False):
 
     :param signal: 1D array-like signal
     :param fs: Sampling frequency (Hz)
-    :param band_edges: Sequence of band edges (Hz), e.g. [0, 50, 100, ..., 500]
-        gives the bands [0-50), [50-100), ..., [450-500). Defaults to 50 Hz
-        wide bands spanning 0-500 Hz (10 bands), which covers essentially all
+    :param band_edges: Sequence of band edges (Hz). Defaults to 50 Hz
+        wide bands spanning 20-470 Hz, which covers essentially all
         EMG spectral content.
     :param nperseg: Segment length passed to scipy.signal.welch. Defaults to
         min(256, len(signal)) since analysis windows here are short (onset to
@@ -281,8 +280,8 @@ def _get_band_powers_in_phase(
 ):
     """
     Compute band-power spectral metrics for one signal, within a given sample
-    window (the muscle's onset up to the concentric phase end for HD, or up
-    to its offset for HI).
+    window (the muscle's onset up to the concentric phase end for DHD, or up
+    to its offset for IHD).
 
     :param df: DataFrame containing the signal
     :param phase_start_idx: Start sample index of the window (the muscle's onset)
@@ -312,7 +311,7 @@ def _get_spectral_frequency_metrics_in_phase(
     Compute the median frequency (Median_Frequency) and peak frequency (Peak_Frequency) for one
     signal, within a given sample window. Same window convention as
     get_band_powers_in_phase (the muscle's own onset up to the concentric
-    phase end for HD, or up to its own offset for HI).
+    phase end for DHD, or up to its own offset for IHD).
 
     :param df: DataFrame containing the signal
     :param phase_start_idx: Start sample index of the window (the muscle's onset)
@@ -331,12 +330,12 @@ def _get_spectral_frequency_metrics_in_phase(
 
 
 
-def _build_band_power_dataframe(band_power_info, condition="HD"):
+def _build_band_power_dataframe(band_power_info, condition="DHD"):
     """
     Flatten band_power_info into a tidy DataFrame with one row per repetition.
 
     :param band_power_info: Dict containing metric values per repetition key
-    :param condition: Condition key inside band_power_info (default 'HD')
+    :param condition: Condition key inside band_power_info (default 'DHD')
     :return: Tidy DataFrame with one row per repetition and one column per
         "<band>Hz_<muscle>" band power, plus Median_Frequency/Peak_Frequency and ratio columns
     """
@@ -383,15 +382,15 @@ def _compute_band_power_info_for_condition(
     Compute per-repetition band-power and spectral-frequency (Median_Frequency/Peak_Frequency)
     metrics for a single condition's onset DataFrame. If rep_at_peak_power
     is provided, the matching repetition is keyed as peak_rep_label (e.g.
-    'rep_peakpower' for HD, same convention as in
-    emg_scalogram.get_muscle_scalogram_info; 'rep_max' for HI); if None,
+    'rep_peakpower' for DHD, same convention as in
+    emg_scalogram.get_muscle_scalogram_info; 'rep_max' for IHD); if None,
     all repetitions keep their plain numeric key.
 
     The analysis window boundaries are read from start_idx_column/
     end_idx_column, independently for each muscle's row: the muscle's own
     onset ('onset_idx') up to the concentric phase end
-    ('concentric_end_idx') for HD, or up to its own offset ('offset_idx')
-    for HI.
+    ('concentric_end_idx') for DHD, or up to its own offset ('offset_idx')
+    for IHD.
 
     In addition to band powers, this also computes the median frequency
     (Median_Frequency) and peak frequency (Peak_Frequency) of each muscle within the same window, and

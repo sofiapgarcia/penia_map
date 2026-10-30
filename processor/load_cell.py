@@ -56,12 +56,6 @@ def process_force(df, fs, window_ms=20, show_plot=False):
     movement. This is a centered (zero-phase) moving average, so it does not shift
     the signal in time.
 
-    The default window (50 ms = 50 samples at 1000 Hz) is deliberately short compared
-    to a full repetition (up to ~4 s = ~4000 samples at 1000 Hz), so it smooths out
-    noise without blurring the real shape of the movement. Increase `window_ms` if the
-    signal is still noisy after filtering, or decrease it if real detail is being
-    blurred out.
-
     :param df: DataFrame containing a force column (FORCE_COLUMN).
     :param fs: sampling rate in Hz.
     :param window_ms: smoothing window length, in milliseconds.

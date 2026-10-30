@@ -48,7 +48,7 @@ def load_subject_data(base_path, subject):
     subject_data = {
         "handgrip_position": hp_value,
         "handgrip_position_source": hp_source,
-        "HI_values": hg_values
+        "IHD_values": hg_values
     }
 
     for filename in os.listdir(subject_path):
@@ -209,7 +209,7 @@ def extract_data_from_file(file_path):
     # Find EMG columns
     emg_cols = [col for col in df.columns if col.upper() == "EMG"]
 
-    if condition == "HD_EMG":
+    if condition == "DHD_HUB":
 
         # Rename first two EMG channels
         if len(emg_cols) == 2:
@@ -226,9 +226,9 @@ def extract_data_from_file(file_path):
         if len(df.columns) >= 7:
             df.columns.values[-3:] = ["x", "y", "z"]
 
-    elif condition == "HD":
+    elif condition == "DHD":
 
-        # Rename signal types for HD acquisition
+        # Rename signal types for DHD acquisition
         df.columns = [
             column.replace("MICRO", "DISPLACEMENT")
             .replace("RAW", "FORCE")
@@ -242,7 +242,7 @@ def extract_data_from_file(file_path):
             columns=[col for col in columns_to_drop if col in df.columns]
         )
 
-    elif condition in ["HI", "MVC"]:
+    elif condition in ["IHD", "MVC"]:
 
         # Find EMG columns
         emg_indices = [
@@ -295,12 +295,19 @@ def _parse_filename(file):
     """
     Parse subject ID and condition from filename.
 
-    :param file: Filename in format 'Sx_HI.txt', 'Sx_HD.txt' or 'Sx_MVC_FLEXOR.txt'
-    :return: condition (str): experimental test (HI, HD or MVC_FLEXOR)
+    :param file: Filename in format 'Sx_IHD.txt', 'Sx_DHD.txt' or 'Sx_MVC_FLEXOR.txt'
+    :return: condition (str): experimental test (IHD, DHD or MVC_FLEXOR)
     """
     name = file.replace(".txt", "")
 
     _ , condition = name.split("_", 1)
+
+    if condition == "HI":
+        condition = "IHD"
+    if condition == "HD":
+        condition = "DHD"
+    if condition == "HD_EMG":
+        condition = "DHD_HUB"
 
     return condition
 

@@ -55,116 +55,116 @@ EXCLUSIVE_GROUPS = [
         "max_velocity"
     ],
 
-    # Cocontraction HD
+    # Cocontraction dhd
     [
-        "rep_pp_hd_cocontraction_ms",
-        "rep_pp_hd_cocontraction_normalized",
+        "rep_pp_dhd_cocontraction_ms",
+        "rep_pp_dhd_cocontraction_normalized",
     ],
     [
-        "mean_hd_cocontraction_ms",
-        "mean_hd_cocontraction_normalized",
-    ],
-
-    # Cocontraction HI
-    [
-        "rep_max_hi_cocontraction_ms",
-        "rep_max_hi_cocontraction_normalized",
-    ],
-    [
-        "mean_hi_cocontraction_ms",
-        "mean_hi_cocontraction_normalized",
+        "mean_dhd_cocontraction_ms",
+        "mean_dhd_cocontraction_normalized",
     ],
 
-    # Overlap HD
+    # Cocontraction ihd
     [
-        "rep_pp_hd_emg_overlap_area",
-        "rep_pp_hd_emg_overlap_area_normalized",
+        "rep_max_ihd_cocontraction_ms",
+        "rep_max_ihd_cocontraction_normalized",
     ],
     [
-        "mean_hd_emg_overlap_area",
-        "mean_hd_emg_overlap_area_normalized",
+        "mean_ihd_cocontraction_ms",
+        "mean_ihd_cocontraction_normalized",
     ],
 
-    # Overlap HI
+    # Overlap dhd
     [
-        "rep_max_hi_emg_overlap_area",
-        "rep_max_hi_emg_overlap_area_normalized",
+        "rep_pp_dhd_emg_overlap_area",
+        "rep_pp_dhd_emg_overlap_area_normalized",
     ],
     [
-        "mean_hi_emg_overlap_area",
-        "mean_hi_emg_overlap_area_normalized",
+        "mean_dhd_emg_overlap_area",
+        "mean_dhd_emg_overlap_area_normalized",
+    ],
+
+    # Overlap ihd
+    [
+        "rep_max_ihd_emg_overlap_area",
+        "rep_max_ihd_emg_overlap_area_normalized",
+    ],
+    [
+        "mean_ihd_emg_overlap_area",
+        "mean_ihd_emg_overlap_area_normalized",
     ],
 
     # Onset difference: signed vs absolute
     [
-        "rep_pp_hd_onset_diff_ms",
-        "rep_pp_hd_onset_diff_ms_abs",
+        "rep_pp_dhd_onset_diff_ms",
+        "rep_pp_dhd_onset_diff_ms_abs",
     ],
     [
-        "rep_max_hi_onset_diff_ms",
-        "rep_max_hi_onset_diff_ms_abs",
+        "rep_max_ihd_onset_diff_ms",
+        "rep_max_ihd_onset_diff_ms_abs",
     ],
     [
-        "mean_hd_onset_diff_ms",
-        "mean_hd_onset_diff_ms_abs",
+        "mean_dhd_onset_diff_ms",
+        "mean_dhd_onset_diff_ms_abs",
     ],
     [
-        "mean_hi_onset_diff_ms",
-        "mean_hi_onset_diff_ms_abs",
+        "mean_ihd_onset_diff_ms",
+        "mean_ihd_onset_diff_ms_abs",
     ],
 
     # Envelope delay
     [
-        "rep_pp_hd_envelope_peak_delay_ms",
-        "rep_pp_hd_envelope_peak_delay_ms_abs",
-        "rep_pp_hd_normalized_envelope_peak_delay",
-        "rep_pp_hd_normalized_envelope_peak_delay_abs",
+        "rep_pp_dhd_envelope_peak_delay_ms",
+        "rep_pp_dhd_envelope_peak_delay_ms_abs",
+        "rep_pp_dhd_normalized_envelope_peak_delay",
+        "rep_pp_dhd_normalized_envelope_peak_delay_abs",
     ],
     [
-        "mean_hd_envelope_peak_delay_ms",
-        "mean_hd_envelope_peak_delay_ms_abs",
-        "mean_hd_normalized_envelope_peak_delay",
-        "mean_hd_normalized_envelope_peak_delay_abs",
+        "mean_dhd_envelope_peak_delay_ms",
+        "mean_dhd_envelope_peak_delay_ms_abs",
+        "mean_dhd_normalized_envelope_peak_delay",
+        "mean_dhd_normalized_envelope_peak_delay_abs",
     ],
 ]
 
 FORBIDDEN_COOCCURRENCES = [
 
-    # EMG peak HD — rep
+    # EMG peak dhd — rep
     [
-        {"rep_pp_hd_emg_peak_ratio"},
-        {"rep_pp_hd_emg_peak_extensor", "rep_pp_hd_emg_peak_flexor"},
+        {"rep_pp_dhd_emg_peak_ratio"},
+        {"rep_pp_dhd_emg_peak_extensor", "rep_pp_dhd_emg_peak_flexor"},
     ],
-    # EMG peak HD — mean
+    # EMG peak dhd — mean
     [
-        {"mean_hd_emg_peak_ratio"},
-        {"mean_hd_emg_peak_extensor", "mean_hd_emg_peak_flexor"},
+        {"mean_dhd_emg_peak_ratio"},
+        {"mean_dhd_emg_peak_extensor", "mean_dhd_emg_peak_flexor"},
     ],
-    # EMG peak HI — rep
+    # EMG peak ihd — rep
     [
-        {"rep_max_hi_emg_peak_ratio"},
-        {"rep_max_hi_emg_peak_extensor", "rep_max_hi_emg_peak_flexor"},
+        {"rep_max_ihd_emg_peak_ratio"},
+        {"rep_max_ihd_emg_peak_extensor", "rep_max_ihd_emg_peak_flexor"},
     ],
-    # EMG peak HI — mean
+    # EMG peak ihd — mean
     [
-        {"mean_hi_emg_peak_ratio"},
-        {"mean_hi_emg_peak_extensor", "mean_hi_emg_peak_flexor"},
-    ],
-    [
-        {"rep_pp_hd_Median_Frequency_extensor","rep_pp_hd_Median_Frequency_flexor"},
-        {"rep_pp_hd_Median_Frequency_ratio"}
+        {"mean_ihd_emg_peak_ratio"},
+        {"mean_ihd_emg_peak_extensor", "mean_ihd_emg_peak_flexor"},
     ],
     [
-        {"rep_pp_hd_Peak_Frequency_extensor", "rep_pp_hd_Peak_Frequency_flexor"},
-        {"rep_pp_hd_Peak_Frequency_ratio"}
+        {"rep_pp_dhd_Median_Frequency_extensor","rep_pp_dhd_Median_Frequency_flexor"},
+        {"rep_pp_dhd_Median_Frequency_ratio"}
     ],
     [
-        {"rep_max_hi_Peak_Frequency_ratio"},
-        {"rep_max_hi_Peak_Frequency_flexor","rep_max_hi_Peak_Frequency_extensor"},
+        {"rep_pp_dhd_Peak_Frequency_extensor", "rep_pp_dhd_Peak_Frequency_flexor"},
+        {"rep_pp_dhd_Peak_Frequency_ratio"}
     ],
     [
-        {"rep_max_hi_Median_Frequency_ratio"},
-        {"rep_max_hi_Median_Frequency_flexor","rep_max_hi_Median_Frequency_extensor"},
+        {"rep_max_ihd_Peak_Frequency_ratio"},
+        {"rep_max_ihd_Peak_Frequency_flexor","rep_max_ihd_Peak_Frequency_extensor"},
+    ],
+    [
+        {"rep_max_ihd_Median_Frequency_ratio"},
+        {"rep_max_ihd_Median_Frequency_flexor","rep_max_ihd_Median_Frequency_extensor"},
         ],
 ]
 
@@ -412,8 +412,8 @@ def best_subset_selection(
 def export_results_to_excel(results: dict, path: str, decimals: int = 4):
     """
     Save a summary sheet (one row per target) plus one coefficients sheet
-    per target into a single Excel file. Each coefficients sheet now also
-    reports VIF alongside the p-value, so non-significant or collinear
+    per target into a single Excel file. Each coefficients sheet reports
+    VIF alongside the p-value, so non-significant or collinear
     terms are visible directly next to the coefficient they belong to.
 
     :param results: output of run_for_multiple_targets

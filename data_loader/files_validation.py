@@ -27,7 +27,7 @@ if __name__ == '__main__':
     non_condition_keys = {
         "handgrip_position",
         "handgrip_position_source",
-        "HI_values",
+        "IHD_values",
         "calibration"
     }
 

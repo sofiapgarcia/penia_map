@@ -6,7 +6,7 @@ Available Functions
 [Public]
 emg_transfer_function(...): Converts EMG analog-to-digital converter (ADC) values into millivolts (mV).
 process_emg(...): Applies a 50 Hz notch filter and a Butterworth bandpass filter to EMG channels, optionally plotting raw and filtered signals.
-get_emg_envelope(...): Computes the linear envelope of filtered EMG signals for the HD, HI and MVC conditions, optionally plotting the results.
+get_emg_envelope(...): Computes the linear envelope of filtered EMG signals for the DHD, IHD and MVC conditions, optionally plotting the results.
 [Private]
 _bandpass_filter_emg(...): Applies a Butterworth bandpass filter to an EMG signal.
 _notch_filter_emg(...): Applies a notch filter to remove power-line interference from an EMG signal.
@@ -99,7 +99,7 @@ def process_emg(df, fs, show_plot=False):
 def get_emg_envelope(subject_data, show_plot=True):
     """
     Compute the linear envelope of the filtered EMG channels for each
-    condition (HD, HI, MVC) in subject_data: full-wave rectify the filtered
+    condition (DHD, IHD, MVC) in subject_data: full-wave rectify the filtered
     EMG signal (absolute value) and apply a 4th-order Butterworth low-pass
     filter with a cutoff frequency of 4 Hz. Envelope signals are added as
     new columns (e.g. 'EMG_Flexor_envelope') to each condition's DataFrame.
@@ -108,15 +108,15 @@ def get_emg_envelope(subject_data, show_plot=True):
     in each condition's DataFrame, as produced by process_emg().
 
     :param subject_data: Dict with keys 'potentiometer_position',
-        'HI_values', 'HD', 'HI', 'MVC', 'power_info'. 'HD', 'HI', 'MVC' are
+        'IHD_values', 'DHD', 'IHD', 'MVC', 'power_info'. 'DHD', 'IHD', 'MVC' are
         each dicts with 'data' (DataFrame) and 'params' (dict containing
         'fs', the sampling frequency)
     :param show_plot: If True, shows filtered EMG with envelope overlaid on
         top, for each channel present in each condition
-    :return: subject_data with envelope columns added to HD, HI, MVC DataFrames
+    :return: subject_data with envelope columns added to DHD, IHD, MVC DataFrames
     """
 
-    for condition in ("HD", "HI", "MVC"):
+    for condition in ("DHD", "IHD", "MVC"):
 
         if condition not in subject_data:
             continue
@@ -225,7 +225,7 @@ def _plot_emg_envelope(title, filtered, envelope):
     """
     Plot the filtered EMG signal with its envelope overlaid on top.
 
-    :param title: Title for the plot (e.g. "HD - EMG_Flexor")
+    :param title: Title for the plot (e.g. "DHD - EMG_Flexor")
     :param filtered: Filtered EMG signal (1D array)
     :param envelope: Envelope signal (1D array)
     """

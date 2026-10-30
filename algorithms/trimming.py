@@ -5,7 +5,7 @@ Available Functions
 --------------------
 
 [Public]
-select_trim_regions(...): Interactively displays each condition (MVC, HI, HD)
+select_trim_regions(...): Interactively displays each condition (MVC, IHD, DHD)
     and lets the user select regions to cut. Saves the selected regions to a single
     Excel sheet (with a 'condition' column) in the subject's folder.
 apply_trim_indices(...): Loads previously saved trim regions from Excel and removes
@@ -36,7 +36,7 @@ from matplotlib.widgets import SpanSelector
 
 def select_trim_regions(subject_data, subject_folder, non_condition_keys=None):
     """
-    Interactively display one figure per condition (MVC, HI, HD) with one subplot
+    Interactively display one figure per condition (MVC, IHD, DHD) with one subplot
     per signal, allowing the user to select regions to cut using the mouse.
 
     Controls (per figure):
@@ -45,15 +45,15 @@ def select_trim_regions(subject_data, subject_folder, non_condition_keys=None):
         - Close the figure window to confirm and move on to the next condition.
 
     :param subject_data: Dictionary as returned by load_subject_data (ideally already
-        synced, so HD and HD_EMG are merged into a single "HD" entry)
+        synced, so DHD and DHD_HUB are merged into a single "DHD" entry)
     :param subject_folder: Path to the subject's folder, where trim_indices.xlsx will be saved
     :param non_condition_keys: Set of keys in subject_data to ignore
-                               (default: {"potentiometer_position", "HI_values"})
+                               (default: {"potentiometer_position", "IHD_values"})
     :return: Dictionary {condition: DataFrame with columns ['start', 'end']}
     """
 
     if non_condition_keys is None:
-        non_condition_keys = {"potentiometer_position", "HI_values"}
+        non_condition_keys = {"potentiometer_position", "IHD_values"}
 
     all_regions = {}
 
@@ -78,7 +78,7 @@ def apply_trim_indices(subject_data, subject_folder, non_condition_keys=None, ve
     """
     Load previously saved trim regions from 'trim_indices.xlsx' in subject_folder
     and remove the corresponding sample ranges from each condition's DataFrame
-    (MVC, HI, HD).
+    (MVC, IHD, DHD).
 
     :param subject_data: Dictionary as returned by load_subject_data
     :param subject_folder: Path to the subject's folder containing trim_indices.xlsx
@@ -88,7 +88,7 @@ def apply_trim_indices(subject_data, subject_folder, non_condition_keys=None, ve
     """
 
     if non_condition_keys is None:
-        non_condition_keys = {"potentiometer_position", "HI_values"}
+        non_condition_keys = {"potentiometer_position", "IHD_values"}
 
     file_path = os.path.join(subject_folder, "trim_indices.xlsx")
 
@@ -212,7 +212,7 @@ def _plot_trim_verification(condition, df_before, df_after, drop_ranges):
     the "before" version (removed regions shaded in red) on the left column
     and the "after" (trimmed) version on the right column.
 
-    :param condition: Name of the condition (e.g. "HD", "HI", "MVC")
+    :param condition: Name of the condition (e.g. "DHD", "IHD", "MVC")
     :param df_before: DataFrame with the signals before trimming
     :param df_after: DataFrame with the signals after trimming
     :param drop_ranges: List of (start, end) tuples that were removed
@@ -248,7 +248,7 @@ def _select_regions_for_condition(condition, signals):
     Display a single figure with one subplot per signal and let the user select
     regions to cut.
 
-    :param condition: Name of the condition (e.g. "HD", "HI", "MVC")
+    :param condition: Name of the condition (e.g. "DHD", "IHD", "MVC")
     :param signals: List of (label, pandas Series) tuples to plot
     :return: DataFrame with columns ['start', 'end'], sorted by start
     """

@@ -3,8 +3,8 @@ Script to remove unwanted feature columns from the final dataframe and save the 
 
 The following columns are removed:
     1. All band power columns (names containing 'Hz')
-    2. All columns whose names contain both 'hi' and 'normalized'
-    3. All mean variables (names starting with 'mean_hi' or 'mean_hd')
+    2. All columns whose names contain both 'ihd' and 'normalized'
+    3. All mean variables (names starting with 'mean_ihd' or 'mean_dhd')
 
 Input:  final_dataframe.xlsx
 Output: final_dataframe_filtered.xlsx
@@ -39,28 +39,28 @@ print(f"Initial number of columns: {len(df.columns)}")
 
 # Removes:
 # 1. All band power columns (contain 'Hz')
-# 2. All columns containing both 'hi' and 'normalized'
-# 3. All mean variables (start with 'mean_hi' or 'mean_hd')
+# 2. All columns containing both 'ihd' and 'normalized'
+# 3. All mean variables (start with 'mean_ihd' or 'mean_dhd')
 #
-# Examples that ARE removed:
-#   rep_max_hi_cocontraction_normalized
-#   mean_hi_emg_overlap_area_normalized
-#   mean_hi_rms_extensor
-#   mean_hd_cocontraction_normalized
+# Examples that are removed:
+#   rep_max_ihd_cocontraction_normalized
+#   mean_ihd_emg_overlap_area_normalized
+#   mean_ihd_rms_extensor
+#   mean_dhd_cocontraction_normalized
 #
-# Examples that are NOT removed:
-#   rep_max_hi_onset_diff_ms
+# Examples that are not removed:
+#   rep_max_ihd_onset_diff_ms
 columns_to_drop = [
     col
     for col in df.columns
     if (
         "hz" in col.lower()
         or (
-            "hi" in col.lower()
+            "ihd" in col.lower()
             and "normalized" in col.lower()
         )
-        or col.lower().startswith("mean_hi")
-        or col.lower().startswith("mean_hd")
+        or col.lower().startswith("mean_ihd")
+        or col.lower().startswith("mean_dhd")
     )
 ]
 

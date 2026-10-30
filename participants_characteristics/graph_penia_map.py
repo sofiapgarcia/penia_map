@@ -66,11 +66,11 @@ GROUP_ELDERLY = "Aged (>=65)"
 
 # --- metric columns (one per domain) ---
 COL_MUSCLE_MASS = "Global muscle kg"        # sarcopenia   (kg)
-COL_GRIP = "hi_values_max"                  # dynapenia    (kg)
+COL_GRIP = "ihd_values_max"                  # dynapenia    (kg)
 COL_BMD = "Bone Mineral Density"            # osteopenia   (g/cm²)
 COL_PEAK_POWER = "peak_power"               # powerpenia   (W)
 
-# --- text shown in the chart (feel free to edit) ---
+# --- text shown in the chart ---
 LABELS = {
     "F": dict(noun="mulheres", middle="Adultas (45-64)", elderly="Idosas (>=65)"),
     "M": dict(noun="homens", middle="Adultos (45-64)", elderly="Idosos (>=65)"),

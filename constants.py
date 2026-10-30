@@ -3,8 +3,8 @@ FS = 1000  # sampling frequency (Hz)
 
 # Accelerometer
 ACC_COLUMNS_HUB = ["x", "y", "z"]
-ACC_COLUMNS_HD = ["gACCx", "gACCy", "gACCz"]
-ACC_COLUMNS = ACC_COLUMNS_HUB + ACC_COLUMNS_HD
+ACC_COLUMNS_DHD = ["gACCx", "gACCy", "gACCz"]
+ACC_COLUMNS = ACC_COLUMNS_HUB + ACC_COLUMNS_DHD
 
 # Force / displacement
 FORCE_COLUMN = "FORCE"

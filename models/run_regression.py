@@ -37,7 +37,7 @@ results = run_for_multiple_targets(
     exclude_features={
         "Age (y)":["Estimated metabolic age"],
         "Estimated metabolic age":["Age (y)"],
-        "peak_power": ["velocity_at_peak_power", "force_at_peak_power", "peak_power_mass", "peak_power_height_squared", "max_force", "max_velocity","rep_pp_hd_peak_rfd","mean_hd_peak_rfd"],
+        "peak_power": ["velocity_at_peak_power", "force_at_peak_power", "peak_power_mass", "peak_power_height_squared", "max_force", "max_velocity","rep_pp_dhd_peak_rfd","mean_dhd_peak_rfd"],
         "peak_power_mass": ["velocity_at_peak_power","force_at_peak_power", "peak_power","max_velocity","max_force"],
         "peak_power_height_squared": ["velocity_at_peak_power","force_at_peak_power", "peak_power","max_velocity","max_force"],
         "Bone Mineral Density":["Estimated bone mass kg","Height(cm)"]

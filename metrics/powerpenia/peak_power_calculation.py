@@ -1,10 +1,10 @@
 """
-Functions to process and analyse HD power signals.
+Functions to process and analyse DHD power signals.
 
 Available Functions
 -------------------
 [Public]
-process_hd_power(...): Compute velocity and power from displacement and force signals, extract peak power and
+process_dhd_power(...): Compute velocity and power from displacement and force signals, extract peak power and
 maximum velocity and force during the concentric phase, and optionally plot the results.
 
 [Private]
@@ -12,9 +12,9 @@ _compute_velocity(...): Compute velocity from displacement using numerical diffe
 _moving_average_centered(...): Smooth a signal using a centered moving average.
 _get_power_summary(...): Extract peak power and its associated velocity, force and repetition,
 as well as maximum velocity and force, during the concentric phase.
-_plot_hd_power_analysis_with_velocity_raw(...): Plot displacement, force, raw and smoothed velocity, and
+_plot_dhd_power_analysis_with_velocity_raw(...): Plot displacement, force, raw and smoothed velocity, and
 power signals, highlighting the relevant maximum values.
-_plot_hd_power_analysis(...): Plot displacement, force, smoothed velocity, and power signals,
+_plot_dhd_power_analysis(...): Plot displacement, force, smoothed velocity, and power signals,
 highlighting peak power and the maximum force and velocity.
 """
 
@@ -32,9 +32,9 @@ from constants import DISPLACEMENT_COLUMN, FORCE_COLUMN
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def process_hd_power(subject_data, show_plot=True, velocity_window_ms=5):
+def process_dhd_power(subject_data, show_plot=True, velocity_window_ms=5):
     """
-    Process the HD condition: compute velocity (derivative of displacement,
+    Process the DHD condition: compute velocity (derivative of displacement,
     converted from cm to m/s), smooth it with a zero-phase moving average
     (no time delay introduced), then compute power (smoothed velocity *
     force). Extract the peak power point (with its associated velocity and
@@ -42,24 +42,24 @@ def process_hd_power(subject_data, show_plot=True, velocity_window_ms=5):
     concentric phase (samples whose 'Phase' column starts with 'C').
 
     Adds 'velocity_raw', 'velocity' (smoothed) and 'power' columns to
-    subject_data['HD']['data'], and stores the summary in
+    subject_data['DHD']['data'], and stores the summary in
     subject_data['power_info'] as a DataFrame.
 
-    :param subject_data: Dictionary as returned by load_subject_data. The HD
+    :param subject_data: Dictionary as returned by load_subject_data. The DHD
         DataFrame must already contain a 'Phase' column (e.g. produced by
         detect_concentric_eccentric_phases), with concentric-phase samples
         labeled 'C1', 'C2', etc.
-    :param show_plot: If True, shows the HD force/velocity/power signals with
+    :param show_plot: If True, shows the DHD force/velocity/power signals with
         the peak power, max velocity and max force points annotated
     :param velocity_window_ms: smoothing window length for the velocity
         moving average, in milliseconds.
     :return: subject_data with 'velocity_raw'/'velocity'/'power' columns
-        added to HD, and a new 'power_info' key with the summary DataFrame
+        added to DHD, and a new 'power_info' key with the summary DataFrame
     """
 
-    hd_content = subject_data["HD"]
-    df = hd_content["data"]
-    fs = hd_content["params"]["sampling rate"]
+    dhd_content = subject_data["DHD"]
+    df = dhd_content["data"]
+    fs = dhd_content["params"]["sampling rate"]
 
     velocity_raw = _compute_velocity(df[DISPLACEMENT_COLUMN].values, fs)
     df["velocity_raw"] = velocity_raw
@@ -69,7 +69,7 @@ def process_hd_power(subject_data, show_plot=True, velocity_window_ms=5):
     power_info = _get_power_summary(df)
 
     if show_plot:
-        _plot_hd_power_analysis(df, power_info)
+        _plot_dhd_power_analysis(df, power_info)
 
     return power_info
 
@@ -155,9 +155,9 @@ def _get_power_summary(df):
     return pd.DataFrame([summary])
 
 
-def _plot_hd_power_analysis_with_velocity_raw(df, power_info):
+def _plot_dhd_power_analysis_with_velocity_raw(df, power_info):
     """
-    Plot the HD force, raw velocity, smoothed velocity and power signals in
+    Plot the DHD force, raw velocity, smoothed velocity and power signals in
     four separate subplots (sharing the x-axis), annotating:
         - Force subplot: force at peak power, and max force (concentric only)
         - Raw velocity subplot: unfiltered velocity signal
@@ -217,14 +217,14 @@ def _plot_hd_power_analysis_with_velocity_raw(df, power_info):
     ax_power.set_xlabel("Samples")
     ax_power.legend(fontsize=8, loc="upper right")
 
-    fig.suptitle("HD - Force, Velocity (raw/filtered) and Power (concentric phase)")
+    fig.suptitle("DHD - Force, Velocity (raw/filtered) and Power (concentric phase)")
     plt.tight_layout()
     plt.show()
 
 
-def _plot_hd_power_analysis(df, power_info):
+def _plot_dhd_power_analysis(df, power_info):
     """
-    Plot the HD force, raw velocity, smoothed velocity and power signals in
+    Plot the DHD force, raw velocity, smoothed velocity and power signals in
     four separate subplots (sharing the x-axis), annotating:
         - Force subplot: force at peak power, and max force (concentric only)
         - Raw velocity subplot: unfiltered velocity signal

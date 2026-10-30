@@ -1,6 +1,6 @@
 """
 Functions for detecting and visualizing concentric and eccentric phases
-during the HD task.
+during the DHD task.
 
 Available Functions
 -------------------
@@ -48,7 +48,7 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
                                         min_distance_s=1.0, threshold_fraction=0.2):
     """
     Detects the concentric and eccentric phases for EACH repetition, using the
-    positive peaks of the force derivative (HD condition only).
+    positive peaks of the force derivative (DHD condition only).
 
     Each repetition is identified from a positive peak of the force
     derivative: the n_reps most prominent peaks are selected (corresponding to
@@ -67,8 +67,8 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
         until the derivative returns close to zero again -> offset (end of
         the repetition).
 
-    :param subject_data: dict with condition-keyed data. subject_data['HD']['data'] must be a
-        DataFrame and subject_data['HD']['params']['sampling_rate'] the sampling frequency.
+    :param subject_data: dict with condition-keyed data. subject_data['DHD']['data'] must be a
+        DataFrame and subject_data['DHD']['params']['sampling_rate'] the sampling frequency.
     :param show_plot: bool, if True plots the selected channels with every phase shaded
         and marked.
     :param derivative_sigma_ms: Standard deviation (ms) of the Gaussian kernel used to
@@ -81,16 +81,16 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
         used as that repetition's local onset/offset threshold (e.g. 0.1 = 10% of
         the peak). Increase if onsets/offsets are detected too early/late due to
         noise; decrease if the true onset/offset is being missed.
-    :return: subject_data, with an added 'Phase' column in subject_data['HD']['data']
+    :return: subject_data, with an added 'Phase' column in subject_data['DHD']['data']
         marking each repetition's concentric ('C1', 'C2', ...) and eccentric ('E1', 'E2', ...)
         samples, everything else marked as 'R'. A 'Force_derivative' column is also
         added for inspection/debugging purposes.
     """
-    if 'HD' not in subject_data:
-        raise KeyError("Condition 'HD' does not exist in subject_data.")
+    if 'DHD' not in subject_data:
+        raise KeyError("Condition 'DHD' does not exist in subject_data.")
 
-    df = subject_data['HD']['data']
-    fs = subject_data['HD']['params']['sampling rate']
+    df = subject_data['DHD']['data']
+    fs = subject_data['DHD']['params']['sampling rate']
     force = df[FORCE_COLUMN].to_numpy()
 
     derivative = _compute_force_derivative(force, fs, derivative_sigma_ms)
@@ -101,7 +101,7 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
         raise ValueError("No repetition peaks were detected in the force derivative.")
     if peak_indices.size < n_reps:
         print(f"Warning: expected {n_reps} repetitions, only found {peak_indices.size} "
-              f"peaks. Adjust min_distance_s / derivative_sigma_ms if this looks wrong.")
+              f"peaks. Adjust min_distance_s / derivative_sigma_ms if necessary.")
 
     phases_list = []
     n_peaks = peak_indices.size
@@ -139,7 +139,7 @@ def detect_concentric_eccentric_phases(subject_data, show_plot=True,
         df.iloc[phase['concentric_start']:phase['concentric_end'], df.columns.get_loc('Phase')] = f'C{rep_num}'
         df.iloc[phase['eccentric_start']:phase['eccentric_end'] + 1, df.columns.get_loc('Phase')] = f'E{rep_num}'
 
-    subject_data['HD']['data'] = df
+    subject_data['DHD']['data'] = df
 
     if show_plot:
         _plot_phases(df, phases_list)

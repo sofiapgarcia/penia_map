@@ -10,7 +10,7 @@ process_acc(...): Removes gravitational component from accelerometer signals.
 
 [Private]
 _transfer_acc_hub(...): Converts HUB raw accelerometer values into m/s^2.
-_transfer_acc_hd(...): Converts HD raw accelerometer values into g.
+_transfer_acc_dhd(...): Converts DHD raw accelerometer values into g.
 _getAccCalibration(...): Retrieves accelerometer calibration values.
 _gravitational_filter(...): Estimates the gravitational component of the signal.
 """
@@ -23,7 +23,7 @@ import numpy as np
 from pathlib import Path
 
 # internal imports
-from constants import ACC_COLUMNS_HUB , ACC_COLUMNS_HD
+from constants import ACC_COLUMNS_HUB , ACC_COLUMNS_DHD
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
@@ -34,7 +34,7 @@ def transfer_acc(df):
     Apply accelerometer transfer functions to convert raw signals into physical units.
 
     HUB signals are converted to m/s^2.
-    HD signals are converted to g.
+    DHD signals are converted to g.
 
     :param df: Input DataFrame containing raw accelerometer signals
     :return: DataFrame with converted accelerometer signals
@@ -57,15 +57,15 @@ def transfer_acc(df):
         )
 
     # -------------------------
-    # HD ACCELEROMETER
+    # DHD ACCELEROMETER
     # -------------------------
-    hd_columns = [
-        column for column in ACC_COLUMNS_HD
+    dhd_columns = [
+        column for column in ACC_COLUMNS_DHD
         if column in df.columns
     ]
 
-    for column in hd_columns:
-        df_transferred[column] = _transfer_acc_hd(
+    for column in dhd_columns:
+        df_transferred[column] = _transfer_acc_dhd(
             df_transferred[column].values
         )
 
@@ -85,7 +85,7 @@ def process_acc(df, fs):
     df_processed = df.copy()
 
     acc_columns = [
-        column for column in (ACC_COLUMNS_HUB + ACC_COLUMNS_HD)
+        column for column in (ACC_COLUMNS_HUB + ACC_COLUMNS_DHD)
         if column in df.columns
     ]
 
@@ -102,9 +102,9 @@ def process_acc(df, fs):
 # private functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def _transfer_acc_hd(data, n=16):
+def _transfer_acc_dhd(data, n=16):
     """
-    Convert raw HD accelerometer ADC values into physical units (g). This function belongs to the cardioBAN Datasheet.
+    Convert raw DHD accelerometer ADC values into physical units (g). This function belongs to the cardioBAN Datasheet.
 
     :param data: Raw ADC signal
     :param n: Number of ADC bits (default = 16)

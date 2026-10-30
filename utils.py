@@ -1,17 +1,17 @@
 """
 Functions to build the final single-row feature summary of a subject from its
-power, coordination, band power and HI_values data.
+power, coordination, band power and IHD_values data.
 
 Available Functions
 -------------------
 [Public]
-build_subject_feature_row(subject, power_info, hi_values, ...): Combine all feature sources into a single-row DataFrame for one subject.
+build_subject_feature_row(subject, power_info, ihd_values, ...): Combine all feature sources into a single-row DataFrame for one subject.
 
 [Private]
 _get_rep_row(df, marker, rep_col): Extract the row of a given repetition marker (e.g. peak power or max force repetition).
 _get_mean_row(df, rep_col): Compute the mean of every column across all repetitions.
 _get_slope_row(df, value_col): Compute the slope of a column across repetitions using a linear fit.
-_get_hi_values_summary(hi_values): Compute the max and mean of the HI_values.
+_get_ihd_values_summary(ihd_values): Compute the max and mean of the IHD_values.
 """
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -24,75 +24,75 @@ import pandas as pd
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def build_subject_feature_row(subject, power_info, hi_values,
-                              coord_hd=None, coord_hi=None,
-                              band_power_hd=None, band_power_hi=None,
+def build_subject_feature_row(subject, power_info, ihd_values,
+                              coord_dhd=None, coord_ihd=None,
+                              band_power_dhd=None, band_power_ihd=None,
                               median_freq_cols=("Median_Frequency_extensor",
                                                 "Median_Frequency_flexor")):
     """
     Build the final single-row feature summary for one subject by combining
-    power_info with the peak-power repetition row (HD) and max-force
-    repetition row (HI) from the coordination and band power metrics, the
+    power_info with the peak-power repetition row (DHD) and max-force
+    repetition row (IHD) from the coordination and band power metrics, the
     mean of each metric across all repetitions, the slope of the median
-    frequency across repetitions, and the max/mean summary of HI_values.
+    frequency across repetitions, and the max/mean summary of IHD_values.
 
     :param subject: Subject identifier to attach to the resulting row
     :param power_info: Single-row DataFrame with peak power info, including
         the rep_at_peak_power column
-    :param coord_hd: Coordination metrics DataFrame (HD), one row per repetition
-    :param coord_hi: Coordination metrics DataFrame (HI), one row per repetition
-    :param band_power_hd: Band power info DataFrame (HD), one row per repetition
-    :param band_power_hi: Band power info DataFrame (HI), one row per repetition
-    :param hi_values: Series or single-column DataFrame with the subject's
-        HI_values (e.g. subject_data["HI_values"]), used to compute the
+    :param coord_dhd: Coordination metrics DataFrame (DHD), one row per repetition
+    :param coord_ihd: Coordination metrics DataFrame (IHD), one row per repetition
+    :param band_power_dhd: Band power info DataFrame (DHD), one row per repetition
+    :param band_power_ihd: Band power info DataFrame (IHD), one row per repetition
+    :param ihd_values: Series or single-column DataFrame with the subject's
+        IHD_values (e.g. subject_data["IHD_values"]), used to compute the
         max and mean dynapenia features
     :param median_freq_cols: Names of the median-frequency columns inside
-        band_power_hd / band_power_hi (one per muscle, extensor and flexor),
+        band_power_dhd / band_power_ihd (one per muscle, extensor and flexor),
         each used to compute its own across-repetition slope
     :return: Single-row DataFrame with all combined features for the subject,
-        prefixed by source (coord_hd_, band_power_hd_, coord_hd_mean_, etc.)
+        prefixed by source (coord_dhd_, band_power_dhd_, coord_dhd_mean_, etc.)
     """
 
     # Drop rep_at_peak_power since it's just a marker, not a feature
     power_info_clean = power_info.drop(columns=["rep_at_peak_power"]).reset_index(drop=True)
 
-    # HD features come from the repetition marked as the peak power repetition
-    coord_hd_row      = _get_rep_row(coord_hd, "rep_peakpower").add_prefix("rep_pp_hd_")
-    band_power_hd_row = _get_rep_row(band_power_hd, "rep_peakpower").add_prefix("rep_pp_hd_")
+    # DHD features come from the repetition marked as the peak power repetition
+    coord_dhd_row      = _get_rep_row(coord_dhd, "rep_peakpower").add_prefix("rep_pp_dhd_")
+    band_power_dhd_row = _get_rep_row(band_power_dhd, "rep_peakpower").add_prefix("rep_pp_dhd_")
 
-    # HI features come from the repetition marked as the max force repetition
-    coord_hi_row      = _get_rep_row(coord_hi, "rep_max").add_prefix("rep_max_hi_")
-    band_power_hi_row = _get_rep_row(band_power_hi, "rep_max").add_prefix("rep_max_hi_")
+    # IHD features come from the repetition marked as the max force repetition
+    coord_ihd_row      = _get_rep_row(coord_ihd, "rep_max").add_prefix("rep_max_ihd_")
+    band_power_ihd_row = _get_rep_row(band_power_ihd, "rep_max").add_prefix("rep_max_ihd_")
 
-    # Mean of every metric across all repetitions (HD and HI domains)
-    coord_hd_mean_row      = _get_mean_row(coord_hd).add_prefix("mean_hd_")
-    band_power_hd_mean_row = _get_mean_row(band_power_hd).add_prefix("mean_hd_")
-    coord_hi_mean_row      = _get_mean_row(coord_hi).add_prefix("mean_hi_")
-    band_power_hi_mean_row = _get_mean_row(band_power_hi).add_prefix("mean_hi_")
+    # Mean of every metric across all repetitions (DHD and IHD domains)
+    coord_dhd_mean_row      = _get_mean_row(coord_dhd).add_prefix("mean_dhd_")
+    band_power_dhd_mean_row = _get_mean_row(band_power_dhd).add_prefix("mean_dhd_")
+    coord_ihd_mean_row      = _get_mean_row(coord_ihd).add_prefix("mean_ihd_")
+    band_power_ihd_mean_row = _get_mean_row(band_power_ihd).add_prefix("mean_ihd_")
 
-    # Slope of the median frequency across repetitions (HD and HI domains),
+    # Slope of the median frequency across repetitions (DHD and IHD domains),
     # computed separately for each muscle (extensor / flexor)
-    band_power_hd_slope_rows = [
-        _get_slope_row(band_power_hd, col).add_prefix("hd_")
+    band_power_dhd_slope_rows = [
+        _get_slope_row(band_power_dhd, col).add_prefix("dhd_")
         for col in median_freq_cols
     ]
-    band_power_hi_slope_rows = [
-        _get_slope_row(band_power_hi, col).add_prefix("hi_")
+    band_power_ihd_slope_rows = [
+        _get_slope_row(band_power_ihd, col).add_prefix("ihd_")
         for col in median_freq_cols
     ]
 
-    # Max/mean summary of HI_values -> also a dynapenia (HI domain) feature
-    hi_values_row = _get_hi_values_summary(hi_values).add_prefix("hi_values_")
+    # Max/mean summary of IHD_values -> also a dynapenia (IHD domain) feature
+    ihd_values_row = _get_ihd_values_summary(ihd_values).add_prefix("ihd_values_")
 
     # Combine all pieces side by side into a single row
     subject_row = pd.concat(
         [power_info_clean,
-         coord_hd_row, band_power_hd_row,
-         coord_hi_row, band_power_hi_row,
-         coord_hd_mean_row, band_power_hd_mean_row,
-         coord_hi_mean_row, band_power_hi_mean_row,
-         *band_power_hd_slope_rows, *band_power_hi_slope_rows,
-         hi_values_row],
+         coord_dhd_row, band_power_dhd_row,
+         coord_ihd_row, band_power_ihd_row,
+         coord_dhd_mean_row, band_power_dhd_mean_row,
+         coord_ihd_mean_row, band_power_ihd_mean_row,
+         *band_power_dhd_slope_rows, *band_power_ihd_slope_rows,
+         ihd_values_row],
         axis=1
     )
     subject_row.insert(0, "subject", subject)
@@ -109,8 +109,8 @@ def _get_rep_row(df, marker, rep_col="repetition"):
     dataframe that contains multiple rows per repetition, and drop the
     repetition column from the result.
 
-    :param df: Input DataFrame with one row per repetition (e.g. coord_hd,
-        scalogram_hd, band_power_hd, or their hi counterparts)
+    :param df: Input DataFrame with one row per repetition (e.g. coord_dhd,
+        scalogram_dhd, band_power_dhd, or their ihd counterparts)
     :param marker: Value to match in the repetition column (e.g. "rep_peakpower"
         or "rep_max")
     :param rep_col: Name of the column identifying the repetition
@@ -136,8 +136,8 @@ def _get_mean_row(df, rep_col="repetition"):
     """
     Compute the mean of every column across all repetitions of a dataframe.
 
-    :param df: Input DataFrame with one row per repetition (e.g. coord_hd,
-        band_power_hd, or their hi counterparts)
+    :param df: Input DataFrame with one row per repetition (e.g. coord_dhd,
+        band_power_dhd, or their ihd counterparts)
     :param rep_col: Name of the column identifying the repetition, dropped
         before averaging since it's not a numeric feature
     :return: Single-row DataFrame with the mean of each remaining column, or
@@ -181,18 +181,18 @@ def _get_slope_row(df, value_col):
     return pd.DataFrame({f"{value_col}_slope": [slope]})
 
 
-def _get_hi_values_summary(hi_values):
+def _get_ihd_values_summary(ihd_values):
     """
-    Compute the maximum and mean of the subject's HI_values dictionary.
+    Compute the maximum and mean of the subject's IHD_values dictionary.
 
-    :param hi_values: Dictionary with keys such as H1, H2, H3 and the
+    :param ihd_values: Dictionary with keys such as H1, H2, H3 and the
         corresponding force values.
     :return: Single-row DataFrame with columns "max" and "mean".
     """
-    if hi_values is None:
+    if ihd_values is None:
         return pd.DataFrame()
 
-    values = list(hi_values.values())
+    values = list(ihd_values.values())
 
     return pd.DataFrame({
         "max": [max(values)],

@@ -6,17 +6,17 @@ Available Functions
 -------------------
 [Public]
 get_muscle_coordination_metrics(...): Calculate muscle coordination metrics
-    for the HD and HI conditions and return the results as separate DataFrames.
+    for the DHD and IHD conditions and return the results as separate DataFrames.
 
 [Private]
-_get_muscle_coordination_info_hi(...): Calculate muscle coordination metrics
-    for the HI condition using the repetition with the maximum handgrip value.
-_get_muscle_coordination_info_hd(...): Calculate muscle coordination metrics
-    for the HD condition using the repetition at peak power.
+_get_muscle_coordination_info_ihd(...): Calculate muscle coordination metrics
+    for the IHD condition using the repetition with the maximum handgrip value.
+_get_muscle_coordination_info_dhd(...): Calculate muscle coordination metrics
+    for the DHD condition using the repetition at peak power.
 _get_onset_difference(...): Calculate the time difference between extensor
     and flexor muscle activation onsets.
 _get_cocontraction_time(...): Calculate co-contraction duration during the
-    concentric phase of the HD condition.
+    concentric phase of the DHD condition.
 _get_emg_peak_in_phase(...): Identify the peak normalized EMG value and its
     sample index within a specified phase.
 _get_envelope_peak_delay(...): Calculate the time difference between extensor
@@ -31,11 +31,11 @@ _get_emg_integral(...): Calculate the integrated absolute EMG signal within
     a specified sample window.
 _get_emg_mean(...): Calculate the mean absolute EMG signal within a
     specified sample window.
-_get_cocontraction_overlap_hi(...): Calculate the overlap duration between
-    extensor and flexor activity during the HI condition.
-_get_activity_span_hi(...): Calculate the total muscle activity duration
-    during the HI condition.
-_get_max_repetition_hi(...): Identify the HI repetition with the maximum
+_get_cocontraction_overlap_ihd(...): Calculate the overlap duration between
+    extensor and flexor activity during the IHD condition.
+_get_activity_span_ihd(...): Calculate the total muscle activity duration
+    during the IHD condition.
+_get_max_repetition_ihd(...): Identify the IHD repetition with the maximum
     handgrip value.
 _build_coordination_dataframe(...): Convert coordination metrics into a
     DataFrame with one row per repetition.
@@ -56,52 +56,52 @@ from constants import FORCE_COLUMN , FS
 
 def get_muscle_coordination_metrics(
     subject_data_normalized,
-    onset_df_hd,
-    onset_df_hi,
+    onset_df_dhd,
+    onset_df_ihd,
     power_info,
     onset_extensor_column="EMG_Extensor_filt",
     onset_flexor_column="EMG_Flexor_filt",
     emg_extensor_column="EMG_Extensor_norm",
     emg_flexor_column="EMG_Flexor_norm",
     offset_column="offset_idx",
-    hi_values_key="HI_values",
+    ihd_values_key="IHD_values",
 ):
     """
-    Single entry point for main: runs the HD and HI coordination pipelines
+    Single entry point for main: runs the DHD and IHD coordination pipelines
     and returns both resulting DataFrames.
 
     :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params' for both conditions
-    :param onset_df_hd: DataFrame output for the HD condition from detect_emg_onsets
-    :param onset_df_hi: DataFrame output for the HI condition from detect_emg_onsets
-    :param power_info: DataFrame containing a 'rep_at_peak_power' column (used for the HD condition)
+    :param onset_df_dhd: DataFrame output for the DHD condition from detect_emg_onsets
+    :param onset_df_ihd: DataFrame output for the IHD condition from detect_emg_onsets
+    :param power_info: DataFrame containing a 'rep_at_peak_power' column (used for the DHD condition)
     :param FS: Sampling frequency (Hz). If None, extracted from subject_data_normalized per condition
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of normalized extensor envelope EMG
     :param emg_flexor_column: Column name of normalized flexor envelope EMG
-    :param offset_column: Column name of the muscle offset sample index (HI onset_df)
-    :param hi_values_key: Key inside subject_data_normalized["HI"] holding the H1/H2/H3 values
-    :return: Tuple (df_hd, df_hi) with one row per repetition each
+    :param offset_column: Column name of the muscle offset sample index (IHD onset_df)
+    :param ihd_values_key: Key inside subject_data_normalized["IHD"] holding the H1/H2/H3 values
+    :return: Tuple (df_dhd, df_ihd) with one row per repetition each
     """
-    df_hd = _get_muscle_coordination_info_hd(subject_data_normalized, onset_df_hd, power_info,
+    df_dhd = _get_muscle_coordination_info_dhd(subject_data_normalized, onset_df_dhd, power_info,
                                              onset_extensor_column=onset_extensor_column,
                                              onset_flexor_column=onset_flexor_column,
                                              emg_extensor_column=emg_extensor_column,
                                              emg_flexor_column=emg_flexor_column)
 
-    df_hi = _get_muscle_coordination_info_hi(subject_data_normalized, onset_df_hi,
+    df_ihd = _get_muscle_coordination_info_ihd(subject_data_normalized, onset_df_ihd,
                                              onset_extensor_column=onset_extensor_column,
                                              onset_flexor_column=onset_flexor_column,
                                              emg_extensor_column=emg_extensor_column,
                                              emg_flexor_column=emg_flexor_column, offset_column=offset_column,
-                                             hi_values_key=hi_values_key)
+                                             ihd_values_key=ihd_values_key)
 
-    return df_hd, df_hi
+    return df_dhd, df_ihd
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
 # ------------------------------------------------------------------------------------------------------------------- #
-def _get_muscle_coordination_info_hi(
+def _get_muscle_coordination_info_ihd(
     subject_data_normalized,
     onset_df,
     onset_extensor_column="EMG_Extensor_filt",
@@ -109,28 +109,28 @@ def _get_muscle_coordination_info_hi(
     emg_extensor_column="EMG_Extensor_norm",
     emg_flexor_column="EMG_Flexor_norm",
     offset_column="offset_idx",
-    hi_values_key="HI_values",
+    ihd_values_key="IHD_values",
 ):
     """
-    Build the full muscle coordination info for the HI (isometric) condition
+    Build the full muscle coordination info for the IHD (isometric) condition
     using the onset DataFrame from detect_emg_onsets.
 
     :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params'
-    :param onset_df: DataFrame output for the HI condition from detect_emg_onsets
+    :param onset_df: DataFrame output for the IHD condition from detect_emg_onsets
         (expected to contain, per rep/muscle row: "onset_idx" and ofFSet_column)
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of normalized extensor EMG
     :param emg_flexor_column: Column name of normalized flexor EMG
     :param offset_column: Column name of the muscle ofFSet sample index
-    :param hi_values_key: Key inside subject_data_normalized[condition] holding the H1/H2/H3 values
-    :return: DataFrame with one row per repetition of HI coordination metrics
+    :param ihd_values_key: Key inside subject_data_normalized[condition] holding the H1/H2/H3 values
+    :return: DataFrame with one row per repetition of IHD coordination metrics
     """
 
-    df_normalized = subject_data_normalized["HI"]["data"]
-    rep_max = _get_max_repetition_hi(subject_data_normalized, hi_values_key=hi_values_key)
+    df_normalized = subject_data_normalized["IHD"]["data"]
+    rep_max = _get_max_repetition_ihd(subject_data_normalized, ihd_values_key=ihd_values_key)
 
-    # keep only the repetition with the maximum HI value
+    # keep only the repetition with the maximum IHD value
     rep_data = onset_df[onset_df["rep"] == rep_max]
 
     ext_row = rep_data[rep_data["muscle"] == onset_extensor_column]
@@ -147,9 +147,9 @@ def _get_muscle_coordination_info_hi(
     onset_diff_ms = _get_onset_difference(onset_extensor_idx, onset_flexor_idx)
     onset_diff_ms_abs = abs(onset_diff_ms)
 
-    cocontraction_ms = _get_cocontraction_overlap_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx,
+    cocontraction_ms = _get_cocontraction_overlap_ihd(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx,
                                                      offset_flexor_idx)
-    activity_span_ms = _get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx,
+    activity_span_ms = _get_activity_span_ihd(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx,
                                              offset_flexor_idx)
     cocontraction_normalized = cocontraction_ms / activity_span_ms
 
@@ -197,11 +197,11 @@ def _get_muscle_coordination_info_hi(
         "emg_overlap_area_normalized": emg_overlap_area_normalized,
     }
 
-    df_hi = _build_coordination_dataframe({"HI": {"rep_max": metrics}}, condition="HI")
+    df_ihd = _build_coordination_dataframe({"IHD": {"rep_max": metrics}}, condition="IHD")
 
-    return df_hi
+    return df_ihd
 
-def _get_muscle_coordination_info_hd(
+def _get_muscle_coordination_info_dhd(
     subject_data_normalized,
     onset_df,
     power_info,
@@ -211,21 +211,21 @@ def _get_muscle_coordination_info_hd(
     emg_flexor_column="EMG_Flexor_norm",
 ):
     """
-    Build the full muscle coordination info for a given condition (only 'HD'
-    supported for now) using the onset DataFrame from detect_emg_onsets.
+    Build the full muscle coordination info for a given condition (DHD)
+    using the onset DataFrame from detect_emg_onsets.
 
     :param subject_data_normalized: Dict output of normalize_emg containing 'data' and 'params'
     :param onset_df: DataFrame output for a condition from detect_emg_onsets
     :param power_info: DataFrame containing a 'rep_at_peak_power' column
-    :param condition: Condition name to process (default 'HD')
+    :param condition: Condition name to process (default 'DHD')
     :param onset_extensor_column: Muscle column name used for extensor onsets
     :param onset_flexor_column: Muscle column name used for flexor onsets
     :param emg_extensor_column: Column name of normalized extensor EMG
     :param emg_flexor_column: Column name of normalized flexor EMG
-    :return: df_hd containing coordination DataFrame
+    :return: df_dhd containing coordination DataFrame
     """
 
-    df_normalized = subject_data_normalized["HD"]["data"]
+    df_normalized = subject_data_normalized["DHD"]["data"]
     rep_at_peak_power = int(power_info["rep_at_peak_power"].iloc[0])
 
     rep_data = onset_df[onset_df["rep"] == rep_at_peak_power]
@@ -238,7 +238,7 @@ def _get_muscle_coordination_info_hd(
     onset_extensor_idx = ext_row["onset_idx"].values[0]
     onset_flexor_idx = flex_row["onset_idx"].values[0]
 
-    # Extract concentric phase boundaries (shared between muscles in HD condition)
+    # Extract concentric phase boundaries (shared between muscles in DHD condition)
     concentric_start_idx = ext_row["concentric_start_idx"].values[0]
     concentric_end_idx = ext_row["concentric_end_idx"].values[0]
     concentric_duration_ms = (concentric_end_idx - concentric_start_idx) / FS * 1000
@@ -291,9 +291,9 @@ def _get_muscle_coordination_info_hd(
         "emg_overlap_area_normalized": emg_overlap_area_normalized,
     }
 
-    df_hd = _build_coordination_dataframe({"HD": {"rep_peakpower": metrics}}, condition="HD")
+    df_dhd = _build_coordination_dataframe({"DHD": {"rep_peakpower": metrics}}, condition="DHD")
 
-    return df_hd
+    return df_dhd
 
 
 def _get_onset_difference(onset_extensor_idx, onset_flexor_idx):
@@ -410,7 +410,7 @@ def _get_emg_overlap_area(df_normalized, start_idx, end_idx, emg_extensor_column
 
     Callers typically also report a normalized version of this value,
     dividing it by the relevant phase duration (concentric phase duration
-    for HD, full activity span for HI) to make it comparable across
+    for DHD, full activity span for IHD) to make it comparable across
     repetitions/subjects with different phase durations.
 
     If end_idx <= start_idx (no valid window / no overlap), returns 0.0.
@@ -475,9 +475,9 @@ def _get_emg_mean(df_normalized, start_idx, end_idx, emg_column):
     return float(np.mean(np.abs(signal)))
 
 
-def _get_cocontraction_overlap_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx):
+def _get_cocontraction_overlap_ihd(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx):
     """
-    Co-contraction time (ms) for the HI (isometric) condition: the duration
+    Co-contraction time (ms) for the IHD (isometric) condition: the duration
     during which BOTH muscles were simultaneously active, i.e. the overlap
     between the extensor's and the flexor's own [onset, ofFSet] windows.
 
@@ -494,9 +494,9 @@ def _get_cocontraction_overlap_hi(onset_extensor_idx, offset_extensor_idx, onset
     return (overlap_samples / FS) * 1000
 
 
-def _get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx):
+def _get_activity_span_ihd(onset_extensor_idx, offset_extensor_idx, onset_flexor_idx, offset_flexor_idx):
     """
-    Total activity span (ms) for the HI (isometric) condition: from the
+    Total activity span (ms) for the IHD (isometric) condition: from the
     onset of whichever muscle activated FIRST to the ofFSet of whichever
     muscle deactivated LAST. Used to normalize the co-contraction time.
 
@@ -512,29 +512,29 @@ def _get_activity_span_hi(onset_extensor_idx, offset_extensor_idx, onset_flexor_
     return (span_samples / FS) * 1000
 
 
-def _get_max_repetition_hi(subject_data_normalized, hi_values_key="HI_values"):
+def _get_max_repetition_ihd(subject_data_normalized, ihd_values_key="IHD_values"):
     """
-    Identify which repetition corresponds to the maximum value in the HI
+    Identify which repetition corresponds to the maximum value in the IHD
     condition.
 
-    :param subject_data_normalized: Dict containing the HI values.
-    :param hi_values_key: Key containing the H1/H2/H3 values.
-    :return: Repetition number (int) corresponding to the max HI value.
+    :param subject_data_normalized: Dict containing the IHD values.
+    :param ihd_values_key: Key containing the H1/H2/H3 values.
+    :return: Repetition number (int) corresponding to the max IHD value.
     """
-    hi_values = subject_data_normalized[hi_values_key]
+    ihd_values = subject_data_normalized[ihd_values_key]
 
-    values = [hi_values["H1"], hi_values["H2"], hi_values["H3"]]
+    values = [ihd_values["H1"], ihd_values["H2"], ihd_values["H3"]]
 
     return values.index(max(values)) + 1
 
 
-def _build_coordination_dataframe(coordination_info, condition="HD"):
+def _build_coordination_dataframe(coordination_info, condition="DHD"):
     """
     Flatten coordination_info into a tidy DataFrame with one row per repetition.
 
     :param coordination_info: Dict containing metric values per repetition key
     :param subject_id: Optional subject identifier to prepending as first column
-    :param condition: Condition key inside coordination_info (default 'HD')
+    :param condition: Condition key inside coordination_info (default 'DHD')
     :return: Tidy DataFrame with repetition metrics
     """
     rows = []

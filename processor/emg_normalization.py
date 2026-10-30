@@ -7,7 +7,7 @@ Available Functions
 [Public]
 get_mvc_values(...): Calculates MVC reference values for the extensor and flexor muscles using
 the maximum envelope and filtered EMG amplitudes from their respective reference conditions.
-normalize_emg(...): Normalizes EMG envelope and filtered signals in the HD and HI conditions
+normalize_emg(...): Normalizes EMG envelope and filtered signals in the DHD and IHD conditions
 as a percentage of their corresponding MVC reference values.
 
 [Private]
@@ -41,7 +41,7 @@ def get_mvc_values(subject_data, show_plot=True):
     """
     Compute the MVC (Maximum Voluntary Contraction) value for each muscle
     and store them in a new 'MVC_values' key in subject_data. The extensor
-    MVC is taken as the maximum of the EMG_Extensor envelope in the HI
+    MVC is taken as the maximum of the EMG_Extensor envelope in the IHD
     condition, and the flexor MVC is taken as the maximum of the
     EMG_Flexor envelope in the MVC condition.
 
@@ -49,7 +49,7 @@ def get_mvc_values(subject_data, show_plot=True):
     in the respective DataFrames, as produced by get_emg_envelope().
 
     :param subject_data: Dict with keys 'potentiometer_position',
-        'HI_values', 'HD', 'HI', 'MVC', 'power_info'. 'HD', 'HI', 'MVC' are
+        'IHD_values', 'DHD', 'IHD', 'MVC', 'power_info'. 'DHD', 'IHD', 'MVC' are
         each dicts with 'data' (DataFrame) and 'params' (dict)
     :param show_plot: If True, shows the envelope signal with the MVC peak
         marked, for each muscle
@@ -57,7 +57,7 @@ def get_mvc_values(subject_data, show_plot=True):
         'extensor' and 'flexor' keys holding the respective MVC values
     """
 
-    extensor_df = subject_data["HI"]["data"]
+    extensor_df = subject_data["IHD"]["data"]
     flexor_df = subject_data["MVC"]["data"]
 
     extensor_envelope = extensor_df["EMG_Extensor_envelope"].values
@@ -78,16 +78,16 @@ def get_mvc_values(subject_data, show_plot=True):
     }
 
     if show_plot:
-        _plot_mvc_peak("Extensor Envelope MVC (HI condition)", extensor_envelope, extensor_mvc)
+        _plot_mvc_peak("Extensor Envelope MVC (IHD condition)", extensor_envelope, extensor_mvc)
         _plot_mvc_peak("Flexor Envelope MVC (MVC condition)", flexor_envelope, flexor_mvc)
-        _plot_mvc_peak("Extensor Filt MVC (HI condition)", extensor_filt, extensor_mvc_filt)
+        _plot_mvc_peak("Extensor Filt MVC (IHD condition)", extensor_filt, extensor_mvc_filt)
         _plot_mvc_peak("Flexor Filt MVC (MVC condition)", flexor_filt, flexor_mvc_filt)
 
     return subject_data
 
 def normalize_emg(subject_data, show_plot=True):
     """
-    Normalize EMG signals in HD and HI conditions as a percentage of the
+    Normalize EMG signals in DHD and IHD conditions as a percentage of the
     corresponding MVC (Maximal Voluntary Contraction) value stored in
     subject_data['MVC_values'] (%MVC normalization).
 
@@ -99,23 +99,23 @@ def normalize_emg(subject_data, show_plot=True):
         and multiplied by 100, stored as '{channel}_filt_norm' (e.g.
         'EMG_Flexor_filt_norm').
 
-    Both are added as new columns to the HD and HI DataFrames. The MVC
+    Both are added as new columns to the DHD and IHD DataFrames. The MVC
     condition is not normalized.
 
     Expects envelope columns (e.g. 'EMG_Flexor_envelope') and filtered
-    columns (e.g. 'EMG_Flexor_filt') to already exist in the HD and HI
+    columns (e.g. 'EMG_Flexor_filt') to already exist in the DHD and IHD
     DataFrames, and 'MVC_values' to already exist in subject_data (as
     produced by get_mvc_values()).
 
     :param subject_data: Dict with keys 'potentiometer_position',
-        'HI_values', 'HD', 'HI', 'MVC', 'power_info', 'MVC_values'.
-        'HD', 'HI', 'MVC' are each dicts with 'data' (DataFrame) and
+        'IHD_values', 'DHD', 'IHD', 'MVC', 'power_info', 'MVC_values'.
+        'DHD', 'IHD', 'MVC' are each dicts with 'data' (DataFrame) and
         'params' (dict)
     :param show_plot: If True, shows a before/after comparison plot (all
-        channels together, envelope signal) for each of HD and HI
+        channels together, envelope signal) for each of DHD and IHD
     :return: subject_data with normalized envelope ('{channel}_norm') and
         normalized filtered ('{channel}_filt_norm') %MVC columns added to
-        HD and HI DataFrames
+        DHD and IHD DataFrames
     """
 
     if "MVC_values" not in subject_data:
@@ -123,7 +123,7 @@ def normalize_emg(subject_data, show_plot=True):
 
     mvc_values = subject_data["MVC_values"]
 
-    for condition in ("HD", "HI"):
+    for condition in ("DHD", "IHD"):
 
         if condition not in subject_data:
             continue
@@ -180,7 +180,7 @@ def _plot_emg_normalized(condition, envelope_signals, env_normalized_signals, fi
     subplot shows both the normalized envelope and the normalized
     filtered EMG signal for each channel.
 
-    :param condition: Condition name (e.g. "HD", "HI")
+    :param condition: Condition name
     :param envelope_signals: Dict mapping channel name to envelope signal
         (1D array), pre-normalization
     :param env_normalized_signals: Dict mapping channel name to normalized
@@ -235,7 +235,7 @@ def _plot_mvc_peak(title, envelope, mvc_value):
     """
     Plot an EMG envelope signal with its maximum (MVC) value marked.
 
-    :param title: Title for the plot (e.g. "Extensor MVC (HI condition)")
+    :param title: Title for the plot (e.g. "Extensor MVC (IHD condition)")
     :param envelope: Envelope signal (1D array)
     :param mvc_value: MVC value (peak of the envelope) to highlight
     """

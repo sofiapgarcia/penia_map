@@ -59,7 +59,7 @@ TEMPLATE_FILE = BASE / "participant_reports" / "template_report_2.html"
 # Otherwise: exactly the value in the "Name" column
 TEST_PARTICIPANT = "Francisco Miguel Latas Figueira"
 
-# Column names in the participants sheet (left = internal key, right = YOUR column name)
+# Column names in the participants sheet (left = internal key, right = column name)
 COL = {
     "name": "Name",
     "date": "Data",
@@ -69,7 +69,7 @@ COL = {
     "age_group": "Age group (MeSH)",
     # main measures
     "muscle_mass": "Global muscle kg",
-    "grip_strength": "hi_values_max",
+    "grip_strength": "ihd_values_max",
     "bmd": "Bone Mineral Density",
     "peak_power": "peak_power",
     # Tanita scale - anthropometrics

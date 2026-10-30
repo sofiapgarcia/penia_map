@@ -26,7 +26,7 @@ def apply_transfer_functions(df, x0 , hp_source , low_level , high_level):
     Apply all sensor transfer functions to a raw DataFrame.
 
     Order:
-    1. Accelerometers (HUB + HD)
+    1. Accelerometers (HUB + DHD)
     2. Displacement
     3. EMG
     4. Force

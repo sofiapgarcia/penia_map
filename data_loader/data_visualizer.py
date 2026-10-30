@@ -39,7 +39,7 @@ def plot_subject_data(subject_data):
     """
     Plot all acquisitions contained in subject_data.
 
-    HD (which already merges the former HD and HD_EMG acquisitions into a
+    DHD (which already merges the former DHD and DHD_HUB acquisitions into a
     single DataFrame) is displayed with one subplot per signal, except
     that each raw signal is plotted together with its filtered
     counterpart (columns ending in "_filt") in the same subplot, using
@@ -52,37 +52,37 @@ def plot_subject_data(subject_data):
     raw/filtered pairing applied as well.
 
     :param subject_data: Dictionary returned by load_subject_data() /
-        apply_saved_sync_indices() (with HD already merged)
+        apply_saved_sync_indices() (with DHD already merged)
     """
 
-    non_condition_keys = {"potentiometer_position", "HI_values"}
+    non_condition_keys = {"potentiometer_position", "IHD_values"}
 
     # ------------------------------------------------------------------
-    # Check availability of HD
+    # Check availability of DHD
     # ------------------------------------------------------------------
 
-    has_hd = (
-        "HD" in subject_data
-        and isinstance(subject_data["HD"], dict)
-        and "data" in subject_data["HD"]
+    has_dhd = (
+        "DHD" in subject_data
+        and isinstance(subject_data["DHD"], dict)
+        and "data" in subject_data["DHD"]
     )
 
     # ------------------------------------------------------------------
-    # Plot HD (one subplot per signal, raw+filtered paired + comparison)
+    # Plot DHD (one subplot per signal, raw+filtered paired + comparison)
     # ------------------------------------------------------------------
 
-    if has_hd:
+    if has_dhd:
 
-        hd = subject_data["HD"]["data"]
+        dhd = subject_data["DHD"]["data"]
 
-        comparison_available = "gACCy" in hd.columns and "y" in hd.columns
+        comparison_available = "gACCy" in dhd.columns and "y" in dhd.columns
 
         excluded = set(ALWAYS_EXCLUDED_COLUMNS)
         if comparison_available:
             excluded |= {"gACCy", "y"}
 
-        hd_columns = [column for column in hd.columns if column not in excluded]
-        groups = _group_signal_columns(hd_columns)
+        dhd_columns = [column for column in dhd.columns if column not in excluded]
+        groups = _group_signal_columns(dhd_columns)
 
         n_subplots = len(groups) + int(comparison_available)
 
@@ -92,30 +92,30 @@ def plot_subject_data(subject_data):
 
             idx = 0
 
-            # ---------------- HD signals (raw + filtered paired) ----------------
+            # ---------------- DHD signals (raw + filtered paired) ----------------
             for group in groups:
-                title = f"HD - {group[0]}"
-                _plot_group(axes[idx], hd, group, title)
+                title = f"DHD - {group[0]}"
+                _plot_group(axes[idx], dhd, group, title)
                 idx += 1
 
             # ---------------- Comparison (overlaid) ----------------
             if comparison_available:
-                gaccy_norm = _center_and_normalize(-hd["gACCy"])
-                y_norm = _center_and_normalize(hd["y"])
+                gaccy_norm = _center_and_normalize(-dhd["gACCy"])
+                y_norm = _center_and_normalize(dhd["y"])
 
                 axes[idx].plot(
                     gaccy_norm,
-                    label="HD gACCy (z-scored)",
+                    label="DHD gACCy (z-scored)",
                     linewidth=1.2
                 )
 
                 axes[idx].plot(
                     y_norm,
-                    label="HD_EMG y (z-scored)",
+                    label="DHD_HUB y (z-scored)",
                     linewidth=1.2
                 )
 
-                axes[idx].set_title("HD gACCy vs HD_EMG y (z-scored)", fontsize=10, pad=8)
+                axes[idx].set_title("DHD gACCy vs DHD_HUB y (z-scored)", fontsize=10, pad=8)
                 axes[idx].legend(loc="upper right")
 
             plt.show()
@@ -129,7 +129,7 @@ def plot_subject_data(subject_data):
         if condition in non_condition_keys:
             continue
 
-        if condition == "HD":
+        if condition == "DHD":
             continue
 
         if (not isinstance(content, dict) or "data" not in content):

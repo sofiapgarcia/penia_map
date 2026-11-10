@@ -184,23 +184,24 @@ def _notch_filter_emg(signal, fs, notch_freq=50, quality_factor=30):
 
 def _plot_emg_processing(channel, raw, filtered):
     """
-    Plot the raw and filtered EMG signal on the same graph for visual
-    comparison.
+        Plot raw and filtered EMG signals in separate subplots.
 
-    :param channel: EMG channel name (e.g. "EMG_Flexor")
-    :param raw: Raw EMG signal (1D array)
-    :param filtered: Filtered EMG signal (1D array)
-    """
+        :param channel: EMG channel name (e.g. "EMG_Flexor")
+        :param raw: Raw EMG signal (1D array)
+        :param filtered: Filtered EMG signal (1D array)
+        """
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
 
-    fig, ax = plt.subplots(figsize=(12, 4))
+    axes[0].plot(raw, color="#7dafd9", linewidth=0.6)
+    axes[0].set_title("Sinal EMG bruto")
+    axes[0].set_ylabel("Amplitude (mV)")
 
-    ax.plot(raw, linewidth=0.6, alpha=0.6, label="Raw")
-    ax.plot(filtered, linewidth=0.8, label="Filtered")
+    axes[1].plot(filtered, color="#1565C0", linewidth=0.6)
+    axes[1].set_title("Sinal EMG filtrado")
+    axes[1].set_xlabel("Número de amostra")
+    axes[1].set_ylabel("Amplitude (mV)")
 
-    ax.set_title(channel)
-    ax.set_xlabel("Samples")
-    ax.legend()
-
+    fig.suptitle(channel)
     plt.tight_layout()
     plt.show()
 

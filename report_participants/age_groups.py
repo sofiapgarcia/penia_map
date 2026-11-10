@@ -19,73 +19,44 @@ _classify_age(...): Return the age group (YA, A or E) for a given age.
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
+import numpy as np
 import pandas as pd
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# file specific constants
-# ------------------------------------------------------------------------------------------------------------------- #
-FILE_PATH = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
-AGE_COLUMN_NAME = "Age (y)"
-GROUP_COLUMN_NAME = "Age Group"
-SHEET_NAME = 0
+# File paths
+INPUT_FILE = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\report_participants_all.xlsx"
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# public functions
-# ------------------------------------------------------------------------------------------------------------------- #
+AGE_COL = "Age (y)"
 
-def process_file(input_path):
-    """
-    Read an Excel file, add an age group column based on the age column
-    and save the result to a new Excel file.
+# Age groups
+BINS = [18, 25, 45, 65, np.inf]
+LABELS = [
+    "Young Adult (18-24)",
+    "Adult (25-44)",
+    "Middle Aged (45-64)",
+    "Aged (>=65)",
+]
 
-    :param input_path: Path to the input Excel file (.xlsx)
-    :return: Path to the saved output file
-    """
-    # Read the Excel file
-    df = pd.read_excel(input_path, sheet_name=SHEET_NAME)
+# Read Excel
+df = pd.read_excel(INPUT_FILE)
 
-    if AGE_COLUMN_NAME not in df.columns:
-        raise ValueError(
-            f"Column '{AGE_COLUMN_NAME}' was not found. "
-            f"Available columns: {list(df.columns)}"
-        )
+# Check age column
+if AGE_COL not in df.columns:
+    raise ValueError(f"Column '{AGE_COL}' not found in the Excel file.")
 
-    # Create the new column
-    df[GROUP_COLUMN_NAME] = df[AGE_COLUMN_NAME].apply(_classify_age)
+# Convert age to numeric
+df[AGE_COL] = pd.to_numeric(df[AGE_COL], errors="coerce")
 
-    # Define output path
-    output_path = input_path[:-5] + "_age_groups.xlsx"
+# Add age group column
+df["Age group (MeSH)"] = pd.cut(
+    df[AGE_COL],
+    bins=BINS,
+    labels=LABELS,
+    right=False
+).astype(object).fillna("Out of range")
 
-    df.to_excel(output_path, index=False)
-    print(f"File successfully saved to: {output_path}")
+# Save Excel, overwriting the original file
+df.to_excel(INPUT_FILE, index=False)
 
-    # Print a summary of how many rows fall into each age group
-    print("\nCounts per age group:")
-    counts = df[GROUP_COLUMN_NAME].value_counts(dropna=False)
-    for group in ["YA", "A", "E"]:
-        print(f"  {group}: {counts.get(group, 0)}")
-
-    return output_path
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# private functions
-# ------------------------------------------------------------------------------------------------------------------- #
-
-def _classify_age(age):
-    """
-    Return the age group (YA, A or E) for a given age.
-
-    :param age: Age in years (may be NaN)
-    :return: "YA" if age <= 35, "A" if age <= 65, "E" otherwise, or None if age is missing
-    """
-    if pd.isna(age):
-        return None
-    if age <= 35:
-        return "YA"
-    elif age <= 65:
-        return "A"
-    else:
-        return "E"
-
-if __name__ == "__main__":
-    process_file(FILE_PATH)
+print(f"Age group column added successfully.")
+print(f"Participants: {len(df)}")
+print(df["Age group (MeSH)"].value_counts(dropna=False))

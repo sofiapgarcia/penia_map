@@ -30,7 +30,7 @@ import pandas as pd
 
 # internal imports
 from data_loader.data_loading import load_subject_data
-from data_loader.data_visualizer import plot_sensors_over_time , plot_column_over_time , plot_interpolated_signal , plot_subject_data
+from data_loader.data_visualizer import plot_sensors_over_time , plot_column_over_time , plot_interpolated_signal , plot_subject_data , plot_missing_samples , plot_temporal_emg_metrics
 from processor.interpolator import interpolate_signal
 from processor.transfer_function import apply_transfer_functions
 from processor.emg import process_emg , get_emg_envelope
@@ -49,12 +49,12 @@ from metrics.spectral_density_metrics import get_muscle_power_spectral_density_i
 # ------------------------------------------------------------------------------------------------------------------- #
 # file specific constants
 # ------------------------------------------------------------------------------------------------------------------- #
-path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos"
+path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\invalidos"
 non_condition_keys = {"handgrip_position", "handgrip_position_source","calibration","IHD_values"}
 
 subjects = sorted(folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("S"))
 # if only 1 subject to analyse
-#subjects = ["S129"]
+#subjects = ["S14"]
 subjects_with_missing_samples = ["S122","S133","S21","S36","S49"]
 subjects_with_no_calibration = ["S4","S14","S17","S22","S24","S25","S84"] # valids but with no displacement calibration
 subjects_with_signals_bad_quality = ["S21"] # missing samples in one repetition of DHD
@@ -69,9 +69,10 @@ features = []
 for subject in subjects:
 
     subject_number = int(subject.replace("S", ""))
-    """
+
     if subject in ["S107","S53","S39","S129","S130"]: # without DHD condition
         continue
+    """
     if subject in subjects_with_no_calibration:
         continue
     """
@@ -111,6 +112,7 @@ for subject in subjects:
 
         # Interpolate
         df_interpolated, info, mask = interpolate_signal(df_transferred)
+        #plot_missing_samples(df_interpolated, mask, fs=fs, title=f"")
 
         # plot the interpolated signal
         """
@@ -118,7 +120,7 @@ for subject in subjects:
             plot_interpolated_signal(df_interpolated, mask, column)
         """
         # Process emg signal
-        df_processed = process_emg(df_interpolated, fs)
+        df_processed = process_emg(df_interpolated, fs, show_plot=False)
 
         # Process force signal
         df_processed = process_force(df_processed, fs, show_plot=False)
@@ -134,12 +136,13 @@ for subject in subjects:
 
     # Synchronize acquisitions
     #subject_data_sync = synchronize_dhd_acquisitions(subject_data,column_dhd="gACCy",column_dhd_emg="target",subject_folder=os.path.join(path, subject))
-    subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
+    #subject_data_sync = apply_saved_sync_indices(subject_data, subject_folder , show_plot=False)
     #plot_subject_data(subject_data_sync)
 
     # Trim data
     # Interactively select and save trim regions for this subject
     #select_trim_regions(subject_data_sync, subject_folder, non_condition_keys)
+    subject_data_sync = subject_data
     subject_data_trim = apply_trim_indices(subject_data_sync, subject_folder, non_condition_keys, verify_plot=False)
     #plot_subject_data(subject_data_sync)
 
@@ -150,32 +153,38 @@ for subject in subjects:
     power_info = process_dhd_power(subject_data_phases, show_plot=False)
 
     # calculate emg envelope
-    subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
+    #subject_data_envelope = get_emg_envelope(subject_data_phases, show_plot=False)
 
     # Get MVC values
-    subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
+    #subject_data_mvc = get_mvc_values(subject_data_envelope, show_plot=False)
 
     # Normalize EMG signals
-    subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=False)
+    #subject_data_normalized = normalize_emg(subject_data_mvc, show_plot=True)
 
     # Onset information
-    onset_dhd , onset_ihd = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
-    onset_dhd , onset_ihd = validate_onsets(subject_data_normalized, onset_dhd, onset_ihd, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
+    #onset_dhd , onset_ihd = detect_emg_onsets(subject_data_normalized, show_plot=False, show_pipeline_plots=False, pipeline_max_reps=2, show_coarse_detection_plots=False)
+    #onset_dhd , onset_ihd = validate_onsets(subject_data_normalized, onset_dhd, onset_ihd, subject_number, output_dir=os.path.join(path, subject), show_validation_plot=False, force_review=False)
 
     # Muscle coordination
-    coord_dhd , coord_ihd = get_muscle_coordination_metrics(subject_data_normalized, onset_dhd, onset_ihd, power_info)
+    #coord_dhd , coord_ihd = get_muscle_coordination_metrics(subject_data_normalized, onset_dhd, onset_ihd, power_info)
+
+    # plot temporal metrics
+    #fig, metrics = plot_temporal_emg_metrics(subject_data_normalized,onset_dhd,onset_ihd,power_info)
+    #print(metrics)
 
     # Spectral metrics
-    band_power_dhd , band_power_ihd = get_muscle_power_spectral_density_info(subject_data_normalized, onset_dhd, onset_ihd, power_info)
+    #band_power_dhd , band_power_ihd = get_muscle_power_spectral_density_info(subject_data_normalized, onset_dhd, onset_ihd, power_info)
 
     # Isometric values
+    subject_data_normalized = subject_data_phases
     ihd_values = subject_data_normalized.get("IHD_values")
 
     # Total metrics
-    subject_row = build_subject_feature_row(subject_number, power_info, ihd_values, coord_dhd, coord_ihd, band_power_dhd, band_power_ihd)
+    #subject_row = build_subject_feature_row(subject_number, power_info, ihd_values, coord_dhd, coord_ihd, band_power_dhd, band_power_ihd)
+    subject_row = build_subject_feature_row(subject_number, power_info, ihd_values)
 
     features.append(subject_row)
 
 final_df = pd.concat(features, ignore_index=True)
-final_df.to_excel(os.path.join(path, "features_power_dyna.xlsx"), index=False)
+final_df.to_excel(os.path.join(path, "features_power_dyna_invalids.xlsx"), index=False)
 print(f"\nFinal DataFrame exported with {len(final_df)} participants.")

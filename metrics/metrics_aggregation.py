@@ -5,8 +5,8 @@ from osteopenia.osteopenia_metrics import add_bone_variables
 import pandas as pd
 
 path_tanita = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\tanita.xlsx"
-path_power_dyna = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\features_power_dyna.xlsx"
-output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\validos\final_dataframe.xlsx"
+path_power_dyna = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\invalidos\features_power_dyna_invalids.xlsx"
+output_path = r"C:\Users\Sofia\Desktop\Tese\dados\maio\certos\invalidos\final_dataframe_invalids.xlsx"
 
 # ---------------------------------------------------------------------
 # Read the anthropometric data
@@ -117,14 +117,14 @@ output_path_male = output_path.replace(".xlsx", "_male.xlsx")
 output_path_female = output_path.replace(".xlsx", "_female.xlsx")
 
 merged_df.to_excel(output_path, index=False)
-male_df.to_excel(output_path_male, index=False)
-female_df.to_excel(output_path_female, index=False)
+#male_df.to_excel(output_path_male, index=False)
+#female_df.to_excel(output_path_female, index=False)
 
 print(f"\nSaved complete dataframe to:\n{output_path}")
 print(f"Subjects: {len(merged_df)}")
 
-print(f"\nSaved male dataframe to:\n{output_path_male}")
-print(f"Subjects: {len(male_df)}")
+#print(f"\nSaved male dataframe to:\n{output_path_male}")
+#print(f"Subjects: {len(male_df)}")
 
-print(f"\nSaved female dataframe to:\n{output_path_female}")
-print(f"Subjects: {len(female_df)}")
+#print(f"\nSaved female dataframe to:\n{output_path_female}")
+#print(f"Subjects: {len(female_df)}")
